@@ -16,10 +16,12 @@ elif [ "$1" == "deploy-ftp" ]; then
     MAKE_VERB="deploy-ftp"
 elif [ "$1" == "deploy-ryu" ]; then
     MAKE_VERB="deploy-ryu"
+elif [ "$1" == "deploy-yuzu" ]; then
+    MAKE_VERB="deploy-yuzu"
 elif [ "$1" == "make-npdm-json" ]; then
     MAKE_VERB="npdm-json"
 else
-    echo "Invalid arg. (build/clean/deploy-sd/deploy-ftp/deploy-ryu)"
+    echo "Invalid arg. (build/clean/deploy-sd/deploy-ftp/deploy-ryu/deploy-yuzu)"
     exit 1
 fi
 

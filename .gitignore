@@ -6,3 +6,7 @@ deploy/*
 *.elf
 *.nso
 *.npdm
+
+compile_commands.json
+.DS_Store
+.editorconfig

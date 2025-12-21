@@ -1,0 +1,195 @@
+---
+# bugprone-implicit-widening-of-multiplication-resultは64bitのみの対応で良くなれば追加することが可能
+Checks:          '-*,modernize-*,android-*,bugprone-*,-bugprone-sizeof-expression,misc-*,performance-*,-cert-dcl50-cpp,-cert-err58-cpp,readability-*,-misc-no-recursion,-misc-non-private-member-variables-in-classes,-readability-uppercase-literal-suffix,-readability-magic-numbers,-readability-braces-around-statements,-readability-implicit-bool-cast,-readability-named-parameter,google-*,-google-readability-braces-around-statements,-google-runtime-int,-google-readability-function-size,clang-analyzer-*,-clang-analyzer-alpha*,-clang-analyzer-deadcode*,modernize-use-equals-default,modernize-use-equals-delete,modernize-use-override,modernize-return-braced-init-list,-bugprone-easily-swappable-parameters,-bugprone-implicit-widening-of-multiplication-result,-bugprone-lambda-function-name'
+# Checks: '-*,readability-isolate-declaration,readability-implicit-bool-conversion'
+# HeaderFilterRegex: '(nn/nlib/([^PC].+|threading/.+|unicode/.+|testing/.+|msgpack/.+|succinct/.+|oss/.+|succinct/.+))'
+# HeaderFilterRegex: '.\\.+hpp'
+# HeaderFilterRegex: '^(?!(setting.hpp))'
+# ExcludeHeaderFilterRegex: '(\\source\\setting.hpp|(lib\\.+|nn\\.+))'
+AnalyzeTemporaryDtors: false
+User:            user
+CheckOptions: [
+
+  {key: google-readability-braces-around-statements.ShortStatementLines, value: '1'},
+  {key: google-readability-function-size.StatementThreshold, value: '800'},
+  {key: google-readability-namespace-comments.ShortNamespaceLines, value: '10'},
+  {key: google-readability-namespace-comments.SpacesBeforeComments, value: '2'},
+
+#
+#  See: https://clang.llvm.org/extra/clang-tidy/checks/readability-identifier-naming.html
+#
+  {key: readability-identifier-naming.AbstractClassCase, value: camelBack},
+
+  {key: readability-identifier-naming.ClassCase, value: camelBack},
+
+  {key: readability-identifier-naming.ClassConstantCase, value: camelBack},
+  {key: readability-identifier-naming.ClassConstantPrefix, value: ''},
+
+#  {key: readability-identifier-naming.ClassMemberCase, value: lower_case},  # no PrivateClassMemberCase
+
+#  {key: readability-identifier-naming.ClassMethodCase, value: camelBack},
+
+  {key: readability-identifier-naming.ConstantCase, value: camelBack},
+  {key: readability-identifier-naming.ConstantPrefix, value: ''},
+
+  # ConstantMember
+
+  {key: readability-identifier-naming.ConstantParameterCase, value: camelBack},
+
+  # ConstantPointerParameter
+
+  {key: readability-identifier-naming.ConstexprFunctionCase, value: camelBack},
+  {key: readability-identifier-naming.ConstexprFunctionIgnoredRegexp, value: '.+_$'},
+
+  {key: readability-identifier-naming.ConstexprMethodCase, value: lower_case},
+  {key: readability-identifier-naming.ConstexprMethodIgnoredRegexp, value: '.+_$|^begin$|^end$|^cbegin$|^cend$|^size$|^length$|^empty$|^at$|^front$|^back$|^data$'},
+
+  {key: readability-identifier-naming.ConstexprVariableCase, value: CamelCase},
+  {key: readability-identifier-naming.ConstexprVariablePrefix, value: ''},
+  {key: readability-identifier-naming.ConstexprVariableIgnoredRegexp, value: '.+_$|^value$'},
+
+  {key: readability-identifier-naming.EnumCase, value: CamelCase},
+  {key: readability-identifier-naming.EnumIgnoredRegexp, value: '^\$.+'},
+  {key: readability-identifier-naming.EnumConstantCase, value: UPPER_CASE},
+  {key: readability-identifier-naming.EnumConstantIgnoredRegexp, value: '^_.+'},
+  # {key: readability-identifier-naming.EnumConstantPrefix, value: ''},
+
+  {key: readability-identifier-naming.FunctionCase, value: CamelCase},
+  {key: readability-identifier-naming.FunctionIgnoredRegexp, value: '^swap$|^nlib_.+$|^nmalloc.*'},
+
+  # GetConfigPerFile
+
+  {key: readability-identifier-naming.GlobalConstantCase, value: camelBack},
+  {key: readability-identifier-naming.GlobalConstantPrefix, value: 'g_'},
+
+  # GlobalConstantPointer
+
+  {key: readability-identifier-naming.GlobalFunctionCase, value: CamelCase},
+  {key: readability-identifier-naming.GlobalFunctionIgnoredRegexp, value: '^exl_|^swap$|^advance$|^distance$|^for_each$|^fill$|^fill_n$|^find$|^find_if$|^copy$|^copy_n$|^generate_n$|^erase$|^erase_if$|^generate$|^nlib_.+$|^nmalloc.*|^nrealloc|^ncalloc|^nfree.*'},
+
+  # GlobalPointer
+
+ {key: readability-identifier-naming.GlobalVariableCase, value: camelBack},
+ {key: readability-identifier-naming.GlobalVariablePrefix, value: 'g_'},
+ {key: readability-identifier-naming.GlobalVariableIgnoredRegexp, value: '^CRefString_.+|^gRefString.+'},
+  # IgnoreMainLikeFunctions
+
+  {key: readability-identifier-naming.InlineNamespaceCase, value: lower_case},
+
+  {key: readability-identifier-naming.LocalConstantCase, value: camelBack},
+
+  {key: readability-identifier-naming.LocalConstantPointerCase, value: camel_Snake_Back},
+  {key: readability-identifier-naming.LocalPointerCase, value: camel_Snake_Back},
+  # {key: readability-identifier-naming.LocalPointerPrefix, value: ''},
+
+  # {key: readability-identifier-naming.LocalVariableCase, value: camelBack},
+
+  {key: readability-identifier-naming.MacroDefinitionCase, value: UPPER_CASE},
+  {key: readability-identifier-naming.MacroDefinitionIgnoredRegexp, value: '^NLIB_PTHREAD_|^NLIB_LIBC_|^nlib_thread_cleanup_|^PRI.S$|^NLIB_FLAGS_|.+_$'},
+
+  {key: readability-identifier-naming.MemberCase, value: lower_case},
+
+  {key: readability-identifier-naming.MethodCase, value: camelBack},
+
+  {key: readability-identifier-naming.NamespaceCase, value: lower_case},
+
+  {key: readability-identifier-naming.ParameterCase, value: camelBack},
+
+  {key: readability-identifier-naming.ParameterPackCase, value: lower_case},
+
+  # PointerParameter
+
+  {key: readability-identifier-naming.PrivateMemberCase, value: 'camelBack'},
+  {key: readability-identifier-naming.PrivateMemberSuffix, value: '_'},
+  {key: readability-identifier-naming.ProtectedMemberCase, value: 'camelBack'},
+  {key: readability-identifier-naming.ProtectedMemberSuffix, value: '_'},
+  {key: readability-identifier-naming.PublicMemberCase, value: camelBack},
+  {key: readability-identifier-naming.PublicMemberIgnoredRegexp, value: '^m_.+$'},
+  # {key: readability-identifier-naming.PublicMemberPrefix, value: 'm_'},
+
+  {key: readability-identifier-naming.PrivateMethodCase, value: CamelCase},
+  {key: readability-identifier-naming.PrivateMethodSuffix, value: '_'},
+  {key: readability-identifier-naming.ProtectedMethodCase, value: CamelCase},
+  {key: readability-identifier-naming.ProtectedMethodSuffix, value: '_'},
+  {key: readability-identifier-naming.PublicMethodCase, value: CamelCase},
+  {key: readability-identifier-naming.PublicMethodIgnoredRegexp, value: '^str$|^_Free$|^at$|^size$|^capacity$|^swap$|^empty$|^resize$|^reserve$|^push_back$|^emplace_back$|^pop_back$|^clear$|^get_allocator$|^back$|^front$|^begin$|^cbegin$|^end$|^cend$|^rbegin$|^rend$|^crbegin$|^crend$|^shrink_to_fit$|^get$|^reset$|^data$|^c_str$|^max_size$|^ssize$|^assign$|^erase$|^insert$|^length$|^lock$|^unlock$|^try_lock$|^try_lock_for$|^try_lock_until$|^native_handle$|^release$|^allocate$|^deallocate$|^construct$|^destroy$|^address$'},
+
+  # ScopedEnumConstant
+
+  {key: readability-identifier-naming.StaticConstantCase, value: camelBack},
+  {key: readability-identifier-naming.StaticConstantPrefix, value: ''},
+
+  {key: readability-identifier-naming.StaticVariableCase, value: lower_case},
+  {key: readability-identifier-naming.StaticVariablePrefix, value: 'g_'},
+
+  {key: readability-identifier-naming.StructCase, value: Camel_Snake_Case},
+
+  {key: readability-identifier-naming.TemplateParameterCase, value: UPPER_CASE},
+
+  {key: readability-identifier-naming.TemplateTemplateParameterCase, value: UPPER_CASE},
+
+  # {key: readability-identifier-naming.TypeAliasCase, value: camelBack},
+  # {key: readability-identifier-naming.TypeAliasIgnoredRegexp, value: '^type$|^iterator_category$|^value_type$|^difference_type$|^pointer$|^const_pointer$|^reference$|^const_reference$|^size_type$|^iterator$|^const_iterator$|^reverse_iterator$|^const_reverse_iterator$'},
+
+# RUN:     {key: readability-identifier-naming.TypeTemplateParameterCase, value: CamelCase},
+
+  {key: readability-identifier-naming.UnionCase, value: camelBack},
+
+  {key: readability-identifier-naming.ValueTemplateParameterCase, value: CamelCase},
+  {key: readability-identifier-naming.ValueTemplateParameterPrefix, value: ''},
+
+#  {key: readability-identifier-naming.VariableCase, value: camelBack},
+#  {key: readability-identifier-naming.VariableIgnoredRegexp, value: '^m_.+$'},
+ {key: readability-identifier-naming.VirtualMethodCase, value: camelBack},
+ {key: readability-identifier-naming.VirtualMethodSuffix, value: '_'},
+
+#  deleted?
+ {key: readability-identifier-naming.PureFunctionCase, value: lower_case},
+ {key: readability-identifier-naming.PureMethodCase, value: lower_case},
+ {key: readability-identifier-naming.TemplateUsingCase, value: lower_case},
+# RUN:     {key: readability-identifier-naming.TypedefCase, value: lower_case},
+
+
+  {key: readability-identifier-naming.IgnoreFailedSplit, value: 0},
+  {key: modernize-loop-convert.MaxCopySize, value: '16' },
+  {key: modernize-loop-convert.MinConfidence, value: reasonable},
+  {key: modernize-loop-convert.NamingStyle, value: camelBack},
+  {key: modernize-pass-by-value.IncludeStyle, value: llvm},
+  {key: modernize-replace-auto-ptr.IncludeStyle, value: llvm},
+  {key: modernize-use-nullptr.NullMacros, value: 'NULL'},
+  {key: readability-function-cognitive-complexity.Threshold, value: '150'}
+  {key: modernize-avoid-bind.UseLambda, value: '1'},
+  {key: modernize-concat-nested-namespaces.ShortNamespaceLines, value: '1'},
+  {key: modernize-deprecated-headers.Replacements, value: ''},
+  {key: modernize-deprecated-ios-base-aliases.Replacements, value: ''},
+  {key: modernize-loop-convert.MaxCopySize, value: '16'},
+  {key: modernize-make-shared.IgnoreMacros, value: '1'},
+  {key: modernize-make-unique.IgnoreMacros, value: '1'},
+  {key: modernize-pass-by-value.ValuesOnly, value: '0'},
+  {key: modernize-raw-string-literal.ReplaceShorterLiterals, value: '0'},
+  {key: modernize-replace-auto-ptr.IncludeStyle, value: 'llvm'},
+  {key: modernize-replace-random-shuffle.IncludeStyle, value: 'llvm'},
+  {key: modernize-replace-random-shuffle.Std, value: '0'},
+  {key: modernize-return-braced-init-list.WarnOnImplicitConstructor, value: '0'},
+  {key: modernize-shrink-to-fit.ContainerTypes, value: ''},
+  {key: modernize-type-traits.Header, value: ''},
+  {key: modernize-unary-static-assert.Message, value: 'Static assert failed'},
+  {key: modernize-use-auto.MinTypeNameLength, value: '5'},
+  {key: modernize-use-auto.RemoveStars, value: '0'},
+  {key: modernize-use-bool-literals.IgnoreMacros, value: '1'},
+  {key: modernize-use-default-member-init.IgnoreMacros, value: '1'},
+  {key: modernize-use-emplace.ContainersWithPushBack, value: ''},
+  {key: modernize-use-emplace.SmartPointers, value: ''},
+  {key: modernize-use-emplace.TupleTypes, value: ''},
+  {key: modernize-use-equals-default.IgnoreMacros, value: '1'},
+  {key: modernize-use-equals-delete.IgnoreMacros, value: '1'},
+  {key: modernize-use-nodiscard.Reason, value: ''},
+  {key: modernize-use-noexcept.ReplaceThrowWithNoexcept, value: '0'},
+  {key: modernize-use-override.OverrideSpelling, value: 'override'},
+  {key: modernize-use-std-print.IncludeStyle, value: 'llvm'},
+  {key: modernize-use-trailing-return-type.WarnOnLambdaReturnTypeDeduction, value: '1'},
+  {key: modernize-use-transparent-functors.FunctionTypes, value: ''},
+  {key: modernize-use-uncaught-exceptions.IgnoreNoexceptFunctions, value: '0'},
+  {key: modernize-use-using.IgnoreMacros, value: '1'},
+]
+...

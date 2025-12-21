@@ -2,7 +2,6 @@
 
 import ftplib
 import os
-from types import NoneType
 from typing import Any, Dict, Optional, Tuple, Union
 
 # https://ftputil.sschwarzer.net
@@ -38,16 +37,16 @@ FTP_PASSWORD: str = getenv('FTP_PASSWORD', '')
 class SessionFactory(ftplib.FTP):
     '''Session factory for FTPHost.'''
     
-    def __init__(self, ftp_ip: str, ftp_port: int, ftp_username: str, ftp_password: str, *args: Tuple[Any], **kwargs: Dict[str, Any]) -> NoneType:
+    def __init__(self, ftp_ip: str, ftp_port: int, ftp_username: str, ftp_password: str, *args: Tuple[Any], **kwargs: Dict[str, Any]):
         super().__init__()
         
         # Connect to FTP server.
-        self.connect(ftp_ip, ftp_port)
+        self.connect(ftp_ip, ftp_port, timeout=3)
         # Login with credentials.
         self.login(ftp_username, ftp_password)
 
 
-def main(*args: Tuple[Any], **kwargs: Dict[str, Any]) -> NoneType:
+def main(*args: Tuple[Any], **kwargs: Dict[str, Any]):
     # Connect/login to console FTP server.
     with ftputil.FTPHost(FTP_IP, FTP_PORT, FTP_USERNAME, FTP_PASSWORD, session_factory=SessionFactory) as ftp_host:
         # Make output directory.
