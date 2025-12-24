@@ -1,42 +1,264 @@
-#include "lib.hpp"
+#include "lib/hook/inline.hpp"
+#include "lib/hook/trampoline.hpp"
+#include "lib/diag/assert.hpp"
+#include "lib/armv8/instructions.hpp"
+#include "nn/fs/fs_mount.hpp"
+#include "d3/_util.hpp"
+#include "d3/_lobby.hpp"
+#include "d3/patches.hpp"
+#include "config.hpp"
+#include "d3/hooks/util.hpp"
+#include "d3/hooks/debug.hpp"
+#include "d3/hooks/lobby.hpp"
+#include "idadefs.h"
+#include <cstring>
+#include <string_view>
+// #include "arm_neon.h"
+// #include "c++/13.2.0/debug/string"
+// #include "bits/stdc++.h"
 
-/* Define hook StubCopyright. Trampoline indicates the original function should be kept. */
-/* HOOK_DEFINE_REPLACE can be used if the original function does not need to be kept. */
-HOOK_DEFINE_TRAMPOLINE(StubCopyright) {
+#define to_float(v)         __coerce<float>(v)
+#define to_s32(v)           vcvtps_s32_f32(v)
+#define to_u32(v)           vcvtps_u32_f32(v)
 
-    /* Define the callback for when the function is called. Don't forget to make it static and name it Callback. */
-    static void Callback(bool enabled) {
+#define findtrunc(v, n)     (strstr(pBuf, v) && strlen(pBuf) >= n)
+#define findtruncp(v, p, n) (strstr(pBuf, v) && strstr(pBuf, v) - pBuf == p && strlen(pBuf) >= n)
 
-        /* Call the original function, with the argument always being false. */
-        Orig(false);
+// namespace nn::oe {
+//     void SetCopyrightVisibility(bool);
+// };
+
+namespace d3 {
+    namespace {
+        bool CheckInstruction(uintptr_t offset, exl::armv8::InstType expected, const char* label) {
+            const auto actual = *reinterpret_cast<const exl::armv8::InstType*>(GameOffset(offset));
+            if (actual != expected) {
+                PRINT("Signature mismatch @ 0x%lx (%s): expected 0x%x got 0x%x", static_cast<unsigned long>(offset), label, expected, actual);
+                return false;
+            }
+            return true;
+        }
+
+        bool CheckString(uintptr_t offset, std::string_view expected, const char* label) {
+            const auto* ptr = reinterpret_cast<const char*>(GameOffset(offset));
+            if (std::memcmp(ptr, expected.data(), expected.size()) != 0) {
+                PRINT("Signature mismatch @ 0x%lx (%s): string mismatch", static_cast<unsigned long>(offset), label);
+                return false;
+            }
+            return true;
+        }
+
+        bool VerifySignature() {
+            using namespace exl::armv8::inst;
+            using namespace exl::armv8::reg;
+
+            bool ok = true;
+            ok &= CheckInstruction(0x03CC78, Movz(X8, 0x42c8, ShiftValue_16).Value(), "VarResLabel X-axis");
+            ok &= CheckInstruction(0x03CC7C, Movk(X8, 0x4316, ShiftValue_48).Value(), "VarResLabel Y-axis");
+            ok &= CheckInstruction(0x03CBCC, Movz(W8, 0x3F80, ShiftValue_16).Value(), "VarRes MaxPercent");
+            ok &= CheckString(0xE46144, "%3.1f FPS", "FPS format");
+            return ok;
+        }
+
+        bool g_config_hooks_installed = false;
     }
 
-};
+    // static auto diablo_rounding(u32 nDamage) {
+    //     float flTruncated = to_float(nDamage) / 1.0e12f;
+    //     float flRemainder = 8388600.0;
+    //     u32   nRounded;
+    //     if (__builtin_fabsf(flTruncated) <= flRemainder) {
+    //         if (flTruncated <= 0.0) {
+    //             if (flTruncated < 0.0)
+    //                 nRounded = -(to_u32(flTruncated + -flRemainder) & 0x7FFFFF);
+    //             else
+    //                 nRounded = 0;
+    //             PRINT_EXPR("flTruncated <= 0.0: %x %i", nRounded, nRounded)
+    //         } else {
+    //             nRounded = COERCE_UNSIGNED_INT(flTruncated + flRemainder) & 0x7FFFFF;
+    //             PRINT_EXPR("2 COERCE &x7FF: %x %i", nRounded, nRounded)
+    //         }
+    //     } else if (flTruncated >= 0.0) {
+    //         nRounded = (__PAIR64__((flTruncated + 0.5), (flTruncated + 0.5)) - to_u32(0.0)) >> 32;
+    //         PRINT_EXPR("3 >>32: %x %i (%.3f)", nRounded, nRounded, flTruncated)
+    //     } else {
+    //         nRounded = to_s32(flTruncated + -0.5);  // vcvtps_s32_f32
+    //         PRINT_EXPR("4: %x %i (%i ? %.3f)", nRounded, nRounded, to_s32(flTruncated - 0.5f), flTruncated)
+    //     }
+    //     return nRounded;
+    // }
 
+    HOOK_DEFINE_TRAMPOLINE(GfxInit){
+        static auto Callback() -> BOOL {
+            auto ret    = Orig();
+            g_ptGfxData = *reinterpret_cast<GfxInternalData **const>(GameOffset(0x1830F68));
+            return ret;
+        }
+    };
+    HOOK_DEFINE_TRAMPOLINE(GameCommonDataInit) {
+        static void Callback(GameCommonData *_this, const GameParams *tParams) {
+            Orig(_this, tParams);
+            g_ptGCData = _this;
+            // PRINT_EXPR("%x", self->nNumPlayers)
+            // PRINT_EXPR("%x", self->eDifficultyLevel)
+            // PRINT_EXPR("%x", tParams->idGameConnection)
+            // PRINT_EXPR("%x", tParams->idSGame)
+            // PRINT_EXPR("%x", tParams->nGameParts)
+            // PRINT_EXPR("%i", ServerIsLocal())
+        }
+    };
+    HOOK_DEFINE_TRAMPOLINE(ShellInitialize){
+        static auto Callback(uint32 hInstance, uint32 hWndParent) -> BOOL {
+            auto ret        = Orig(hInstance, hWndParent);
+            g_ptMainRWindow = reinterpret_cast<RWindow *const>(GameOffset(0x17DE610));
 
-/* Declare function to dynamic link with. */
-namespace nn::oe {
-    void SetCopyrightVisibility(bool);
-};
+            // char *pBuf = static_cast<char *>(alloca(0xFF));
+            // for (u32 nDamage = 0x5dde0b6b; nDamage < 0x62e8d4a6; nDamage += 0x1) {
+            //     nDamage           = 0x5e065fd7;
+            //     auto  nD3Rounded  = diablo_rounding(nDamage);
+            //     auto  flDamage    = COERCE_FLOAT(nDamage);
+            //     float flTruncated = to_float(nDamage) / 1.0e12f;
+            //     snprintf(pBuf, 0xFF, "%.0fT", (float)nD3Rounded);
+            //     // PRINT("%x | %x | %.0F, %0.3F", nDamage, nD3Rounded, flDamage, COERCE_FLOAT(n_flDamage))
+            //     if (
+            //         nDamage == 0x5e065fd7 ||
+            //         findtrunc("98765432", 0) || findtrunc("654321T", 0) ||
+            //         findtrunc("420666T", 0) || findtrunc("666420T", 0) || findtrunc("6666666", 0) || findtrunc("00000000T", 0) ||
+            //         findtruncp("4206660", 0, 10) || findtruncp("1234567", 0, 10) ||
+            //         findtruncp("1337666", 0, 11) || findtruncp("133700", 0, 11)
+            //     ) {
+            //         // 0x60d629d3 = 123456784T || 123,456,784T
+            //         // 0x6285da24 = 1234567808T || 1,234,567,808T
+            //         // 0x6290f535 = 1337000064T || 1,337,000,064T
+            //         // 0x629100e2 = 1337420800T || 1,337,420,800T
+            //         // 0x62910879 = 1337694208T || 1,337,694,208T
+            //         // 0x62910886 = 1337696000T || 1,337,696,000T
+            //         // svcOutputDebugString(pBuf, nLength);
+            //         // PRINT("%x | %s", nDamage, FormatTruncatedNumber(flDamage, 1, 1).m_pszString)
+            //         PRINT("0x%x = %.0fT (%.0fT) || %s\n", nDamage, (float)nD3Rounded, flTruncated, FormatTruncatedNumber(flDamage, 1, 1).m_pszString)
+            //         break;
+            //     }
+            // }
 
-extern "C" void exl_main(void* x0, void* x1) {
-    /* Setup hooking environment. */
-    exl::hook::Initialize();
+            PRINT("%s", "FINISHED!")
 
-    /* Install the hook at the provided function pointer. Function type is checked against the callback function. */
-    StubCopyright::InstallAtFuncPtr(nn::oe::SetCopyrightVisibility);
+            PRINT_EXPR("local logging: %d", *((BOOL *)(GameOffset(0x1A482C8) + 0xB0)))
+            // auto sLocalLogging = *reinterpret_cast<uintptr_t *>(GameOffset(0x115A408));
+            // auto sLocalLogging = FollowPtr<uintptr_t, 0>(GameOffset(0x115A408));
+            // XVarBool_Set(sLocalLogging, true, 3);
+            // XVarBool_Set(FollowPtr<uintptr_t, 0>(GameOffset(0x115A408)), true, 3);
+            PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varLocalLoggingEnable).m_elements)
+            PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varOnlineServicePTR).m_elements)
+            PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varFreeToPlay).m_elements)
+            PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varSeasonsOverrideEnabled).m_elements)
+            PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varChallengeEnabled).m_elements)
+            PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varExperimentalScheduling).m_elements)
+            // blz::shared_ptr<blz::basic_string<char,blz::char_traits<char>,blz::allocator<char> > > *pszFileData
+            // auto pszFileData = std::make_shared<std::string>(c_szSeasonSwap);
+            // OnSeasonsFileRetrieved(nullptr, 0, &pszFileData);
 
-    /* Alternative install funcs: */
-    /* InstallAtPtr takes an absolute address as a uintptr_t. */
-    /* InstallAtOffset takes an offset into the main module. */
+            // EXL_ABORT(420);
+            return ret;
+        }
+    };
+    HOOK_DEFINE_TRAMPOLINE(SGameInitialize){
+        static auto Callback(GameParams *tParams, const OnlineService::PlayerResolveData *ptResolvedPlayer) -> SGameID {
+            auto ret        = Orig(tParams, ptResolvedPlayer);
+            auto sGameCurID = AppServerGetOnlyGame();
+            PRINT_EXPR("NEW SGameInitialize! %x : %i", sGameCurID, ServerIsLocal())
+            return ret;
+        }
+    };
+    HOOK_DEFINE_TRAMPOLINE(sInitializeWorld){
+        static void Callback(SNO snoWorld, uintptr_t *ptSWorld) {
+            Orig(snoWorld, ptSWorld);
+            auto tSGameGlobals   = SGameGlobalsGet();
+            auto sGameConnection = ServerGetOnlyGameConnection();
+            auto sGameCurID      = AppServerGetOnlyGame();
+            PRINT("NEW sInitializeWorld! (SGame: %x | Connection: %x | Primary for connection: %p) %s %s", sGameCurID, sGameConnection, GetPrimaryPlayerForGameConnection(sGameConnection), tSGameGlobals->uszCreatorAccountName, tSGameGlobals->uszCreatorHeroName)
+        }
+    };
+    HOOK_DEFINE_TRAMPOLINE(MainInit){
+        static void Callback() {
+            // Require our SD to be mounted before running nnMain()
+            R_ABORT_UNLESS(nn::fs::MountSdCardForDebug("scratch"));
+            // Load config (scratch:/ preferred, falls back to sdmc:/)
+            LoadPatchConfig();
 
-    /*
-    For sysmodules/applets, you have to call the entrypoint when ready
-    exl::hook::CallTargetEntrypoint(x0, x1);
-    */
-}
+            if (!VerifySignature()) {
+                PRINT("Signature guard failed; expected build %s", D3CLIENT_VER);
+                EXL_ABORT("Signature guard failed: offsets mismatch.");
+            }
+
+            if (!g_config_hooks_installed) {
+                SetupUtilityHooks();
+                SetupDebuggingHooks();
+                SetupLobbyHooks();
+                g_config_hooks_installed = true;
+            }
+
+            // Apply patches based on config
+            if (global_config.overlays.active && global_config.overlays.buildlocker_watermark)
+                PatchBuildlocker();
+            if (global_config.overlays.active && global_config.overlays.ddm_labels)
+                PatchDDMLabels();
+            if (global_config.overlays.active && global_config.overlays.var_res_label)
+                PatchVarResLabel();
+            if (global_config.overlays.active && global_config.overlays.fps_label)
+                PatchReleaseFPSLabel();
+            if (global_config.rare_cheats.active && global_config.rare_cheats.fhd_mode)
+                PatchResolutionTargets();
+            if (global_config.events.active)
+                PatchForcedEvents();
+            if (global_config.seasons.active)
+                PatchForcedSeasonal();
+            PatchBase();
+
+            // Allow game loop to start
+            Orig();
+        }
+    };
+    HOOK_DEFINE_TRAMPOLINE(StubCopyright) {
+        static void Callback(bool enabled) {
+            Orig(false);
+        }
+    };
+
+    extern "C" void exl_main(void * /*x0*/, void * /*x1*/) {
+        /* Setup hooking environment. */
+        exl::hook::Initialize();
+
+        // PRINT_EXPR("0x%lx", offsetof(SGameGlobals, uHeroIdCreator))
+        // PRINT_EXPR("0x%lx", sizeof(ChallengeData))
+        // PRINT_EXPR("0x%lx", sizeof(bdRemoteTaskRef))
+        // PRINT_EXPR("0x%lx", sizeof(google::protobuf::UnknownFieldNew))
+        // PRINT_EXPR("0x%lx", sizeof(google::protobuf::UnknownField))
+        // PRINT_EXPR("0x%lx", sizeof(google::protobuf::UnknownFieldStable))
+        // PRINT_EXPR("0x%lx", sizeof(google::protobuf::UnknownFieldSet))
+        // PRINT_EXPR("0x%lx", sizeof(bdRemoteTaskRefB))
+        // PRINT_EXPR("0x%lx", sizeof(bdRemoteTaskRefC))
+        // PRINT_EXPR("0x%lx", sizeof(bdRemoteTaskRefD))
+        // PRINT_EXPR("0x%lx", sizeof(bdStorage))
+        // PRINT_EXPR("0x%lx", sizeof(std::shared_ptr<blz::string>))
+        // PRINT_EXPR("0x%lx", offsetof(std::shared_ptr<blz::string>, ))
+        // PRINT_EXPR("0x%lx", offsetof(SGameGlobals, uszCreatorHeroName))
+        // PRINT_EXPR("0x%lx", offsetof(SGameGlobals, uszCreatorAccountName))
+        // PRINT_EXPR("0x%lx", offsetof(GameParams, idGameConnection))
+        // PRINT_EXPR("0x%lx", offsetof(GameParams, idSGame))
+        // PRINT_EXPR("0x%lx", offsetof(LootSpecifier, eAncientRank))
+        MainInit::InstallAtOffset(0x480);
+        GfxInit::InstallAtOffset(0x298BD0);
+        ShellInitialize::InstallAtOffset(0x667830);
+
+        GameCommonDataInit::InstallAtOffset(0x4CABA0);
+        SGameInitialize::InstallAtOffset(0x7B08A0);
+        sInitializeWorld::InstallAtOffset(0x8127A0);
+        // StubCopyright::InstallAtFuncPtr(nn::oe::SetCopyrightVisibility);
+    }
+
+}  // namespace d3
 
 extern "C" NORETURN void exl_exception_entry() {
-    /* Note: this is only applicable in the context of applets/sysmodules. */
+    /* TODO: exception handling */
     EXL_ABORT("Default exception handler called!");
 }

@@ -7,7 +7,7 @@
 LOAD_KIND := Module
 
 # Program you're targetting. Used to determine where to deploy your files.
-PROGRAM_ID := 0100801011c3e000
+PROGRAM_ID := 01001b300b9be000
 
 # Optional path to copy the final ELF to, for convenience.
 ELF_EXTRACT :=
@@ -17,6 +17,8 @@ PYTHON := python3
 
 # JSON to use to make .npdm
 NPDM_JSON := qlaunch.json
+
+CONFIG_JSON := d3hack-nx.json
 
 # Additional C/C++ flags to use.
 C_FLAGS := 
@@ -32,10 +34,14 @@ MOUNT_PATH := /mnt/k
 #------------------------
 
 # Settings for deploying over FTP. Used by the deploy-ftp.py script.
-FTP_IP := 192.168.0.235
+FTP_IP := 192.168.1.101
 FTP_PORT := 5000
 FTP_USERNAME := anonymous
 FTP_PASSWORD :=
 
 # Settings for deploying to Ryu. Used by the deploy-ryu.sh script.
-RYU_PATH := /mnt/c/Users/shado/AppData/Roaming/Ryujinx
+RYU_WIN_PATH := /home/jester/AppData/Roaming/Ryujinx/
+RYU_MAC_PATH := /Users/dev/Library/Application Support/Ryujinx/
+
+# Settings for deploying to Yuzu. Used by the deploy-yuzu.sh script.
+YUZU_PATH := /home/jester/AppData/Roaming/yuzu/load/
