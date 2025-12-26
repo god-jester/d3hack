@@ -1,0 +1,75 @@
+# d3hack-nx example configuration
+
+[seasons]
+SectionEnabled = true
+AllowOnlinePlay = true
+SeasonNumber = 37
+
+[challenge_rifts]
+SectionEnabled = true
+MakeRiftsRandom = true
+RiftRangeStart = 0
+RiftRangeEnd = 9
+
+[events]
+SectionEnabled = true
+IgrEnabled = false
+AnniversaryEnabled = false
+EasterEggWorldEnabled = false
+DoubleRiftKeystones = true
+DoubleBloodShards = true
+DoubleTreasureGoblins = true
+DoubleBountyBags = true
+RoyalGrandeur = false
+LegacyOfNightmares = false
+TriunesWill = false
+Pandemonium = false
+KanaiPowers = false
+TrialsOfTempests = false
+ShadowClones = false
+FourthKanaisCubeSlot = false
+EthrealItems = false
+SoulShards = false
+SwarmRifts = false
+SanctifiedItems = false
+DarkAlchemy = true
+NestingPortals = false
+
+[rare_cheats]
+SectionEnabled = true
+DrawFPS = true
+DrawVariableResolution = true
+Target1080pResolution = true
+MovementSpeedMultiplier = 1.5
+GuaranteedLegendaryChance = false
+DropAnyItems = false
+InstantPortalAndBookOfCain = true
+NoCooldowns = false
+InstantCubeAndCraftsAndEnchants = true
+SocketGemsToAnySlot = false
+AutoPickup = false
+EquipAnySlot = false
+
+[overlays]
+SectionEnabled = true
+BuildLockerWatermark = true
+DDMLabels = true
+FPSLabel = true
+VariableResLabel = true
+
+[loot_modifiers]
+SectionEnabled = false
+DisableAncientDrops = false
+DisablePrimalAncientDrops = false
+DisableTormentDrops = false
+DisableTormentCheck = false
+SuppressGiftGeneration = true
+ForcedILevel = 70
+TieredLootRunLevel = 150
+AncientRank = "Primal"
+
+[debug]
+SectionEnabled = true
+EnablePubFileDump = false
+EnableErrorTraces = true
+EnableDebugFlags = false
