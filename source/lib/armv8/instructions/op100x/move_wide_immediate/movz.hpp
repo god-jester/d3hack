@@ -11,5 +11,4 @@ namespace exl::armv8::inst {
         constexpr Movz(reg::Register reg, u16 imm, ShiftValue shift = ShiftValue_0) : MoveWideImmediate(reg, Opc, shift, imm) {}
 
     };
-
 }

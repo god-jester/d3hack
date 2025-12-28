@@ -13,6 +13,4 @@ extern void exl_abort(Result);
         exl_abort(_tmp_r);   \
     }                                       
 
-#elif
-#error "Included abort.h outside of libnx!"
 #endif

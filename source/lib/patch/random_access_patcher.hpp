@@ -43,6 +43,11 @@ namespace exl::patch {
             return At<T>(index);
         }
 
+        template<typename T, typename... Args>
+        ALWAYS_INLINE void Patch(const uintptr_t addr, Args &&... args) {
+            Write<T>(addr, T(std::forward<Args>(args)...));
+        }
+        
         inline void Flush() {
             /* Nothing to flush if there was nothing done. */
             if(IsUnset())

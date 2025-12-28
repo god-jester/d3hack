@@ -16,8 +16,12 @@
 
 .global __module_start
 __module_start:
+    // newer rtld versions check the first four bytes to determine the version
+    // 0, `b #0x8` (arm), or `b #0xc` (aarch64) are treated as the older version anything else is treated as the new version
+    // older versions of rtld appear to not care about what comes after the module header offset
     b entrypoint
     .word __nx_mod0 - __module_start
+    .word __sdk_version - __module_start
 
     .align 4
     .ascii "~~exlaunch uwu~~"
@@ -93,3 +97,10 @@ __nx_mod0:
     .word  __eh_frame_hdr_start__   - __nx_mod0
     .word  __eh_frame_hdr_end__     - __nx_mod0
     .word  exl_nx_module_runtime    - __nx_mod0
+    // newer versions have a longer module header, but the other fields aren't directly used so we can ignore them
+
+// sdk version (unused so it doesn't actually matter what's here)
+__sdk_version:
+    .word   69
+    .word   420
+    .word   69

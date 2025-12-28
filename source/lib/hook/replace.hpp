@@ -3,6 +3,7 @@
 #include "base.hpp"
 #include "util/func_ptrs.hpp"
 #include "util/type_traits.hpp"
+#include "reloc/reloc.hpp"
 
 #define HOOK_DEFINE_REPLACE(name)                        \
 struct name : public ::exl::hook::impl::ReplaceHook<name>
@@ -35,6 +36,15 @@ namespace exl::hook::impl {
             _HOOK_STATIC_CALLBACK_ASSERT();
             
             hook::Hook(ptr, Derived::Callback);
+        }
+
+        static ALWAYS_INLINE void InstallAtSymbol(const char* symbol) {
+            _HOOK_STATIC_CALLBACK_ASSERT();
+
+            const exl::reloc::LookupEntryBin* entry = exl::reloc::GetLookupTable().FindByName(symbol);
+            EXL_ASSERT(entry, "Symbol not found!");
+
+            hook::Hook(util::modules::GetTargetOffset(entry->m_Offset), Derived::Callback);
         }
     };
 }
