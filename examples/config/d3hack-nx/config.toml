@@ -2,7 +2,7 @@
 
 [seasons]
 SectionEnabled = true
-AllowOnlinePlay = true
+AllowOnlinePlay = false
 SeasonNumber = 37
 
 [challenge_rifts]
@@ -21,7 +21,7 @@ DoubleBloodShards = true
 DoubleTreasureGoblins = true
 DoubleBountyBags = true
 RoyalGrandeur = false
-LegacyOfNightmares = false
+LegacyOfNightmares = true
 TriunesWill = false
 Pandemonium = false
 KanaiPowers = false
@@ -42,9 +42,9 @@ DrawVariableResolution = true
 Target1080pResolution = true
 MovementSpeedMultiplier = 1.5
 GuaranteedLegendaryChance = false
-DropAnyItems = false
+DropAnyItems = true
 InstantPortalAndBookOfCain = true
-NoCooldowns = false
+NoCooldowns = true
 InstantCubeAndCraftsAndEnchants = true
 SocketGemsToAnySlot = false
 AutoPickup = false
@@ -58,18 +58,18 @@ FPSLabel = true
 VariableResLabel = true
 
 [loot_modifiers]
-SectionEnabled = false
+SectionEnabled = true
 DisableAncientDrops = false
 DisablePrimalAncientDrops = false
 DisableTormentDrops = false
-DisableTormentCheck = false
+DisableTormentCheck = true
 SuppressGiftGeneration = true
 ForcedILevel = 70
 TieredLootRunLevel = 150
 AncientRank = "Primal"
 
 [debug]
-SectionEnabled = true
+SectionEnabled = false
 EnablePubFileDump = false
 EnableErrorTraces = true
 EnableDebugFlags = false

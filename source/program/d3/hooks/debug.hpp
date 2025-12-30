@@ -227,7 +227,7 @@ namespace d3 {
                 sReadFile("StringList\\" DUMPFILE, &stringcontents, &stringsize);
                 // PRINT_EXPR("%x%x%x%x%x%x%x%x", *stringcontents, *(stringcontents + 1), *(stringcontents + 2), *(stringcontents + 3), *(stringcontents + 4), *(stringcontents + 5), *(stringcontents + 6), *(stringcontents + 7))
                 FileReference tFileRef;
-                FileReferenceInit(&tFileRef, "scratch:\\" DUMPFILE);
+                FileReferenceInit(&tFileRef, "sd:\\" DUMPFILE);
                 PRINT_EXPR("0x%x", FileOpen(&tFileRef, 2u))
                 FileWrite(&tFileRef, stringcontents, -1, stringsize, ERROR_FILE_WRITE);
                 EXL_ABORT("Debug abort: ShowString");

@@ -38,7 +38,7 @@
 // }  // namespace blz
 
 namespace d3 {
-    std::string              g_szBaseDir     = "scratch:/config/d3hack-nx";
+    std::string              g_szBaseDir     = "sd:/config/d3hack-nx";
     constinit bool           sg_bServerCode  = true;
     SigmaThreadLocalStorage &s_tThreadData   = *reinterpret_cast<SigmaThreadLocalStorage *const>(GameOffset(0x191CA70));
     AttribDef *const        &cg_arAttribDefs = reinterpret_cast<AttribDef *const>(GameOffset(0x191EAD8));

@@ -2,6 +2,7 @@
 #include "lib/hook/trampoline.hpp"
 #include "lib/diag/assert.hpp"
 #include "lib/armv8/instructions.hpp"
+#include "lib/util/sys/modules.hpp"
 #include "nn/fs/fs_mount.hpp"
 #include "d3/_util.hpp"
 #include "d3/_lobby.hpp"
@@ -30,34 +31,28 @@
 
 namespace d3 {
     namespace {
-        bool CheckInstruction(uintptr_t offset, exl::armv8::InstType expected, const char* label) {
-            const auto actual = *reinterpret_cast<const exl::armv8::InstType*>(GameOffset(offset));
-            if (actual != expected) {
-                PRINT("Signature mismatch @ 0x%lx (%s): expected 0x%x got 0x%x", static_cast<unsigned long>(offset), label, expected, actual);
-                return false;
+        const char *FindStringInRange(const exl::util::Range &range, std::string_view needle) {
+            if (needle.empty() || range.m_Size < needle.size())
+                return nullptr;
+            const char *start = reinterpret_cast<const char *>(range.m_Start);
+            const char *end   = start + range.m_Size - needle.size();
+            for (const char *p = start; p <= end; ++p) {
+                if (std::memcmp(p, needle.data(), needle.size()) == 0)
+                    return p;
             }
-            return true;
+            return nullptr;
         }
 
-        bool CheckString(uintptr_t offset, std::string_view expected, const char* label) {
-            const auto* ptr = reinterpret_cast<const char*>(GameOffset(offset));
-            if (std::memcmp(ptr, expected.data(), expected.size()) != 0) {
-                PRINT("Signature mismatch @ 0x%lx (%s): string mismatch", static_cast<unsigned long>(offset), label);
-                return false;
-            }
-            return true;
+        bool CheckBuildString() {
+            const auto &mod = exl::util::GetMainModuleInfo();
+            return FindStringInRange(mod.m_Rodata, D3CLIENT_VER) != nullptr;
         }
 
         bool VerifySignature() {
-            using namespace exl::armv8::inst;
-            using namespace exl::armv8::reg;
-
-            bool ok = true;
-            ok &= CheckInstruction(0x03CC78, Movz(X8, 0x42c8, ShiftValue_16).Value(), "VarResLabel X-axis");
-            ok &= CheckInstruction(0x03CC7C, Movk(X8, 0x4316, ShiftValue_48).Value(), "VarResLabel Y-axis");
-            ok &= CheckInstruction(0x03CBCC, Movz(W8, 0x3F80, ShiftValue_16).Value(), "VarRes MaxPercent");
-            ok &= CheckString(0xE46144, "%3.1f FPS", "FPS format");
-            return ok;
+            if (CheckBuildString())
+                return true;
+            PRINT("Signature guard failed; build string \"%s\" not found", D3CLIENT_VER);
+            return false;
         }
 
         bool g_config_hooks_installed = false;
@@ -147,12 +142,12 @@ namespace d3 {
             // auto sLocalLogging = FollowPtr<uintptr_t, 0>(GameOffset(0x115A408));
             // XVarBool_Set(sLocalLogging, true, 3);
             // XVarBool_Set(FollowPtr<uintptr_t, 0>(GameOffset(0x115A408)), true, 3);
-            PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varLocalLoggingEnable).m_elements)
-            PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varOnlineServicePTR).m_elements)
-            PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varFreeToPlay).m_elements)
-            PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varSeasonsOverrideEnabled).m_elements)
-            PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varChallengeEnabled).m_elements)
-            PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varExperimentalScheduling).m_elements)
+            // PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varLocalLoggingEnable).m_elements)
+            // PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varOnlineServicePTR).m_elements)
+            // PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varFreeToPlay).m_elements)
+            // PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varSeasonsOverrideEnabled).m_elements)
+            // PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varChallengeEnabled).m_elements)
+            // PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varExperimentalScheduling).m_elements)
             // blz::shared_ptr<blz::basic_string<char,blz::char_traits<char>,blz::allocator<char> > > *pszFileData
             // auto pszFileData = std::make_shared<std::string>(c_szSeasonSwap);
             // OnSeasonsFileRetrieved(nullptr, 0, &pszFileData);
@@ -181,8 +176,7 @@ namespace d3 {
     HOOK_DEFINE_TRAMPOLINE(MainInit){
         static void Callback() {
             // Require our SD to be mounted before running nnMain()
-            R_ABORT_UNLESS(nn::fs::MountSdCardForDebug("scratch"));
-            // Load config (scratch:/ preferred, falls back to sdmc:/)
+            R_ABORT_UNLESS(nn::fs::MountSdCardForDebug("sd"));
             LoadPatchConfig();
 
             if (!VerifySignature()) {

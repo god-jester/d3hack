@@ -10,7 +10,7 @@
 #define D3HACK_WEB     "https://jester.dev"
 #define D3CLIENT_VER   "2.7.6.90885"
 #define CRLF           "\n"
-#define D3HACK_DESC    "Item duping and seasonal save editor hack for Diablo III: Eternal Collection" CRLF D3HACK_WEB
+#define D3HACK_DESC    "Realtime hack for Diablo III: Eternal Collection" CRLF D3HACK_WEB
 #define D3HACK_BUILD   "(Built by " D3HACK_AUTHOR " @ " __DATE__ " " __TIME__ ")"
 #define D3HACK_FULLVER D3HACK_VER " by " D3HACK_AUTHOR " - Diablo III: Eternal Collection [v" D3CLIENT_VER "]"
 #define D3HACK_FULLFPS D3HACK_VER D3HACK_BUILD
@@ -50,8 +50,8 @@ constinit const char c_szSeasonSwap[] =
     "# Format for dates MUST be: \" ? ? ? , DD MMM YYYY hh : mm:ss UTC\"\n"
     "# The Day of Month(DD) MUST be 2 - digit; use either preceding zero or trailing space\n"
     "[Season 29]\n"
-    "Start \"Sat, 09 Jan 2024 00:00:00 GMT\"\n"
-    "End \"Tue, 09 Jan 2025 01:00:00 GMT\"\n\n";
+    "Start \"Sat, 09 Feb 2025 00:00:00 GMT\"\n"
+    "End \"Tue, 09 Feb 2026 01:00:00 GMT\"\n\n";
 
 constinit const char c_szConfigSwap[] =
     "HeroPublishFrequencyMinutes \"30\"\n"
@@ -59,7 +59,7 @@ constinit const char c_szConfigSwap[] =
     "SeasonalGlobalLeaderboardsEnabled \"1\"\n"
     "EnableDiablo4Advertisement \"1\"\n"
     "CommunityBuffStart \"???, 16 Sep 2023 00:00:00 GMT\"\n"
-    "CommunityBuffEnd \"???, 01 Dec 2025 01:00:00 GMT\"\n"
+    "CommunityBuffEnd \"???, 01 Dec 2027 01:00:00 GMT\"\n"
     "CommunityBuffDoubleGoblins \"1\"\n"
     "CommunityBuffDoubleBountyBags \"1\"\n"
     "CommunityBuffRoyalGrandeur \"1\"\n"

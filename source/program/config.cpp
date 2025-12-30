@@ -1,6 +1,7 @@
 #include "config.hpp"
 #include "d3/setting.hpp"
-#include "nn/fs/fs_files.hpp"
+#include "lib/diag/assert.hpp"
+#include "nn/fs.hpp"
 #include <algorithm>
 #include <cctype>
 #include <optional>
@@ -101,13 +102,20 @@ namespace {
         }
     }
 
+    bool DoesFileExist(const char* path) {
+        nn::fs::DirectoryEntryType type{};
+        auto rc = nn::fs::GetEntryType(&type, path);
+        return R_SUCCEEDED(rc) && type == nn::fs::DirectoryEntryType_File;
+    }
+
     bool ReadAll(const char* path, std::string& out) {
+        if (!DoesFileExist(path))
+            return false;
         nn::fs::FileHandle fh{};
         auto rc = nn::fs::OpenFile(&fh, path, nn::fs::OpenMode_Read);
-        if (R_FAILED(rc))
-            return false;
+        EXL_ASSERT(R_SUCCEEDED(rc), "Failed to open file: %s", path);
 
-        long size = 0;
+        s64 size = 0;
         rc = nn::fs::GetFileSize(&size, fh);
         if (R_FAILED(rc) || size <= 0) {
             nn::fs::CloseFile(fh);
@@ -115,9 +123,10 @@ namespace {
         }
 
         out.resize(static_cast<size_t>(size));
-        rc = nn::fs::ReadFile(fh, 0, out.data(), static_cast<ulong>(size));
+        rc = nn::fs::ReadFile(fh, 0, out.data(), static_cast<u64>(size));
+        EXL_ASSERT(R_SUCCEEDED(rc), "Failed to read file: %s", path);
         nn::fs::CloseFile(fh);
-        return R_SUCCEEDED(rc);
+        return true;
     }
 
     bool LoadFromPath(const char* path, std::string& error_out) {
@@ -235,21 +244,16 @@ void PatchConfig::ApplyTable(const toml::table& table) {
 
 void LoadPatchConfig() {
     global_config = PatchConfig{};
-    const char* candidates[] = {
-        "scratch:/config/d3hack-nx/config.toml",
-        "sdmc:/config/d3hack-nx/config.toml",
-    };
-    for (auto* p : candidates) {
-        std::string error;
-        if (LoadFromPath(p, error)) {
-            PRINT("Loaded config: %s", p);
-            global_config.initialized = true;
-            global_config.defaults_only = false;
-            return;
-        }
-        if (!error.empty())
-            PRINT("Config parse failed for %s: %s", p, error.c_str());
+    const char* path = "sd:/config/d3hack-nx/config.toml";
+    std::string error;
+    if (LoadFromPath(path, error)) {
+        PRINT("Loaded config: %s", path);
+        global_config.initialized = true;
+        global_config.defaults_only = false;
+        return;
     }
+    if (!error.empty())
+        PRINT("Config parse failed for %s: %s", path, error.c_str());
     global_config.initialized = true;
     global_config.defaults_only = true;
     PRINT("Config not found; using built-in defaults%s", ".");

@@ -55,7 +55,7 @@ namespace d3 {
         "-nofpslimit",
         "-usepageflip",
         "-debugd3d",
-        "-overridelogfolder", "scratch:/config/d3hack-nx/",
+        "-overridelogfolder", "sd:/config/d3hack-nx/",
         // "-overridefmodemergencymem",
         // "-nod4license"
     };

@@ -40,6 +40,13 @@ namespace nn::fs {
     Result GetDirectoryEntryCount(s64* outEntryCount, DirectoryHandle handle);
 
     /*
+        Get the type of an entry at the given path.
+        outType: Pointer to write the entry type into.
+        path: Path to the entry.
+    */
+    Result GetEntryType(DirectoryEntryType* outType, char const* path);
+
+    /*
         Delete a given directory path and all of it's subdirectories/folders.
         path: Path to the directory to delete.
     */

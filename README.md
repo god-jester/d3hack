@@ -59,12 +59,7 @@ d3hack-nx is an exlaunch-based module that hooks into D3 at runtime. While simil
 
 ### 2. Configure
 Place `config.toml` at:
-*   `sdmc:/config/d3hack-nx/config.toml` (hardware)
-*   Or the equivalent path in your emulator's virtual SD.
-
-Config is checked in order:
-*   `scratch:/config/d3hack-nx/config.toml`
-*   `sdmc:/config/d3hack-nx/config.toml`
+*   `sd:/config/d3hack-nx/config.toml` (hardware or emulator SD)
 
 See `examples/config/d3hack-nx/config.toml` for all options.
 *   `[seasons]`: Control `SeasonNumber` and active state.
@@ -76,7 +71,7 @@ See `examples/config/d3hack-nx/config.toml` for all options.
 *   `[debug]`: Advanced controls for error traces and debug flags.
 
 ### 3. Challenge Rift Data
-To enable offline Challenge Rifts, place captured weekly files under `sdmc:/config/d3hack-nx/rift_data/`:
+To enable offline Challenge Rifts, place captured weekly files under `sd:/config/d3hack-nx/rift_data/`:
 ```
 challengerift_config.dat
 challengerift_0.dat

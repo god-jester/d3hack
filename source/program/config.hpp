@@ -97,8 +97,7 @@ struct PatchConfig {
 
 extern PatchConfig global_config;
 
-// Loads config from TOML, trying (in order):
-//   scratch:/config/d3hack-nx/config.toml
-//   sdmc:/config/d3hack-nx/config.toml
+// Loads config from TOML:
+//   sd:/config/d3hack-nx/config.toml
 // Logs and keeps defaults when not found/invalid.
 void LoadPatchConfig();
