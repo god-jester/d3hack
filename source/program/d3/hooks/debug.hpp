@@ -326,11 +326,13 @@ namespace d3 {
         }
     };
 
-    HOOK_DEFINE_INLINE(SeasonFile) {
-        static void Callback(exl::hook::InlineCtx *ctx) {
-            // PRINT("SEASONFILE %s", "ENTER")
-            // auto SeasonsFileData = *reinterpret_cast<std::shared_ptr<blz::basic_string<char, blz::char_traits<char>, blz::allocator<char>>> *>(ctx->X[2]);
-            auto SeasonsFileData = *reinterpret_cast<std::shared_ptr<std::string> *>(ctx->X[2]);
+    HOOK_DEFINE_REPLACE(SeasonsFileRetrieved) {
+        // static void Callback(exl::hook::InlineCtx *ctx) {
+        static void Callback(void *, int32 eResult, std::shared_ptr<std::string> *pszFileData) {
+            PRINT("SEASONFILE %s", "ENTER")
+            return;
+            // auto SeasonsFileData = *reinterpret_cast<std::shared_ptr<std::string> *>(ctx->X[2]);
+            auto SeasonsFileData = *pszFileData;
             PRINT("SEASONFILE size %lx vs stored %lx", SeasonsFileData.get()->size(), sizeof(c_szSeasonSwap))
             if (SeasonsFileData.get()->size() > 0xF1) {
                 PRINT_EXPR("%s", "SKIPPING SEASON")
@@ -563,8 +565,9 @@ namespace d3 {
         //     InstallAtFuncPtr(bdLogSubscriber_publish);
         // ConfigFile::
         //     InstallAtOffset(0x641F0);
-        // SeasonFile::
-        //     InstallAtOffset(0x65270);
+        SeasonsFileRetrieved::
+            InstallAtFuncPtr(OnSeasonsFileRetrieved);
+        // InstallAtOffset(0x65270);
 
         // CountCosmetics::InstallAtOffset(0x4B104C);
         // BlacklistFile::

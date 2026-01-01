@@ -142,12 +142,16 @@ namespace d3 {
             // auto sLocalLogging = FollowPtr<uintptr_t, 0>(GameOffset(0x115A408));
             // XVarBool_Set(sLocalLogging, true, 3);
             // XVarBool_Set(FollowPtr<uintptr_t, 0>(GameOffset(0x115A408)), true, 3);
-            // PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varLocalLoggingEnable).m_elements)
-            // PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varOnlineServicePTR).m_elements)
-            // PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varFreeToPlay).m_elements)
-            // PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varSeasonsOverrideEnabled).m_elements)
-            // PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varChallengeEnabled).m_elements)
-            // PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varExperimentalScheduling).m_elements)
+            // XVarBool_Set(&s_varFreeToPlay, true, 3u);
+            // XVarBool_Set(&s_varSeasonsOverrideEnabled, true, 3u);
+            // XVarBool_Set(&s_varChallengeEnabled, true, 3u);
+            // XVarBool_Set(&s_varExperimentalScheduling, true, 3u);
+            PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varLocalLoggingEnable).m_elements)
+            PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varOnlineServicePTR).m_elements)
+            PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varFreeToPlay).m_elements)
+            PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varSeasonsOverrideEnabled).m_elements)
+            PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varChallengeEnabled).m_elements)
+            PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varExperimentalScheduling).m_elements)
             // blz::shared_ptr<blz::basic_string<char,blz::char_traits<char>,blz::allocator<char> > > *pszFileData
             // auto pszFileData = std::make_shared<std::string>(c_szSeasonSwap);
             // OnSeasonsFileRetrieved(nullptr, 0, &pszFileData);
@@ -205,7 +209,7 @@ namespace d3 {
             if (global_config.events.active)
                 PatchForcedEvents();
             if (global_config.seasons.active)
-                PatchForcedSeasonal();
+                PatchDynamicSeasonal();
             PatchBase();
 
             // Allow game loop to start
@@ -247,6 +251,18 @@ namespace d3 {
         GameCommonDataInit::InstallAtOffset(0x4CABA0);
         SGameInitialize::InstallAtOffset(0x7B08A0);
         sInitializeWorld::InstallAtOffset(0x8127A0);
+        // XVarBool_Set(&s_varFreeToPlay, true, 3u);
+        // XVarBool_Set(&s_varSeasonsOverrideEnabled, true, 3u);
+        // XVarBool_Set(&s_varChallengeEnabled, true, 3u);
+        // XVarBool_Set(&s_varExperimentalScheduling, true, 3u);
+        PatchForcedSeasonal();
+        PatchForcedEvents();
+        // auto jest = patch::RandomAccessPatcher();
+        // jest.Patch<Ret>(0x65270);             // stub Console::Online::LobbyServiceInternal::OnSeasonsFileRetrieved() to override server data
+        // if (global_config.events.active)
+            // PatchForcedEvents();
+        // if (global_config.seasons.active)
+            // PatchForcedSeasonal();
         // StubCopyright::InstallAtFuncPtr(nn::oe::SetCopyrightVisibility);
     }
 

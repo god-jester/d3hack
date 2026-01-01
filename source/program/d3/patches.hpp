@@ -174,12 +174,21 @@ namespace d3 {
         // jest.Patch<uint32_t>(0xEB09E0, 0x447A0000);  // 1000.0
     }
 
-    void PatchForcedSeasonal() {
+    void PatchDynamicSeasonal() {
         if (!global_config.seasons.active)
             return;
+
+        PRINT("SEASON CONFIG: %d", global_config.seasons.number)
+        auto jest = patch::RandomAccessPatcher();
+        jest.Patch<Movz>(0x72ED98, W3, global_config.seasons.number);   // Num (of Season)
+        jest.Patch<Movz>(0x72EDD0, W3, 1);                              // State (of Season)
+        jest.Patch<Movz>(0x1BD140, W21, global_config.seasons.number);  // season_created = ...
+    }
+
+    void PatchForcedSeasonal() {
         auto jest = patch::RandomAccessPatcher();
 
-        // jest.Patch<Movz>(0x185F9C, W0, 0);  // always STORAGE_SUCCESS
+        jest.Patch<Movz>(0x185F9C, W0, 0);    // always STORAGE_SUCCESS
 
         jest.Patch<Movz>(0x56B10, W0, 1);     // always Console::GamerProfile::IsSignedInOnline
         jest.Patch<Ret>(0x56B14);             // ^ ret
@@ -196,34 +205,34 @@ namespace d3 {
         jest.Patch<Ret>(0x1BF5F4);            // ^ ret
         jest.Patch<Movz>(0x351CBC, W1, 1);    // always true for UIHeroCreate::Console::bSeasonConfirmedAvailable() (skip B.ne and always confirm)
 
-        // jest.Patch<Ret>(0xBF6D50);           // stub bdEnvironmentString() to force net offline
-        // jest.Patch<Movz>(0x1BD360, W0, 1);   // always true for Console::UIOnlineActions::IsActiveSeason
-        // jest.Patch<Ret>(0x1BD364);
+        jest.Patch<Ret>(0xBF6D50);            // stub bdEnvironmentString() to force net offline
+        jest.Patch<Movz>(0x1BD360, W0, 1);    // always true for Console::UIOnlineActions::IsActiveSeason
+        jest.Patch<Ret>(0x1BD364);
 
-        // jest.Patch<Movz>(0x57260, W0, 0);  // online_play_allowed for  Console::GamerProfile::GetOnlinePlayPrivilege(
-        // jest.Patch<Ret>(0x57264);
+        jest.Patch<Movz>(0x57260, W0, 0);  // online_play_allowed for  Console::GamerProfile::GetOnlinePlayPrivilege(
+        jest.Patch<Ret>(0x57264);
 
-        // jest.Patch<Movz>(0x72EEC0, W3, 1);  // OverrideEnabled
+        jest.Patch<Movz>(0x72EEC0, W3, 1);  // OverrideEnabled
     }
 
     void PatchForcedEvents() {
         if (!global_config.events.active)
             return;
         auto jest = patch::RandomAccessPatcher();
-        // jest.Patch<Ret>(0x641F0);  // stub Console::Online::LobbyServiceInternal::OnConfigFileRetrieved() to override server data
-        // jest.Patch<Branch>(0x64228, 0x24);  //0x28
-        // jest.Patch<Nop>(0x4A6148);
-        // jest.Patch<Nop>(0x4A614C);
-        // jest.Patch<Branch>(0x4A6158, 0x1C);
-        // jest.Patch<Nop>(0x64254);  // stub Console::Online::LobbyServiceInternal::OnConfigFileRetrieved() ?
+        jest.Patch<Ret>(0x641F0);           // stub Console::Online::LobbyServiceInternal::OnConfigFileRetrieved() to override server data
+        jest.Patch<Branch>(0x64228, 0x24);  //0x28
+        jest.Patch<Nop>(0x4A6148);
+        jest.Patch<Nop>(0x4A614C);
+        jest.Patch<Branch>(0x4A6158, 0x1C);
+        jest.Patch<Nop>(0x64254);           // stub Console::Online::LobbyServiceInternal::OnConfigFileRetrieved() ?
 
-        // jest.Patch<Ret>(0xB2340);           // hey look im doing bullshit
-        // jest.Patch<dword>(0xF07FB8, make_bytes(0x01, 0x02, 0x03, 0x04));
+        jest.Patch<Ret>(0xB2340);           // hey look im doing bullshit
+        jest.Patch<dword>(0xF07FB8, make_bytes(0x01, 0x02, 0x03, 0x04));
 
         // try for challenge rift
         // jest.Patch<dword>(0x66B10, make_bytes(0xFE, 0xDE, 0xFF, 0xE7));
 
-        // jest.Patch<Movz>(0x185F9C, W0, 0);  // always STORAGE_SUCCESS
+        jest.Patch<Movz>(0x185F9C, W0, 0);  // always STORAGE_SUCCESS
 
         jest.Patch<Movz>(0x56B10, W0, 1);   // always Console::GamerProfile::IsSignedInOnline
         jest.Patch<Ret>(0x56B14);           // ^ ret
