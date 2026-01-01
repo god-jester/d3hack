@@ -2,8 +2,170 @@
 #include "lib/hook/replace.hpp"
 #include "lib/hook/trampoline.hpp"
 #include "../../config.hpp"
+#include <string>
+#include <string_view>
 
 namespace d3 {
+    namespace {
+        auto IsLocalConfigReady() -> bool {
+            return global_config.initialized;
+        }
+
+        void ClearConfigRequestFlag() {
+            auto flag_ptr = reinterpret_cast<uint32_t **>(GameOffset(0x114AD48));
+            if (flag_ptr && *flag_ptr)
+                **flag_ptr = 0;
+        }
+
+        void ClearSeasonsRequestFlag() {
+            auto flag_ptr = reinterpret_cast<uint8_t **>(GameOffset(0x114AD50));
+            if (flag_ptr && *flag_ptr)
+                **flag_ptr = 0;
+        }
+
+        void ClearBlacklistRequestFlag() {
+            auto flag_ptr = reinterpret_cast<uint8_t **>(GameOffset(0x114AD68));
+            if (flag_ptr && *flag_ptr)
+                **flag_ptr = 0;
+        }
+
+        void ReplaceBlzString(blz::string &dst, const char *data, size_t len) {
+            if (dst.m_elements) {
+                const char *storage_start = &dst.m_storage[0];
+                const char *storage_end   = storage_start + sizeof(dst.m_storage);
+                if (dst.m_elements < storage_start || dst.m_elements >= storage_end)
+                    SigmaMemoryFree(dst.m_elements, nullptr);
+            }
+
+            auto *buf = static_cast<char *>(SigmaMemoryNew(len + 1, 0, nullptr, true));
+            if (!buf) {
+                dst.m_elements             = nullptr;
+                dst.m_size                 = 0;
+                dst.m_capacity             = 0;
+                dst.m_capacity_is_embedded = 0;
+                return;
+            }
+            if (len && data)
+                SigmaMemoryMove(buf, const_cast<char *>(data), len);
+            buf[len]                   = '\0';
+            dst.m_elements             = buf;
+            dst.m_size                 = len;
+            dst.m_capacity             = len;
+            dst.m_capacity_is_embedded = 0;
+        }
+
+        void ReplaceBlzString(blz::string &dst, const char *data) {
+            const char *safe_data = data ? data : "";
+            ReplaceBlzString(dst, safe_data, std::char_traits<char>::length(safe_data));
+        }
+
+        void ReplaceBlzString(blz::string &dst, const blz::string &data) {
+            const char *safe_data = data.m_elements ? data.m_elements : "";
+            ReplaceBlzString(dst, safe_data, static_cast<size_t>(data.m_size));
+        }
+
+        auto BuildSeasonSwapString(u32 season_number) -> blz::string {
+            return blz_make_stringf(
+                "# Format for dates MUST be: \" ? ? ? , DD MMM YYYY hh : mm:ss UTC\"\n"
+                "# The Day of Month(DD) MUST be 2 - digit; use either preceding zero or trailing space\n"
+                "[Season %u]\n"
+                "Start \"Sat, 09 Feb 2025 00:00:00 GMT\"\n"
+                "End \"Tue, 09 Feb 2036 01:00:00 GMT\"\n\n",
+                season_number
+            );
+        }
+
+        auto BoolToConfig(bool value) -> const char * {
+            return value ? "1" : "0";
+        }
+
+        void AppendConfigLine(std::string &out, const char *key, const char *value) {
+            out += key;
+            out += " \"";
+            out += value;
+            out += "\"\n";
+        }
+
+        void AppendConfigBool(std::string &out, const char *key, bool value) {
+            AppendConfigLine(out, key, BoolToConfig(value));
+        }
+
+        auto BuildConfigSwapString() -> std::string {
+            std::string out;
+            out.reserve(1024);
+            AppendConfigLine(out, "HeroPublishFrequencyMinutes", "30");
+            AppendConfigLine(out, "EnableCrossPlatformSaveMigration", "1");
+            AppendConfigLine(out, "SeasonalGlobalLeaderboardsEnabled", "1");
+            AppendConfigLine(out, "EnableDiablo4Advertisement", "1");
+            AppendConfigLine(out, "CommunityBuffStart", "???, 16 Sep 2023 00:00:00 GMT");
+            AppendConfigLine(out, "CommunityBuffEnd", "???, 01 Dec 2027 01:00:00 GMT");
+            AppendConfigBool(out, "CommunityBuffDoubleGoblins", global_config.events.DoubleTreasureGoblins);
+            AppendConfigBool(out, "CommunityBuffDoubleBountyBags", global_config.events.DoubleBountyBags);
+            AppendConfigBool(out, "CommunityBuffRoyalGrandeur", global_config.events.RoyalGrandeur);
+            AppendConfigBool(out, "CommunityBuffLegacyOfNightmares", global_config.events.LegacyOfNightmares);
+            AppendConfigBool(out, "CommunityBuffTriunesWill", global_config.events.TriunesWill);
+            AppendConfigBool(out, "CommunityBuffPandemonium", global_config.events.Pandemonium);
+            AppendConfigBool(out, "CommunityBuffKanaiPowers", global_config.events.KanaiPowers);
+            AppendConfigBool(out, "CommunityBuffTrialsOfTempests", global_config.events.TrialsOfTempests);
+            AppendConfigBool(out, "CommunityBuffSeasonOnly", false);
+            AppendConfigBool(out, "CommunityBuffShadowClones", global_config.events.ShadowClones);
+            AppendConfigBool(out, "CommunityBuffFourthKanaisCubeSlot", global_config.events.FourthKanaisCubeSlot);
+            AppendConfigBool(out, "CommunityBuffEtherealItems", global_config.events.EthrealItems);
+            AppendConfigBool(out, "CommunityBuffSoulShards", global_config.events.SoulShards);
+            AppendConfigBool(out, "CommunityBuffSwarmRifts", global_config.events.SwarmRifts);
+            AppendConfigBool(out, "CommunityBuffSanctifiedItems", global_config.events.SanctifiedItems);
+            AppendConfigBool(out, "CommunityBuffDarkAlchemy", global_config.events.DarkAlchemy);
+            AppendConfigBool(out, "CommunityBuffParagonCap", false);
+            AppendConfigBool(out, "CommunityBuffNestingPortals", global_config.events.NestingPortals);
+            AppendConfigLine(out, "CommunityBuffLegendaryFind", "1337420666999.9");
+            AppendConfigLine(out, "CommunityBuffGoldFind", "1337420666999.8");
+            AppendConfigLine(out, "CommunityBuffXP", "1337420666999.7");
+            AppendConfigBool(out, "CommunityBuffEasterEggWorld", global_config.events.EasterEggWorldEnabled);
+            AppendConfigBool(out, "CommunityBuffDoubleRiftKeystones", global_config.events.DoubleRiftKeystones);
+            AppendConfigBool(out, "CommunityBuffDoubleBloodShards", global_config.events.DoubleBloodShards);
+            AppendConfigLine(out, "UpdateVersion", "1");
+            return out;
+        }
+
+        void EnsureSharedPtrData(blz::shared_ptr<blz::string> *pszFileData, blz::string &fallback) {
+            if (!pszFileData)
+                return;
+            if (!pszFileData->m_pointer) {
+                pszFileData->m_pointer = &fallback;
+            }
+        }
+
+        void OverrideConfigIfNeeded(blz::shared_ptr<blz::string> *pszFileData) {
+            if (!pszFileData || !global_config.events.active)
+                return;
+            static blz::string s_fallback;
+            EnsureSharedPtrData(pszFileData, s_fallback);
+            auto swap = BuildConfigSwapString();
+            ReplaceBlzString(*pszFileData->m_pointer, swap.c_str());
+        }
+
+        void OverrideSeasonsIfNeeded(blz::shared_ptr<blz::string> *pszFileData) {
+            if (!pszFileData || !global_config.seasons.active)
+                return;
+            static blz::string s_fallback;
+            EnsureSharedPtrData(pszFileData, s_fallback);
+            auto swap = BuildSeasonSwapString(global_config.seasons.number);
+            ReplaceBlzString(*pszFileData->m_pointer, swap);
+        }
+
+        void OverrideBlacklistIfNeeded(blz::shared_ptr<blz::string> *pszFileData) {
+            if (!pszFileData || !global_config.rare_cheats.drop_anything)
+                return;
+            static constexpr const char kEmptyBlacklist[] =
+                "# Blacklist overridden by d3hack\n"
+                "[GBID]\n\n"
+                "[SNO]\n";
+            static blz::string s_fallback;
+            EnsureSharedPtrData(pszFileData, s_fallback);
+            ReplaceBlzString(*pszFileData->m_pointer, kEmptyBlacklist);
+        }
+    }  // namespace
+
     HOOK_DEFINE_INLINE(Store_AttribDefs) {
         static void Callback(exl::hook::InlineCtx *ctx) {
             return;
@@ -92,8 +254,7 @@ namespace d3 {
                 // break;
                 auto gbString = GbidStringAll(bonusGbid);  //, GB_PARAGON_BONUSES);
                 // break;
-                char *pch = strstr(paramstr, gbString);
-                if (pch != NULL) {
+                if (paramstr && gbString && std::string_view {paramstr}.find(gbString) != std::string_view::npos) {
                     PRINT("paramstr: %s | gbstring: %s (%i)", paramstr, gbString, bonusGbid)
                 }
 
@@ -214,7 +375,7 @@ namespace d3 {
             // v84 = FlagSetLookup(v83, "DoubleRiftKeystones");
 
             // if (strstr(strlwr(&lowercheck), "jester's") != NULL) {
-            if (strstr(lowercheck, "Jester's") != NULL) {
+            if (lowercheck && std::string_view {lowercheck}.find("Jester's") != std::string_view::npos) {
                 auto szSNOTEXT = SNOToString(42, xx19.tHeader.snoHandle, 0);
                 PRINT_EXPR("%i %s : %s", xx19.tHeader.snoHandle, szSNOTEXT.str(), (xx9.szText._anon_0.m_pDebugPtr))
                 PRINT_EXPR("%x - %s", xx9.hLabel, *(char **)(xx19.arStrings._anon_0.m_uPtr))
@@ -285,7 +446,9 @@ namespace d3 {
 
     HOOK_DEFINE_INLINE(ConfigFile) {
         static void Callback(exl::hook::InlineCtx *ctx) {
-            auto ConfigFileData = *reinterpret_cast<std::shared_ptr<blz::basic_string<char, blz::char_traits<char>, blz::allocator<char>>> *>(ctx->X[2]);
+            auto ConfigFileData = reinterpret_cast<blz::shared_ptr<blz::string> *>(ctx->X[2]);
+            if (!ConfigFileData || !ConfigFileData->m_pointer)
+                return;
             /*
                 HeroPublishFrequencyMinutes "30"
                 CommunityBuffStart "???, 16 Sep 2023 00:00:00 GMT"
@@ -310,12 +473,10 @@ namespace d3 {
                 CommunityBuffNestingPortals "1"
                 UpdateVersion "1"            
             */
-            PRINT("CONFIG size %lx vs stored %lx", ConfigFileData.get()->m_size, sizeof(c_szConfigSwap))
-            PRINT("CONFIG str %s", ConfigFileData.get()->m_elements)
-            auto &what = ConfigFileData->m_elements;
-            what       = const_cast<char *>(c_szConfigSwap);
-            // *(ConfigFileData->m_elements) = const_cast<char *>(c_szConfigSwap);
-            PRINT("CONFIG POST str %s", ConfigFileData.get()->m_elements)
+            PRINT("CONFIG size %lx vs stored %lx", ConfigFileData->m_pointer->m_size, sizeof(c_szConfigSwap))
+            PRINT("CONFIG str %s", ConfigFileData->m_pointer->m_elements)
+            ReplaceBlzString(*ConfigFileData->m_pointer, c_szConfigSwap);
+            PRINT("CONFIG POST str %s", ConfigFileData->m_pointer->m_elements)
         }
     };
 
@@ -326,40 +487,42 @@ namespace d3 {
         }
     };
 
-    HOOK_DEFINE_REPLACE(SeasonsFileRetrieved) {
-        // static void Callback(exl::hook::InlineCtx *ctx) {
-        static void Callback(void *, int32 eResult, std::shared_ptr<std::string> *pszFileData) {
-            PRINT("SEASONFILE %s", "ENTER")
-            return;
-            // auto SeasonsFileData = *reinterpret_cast<std::shared_ptr<std::string> *>(ctx->X[2]);
-            auto SeasonsFileData = *pszFileData;
-            PRINT("SEASONFILE size %lx vs stored %lx", SeasonsFileData.get()->size(), sizeof(c_szSeasonSwap))
-            if (SeasonsFileData.get()->size() > 0xF1) {
-                PRINT_EXPR("%s", "SKIPPING SEASON")
-                *SeasonsFileData = "";
+    HOOK_DEFINE_TRAMPOLINE(ConfigFileRetrieved) {
+        static void Callback(void *self, int32 eResult, blz::shared_ptr<blz::string> *pszFileData) {
+            if (!IsLocalConfigReady()) {
+                ClearConfigRequestFlag();
+                return;
             }
-            // PRINT("SEASONFILE size %lx vs stored %lx", SeasonsFileData.get()->m_size, sizeof(c_szSeasonSwap))
-            // PRINT("SEASONFILE str %s", SeasonsFileData.get()->m_elements)
-            /* 
-                # Format for dates MUST be: " ? ? ? , DD MMM YYYY hh : mm:ss UTC"
-                # The Day of Month(DD) MUST be 2 - digit; use either preceding zero or trailing space
-                [Season 29]
-                Start "Sat, 16 Sep 2023 00:00:00 GMT"
-                End "Mon, 08 Jan 2024 01:00:00 GMT"
-            */
-            // auto &what = SeasonsFileData->m_elements;
-            // what       = const_cast<char *>(c_szSeasonSwap);
+            auto result = eResult;
+            if (global_config.events.active) {
+                result = 0;
+                OverrideConfigIfNeeded(pszFileData);
+            }
+            Orig(self, result, pszFileData);
+        }
+    };
 
-            std::string testokay(c_szSeasonSwap);
-            *SeasonsFileData = testokay;
-            // PRINT("SEASONFILE POST str %s", SeasonsFileData.get()->m_elements)
+    HOOK_DEFINE_TRAMPOLINE(SeasonsFileRetrieved) {
+        static void Callback(void *self, int32 eResult, blz::shared_ptr<blz::string> *pszFileData) {
+            if (!IsLocalConfigReady()) {
+                ClearSeasonsRequestFlag();
+                return;
+            }
+            auto result = eResult;
+            if (global_config.seasons.active) {
+                result = 0;
+                OverrideSeasonsIfNeeded(pszFileData);
+            }
+            Orig(self, result, pszFileData);
         }
     };
 
     HOOK_DEFINE_INLINE(PreferencesFile) {
         static void Callback(exl::hook::InlineCtx *ctx) {
-            auto PreferencesFileData = *reinterpret_cast<std::shared_ptr<blz::basic_string<char, blz::char_traits<char>, blz::allocator<char>>> *>(ctx->X[2]);
-            PRINT("Preferences str %s", PreferencesFileData.get()->m_elements)
+            auto PreferencesFileData = reinterpret_cast<blz::shared_ptr<blz::string> *>(ctx->X[2]);
+            if (!PreferencesFileData || !PreferencesFileData->m_pointer)
+                return;
+            PRINT("Preferences str %s", PreferencesFileData->m_pointer->m_elements)
             /*
                 PreferencesVersion "46"
                 PlayedCutscene0 "15"
@@ -409,10 +572,12 @@ namespace d3 {
         }
     };
 
-    HOOK_DEFINE_INLINE(BlacklistFile) {
-        static void Callback(exl::hook::InlineCtx *ctx) {
-            auto BlacklistFileData = *reinterpret_cast<std::shared_ptr<blz::basic_string<char, blz::char_traits<char>, blz::allocator<char>>> *>(ctx->X[2]);
-            PRINT("BLACKLIST str %s", BlacklistFileData.get()->m_elements)
+    HOOK_DEFINE_TRAMPOLINE(BlacklistFileRetrieved) {
+        static void Callback(void *self, int32 eResult, blz::shared_ptr<blz::string> *pszFileData) {
+            if (!IsLocalConfigReady()) {
+                ClearBlacklistRequestFlag();
+                return;
+            }
             /*
                 # Blacklist of items for consoles
 
@@ -426,6 +591,9 @@ namespace d3 {
                 # note: SNOGroup is usually Power
                 [SNO]            
             */
+            auto result = eResult;
+            OverrideBlacklistIfNeeded(pszFileData);
+            Orig(self, result, pszFileData);
         }
     };
 
@@ -442,10 +610,10 @@ namespace d3 {
 
     HOOK_DEFINE_INLINE(PubFileDataConstructor) {
         static void Callback(exl::hook::InlineCtx *ctx) {
-            auto PublisherFileData = *reinterpret_cast<blz::basic_string<char, blz::char_traits<char>, blz::allocator<char>> *>(ctx->X[21]);  // X8 @ 0x62444
-            PRINT("PublisherFileData blz::basic_string\n %s", PublisherFileData.m_elements)
-            auto PublisherFileDataStr = *reinterpret_cast<std::string *>(ctx->X[21]);
-            PRINT("PublisherFileData std::string (size: %ld)\n %s", PublisherFileDataStr.size(), PublisherFileDataStr.c_str())
+            auto PublisherFileData = reinterpret_cast<blz::string *>(ctx->X[21]);  // X8 @ 0x62444
+            if (!PublisherFileData || !PublisherFileData->m_elements)
+                return;
+            PRINT("PublisherFileData blz::string (size: %ld)\n %s", PublisherFileData->m_size, PublisherFileData->m_elements)
         }
     };
 
@@ -458,21 +626,29 @@ namespace d3 {
     HOOK_DEFINE_INLINE(BDFileDataMem) {
         static void Callback(exl::hook::InlineCtx *ctx) {
             auto fdata = reinterpret_cast<bdFileData *>(ctx->X[0]);
+            if (!fdata || !fdata->m_fileData)
+                return;
             PRINT("BDFileDataMem (size: %d)\n %s", fdata->m_fileSize, (char *)fdata->m_fileData)
-            auto        length = fdata->m_fileSize;
-            auto        bytes  = (char *)fdata->m_fileData;
-            std::string final_buf("FILE CONTENT: ");
-            for (auto i = 0; i < 100; i++) {
-                uchar low  = (bytes[i] >> 0) & 0xF;
-                uchar high = (bytes[i] >> 4) & 0xF;
-
-                char buf[3];
-                snprintf(buf, sizeof(buf), "%c%c", ByteToChar(high), ByteToChar(low));
-                /* Print buf. */
-                final_buf += buf;
-                final_buf += " ";
-            };
-            TraceInternal_Log(SLVL_INFO, 3u, OUTPUTSTREAM_DEFAULT, ": %s\n", final_buf.c_str());
+            auto         length     = static_cast<u32>(fdata->m_fileSize);
+            const auto  *bytes      = reinterpret_cast<const u8 *>(fdata->m_fileData);
+            const u32    dump_len   = (length < 100u) ? length : 100u;
+            const char   kPrefix[]  = "FILE CONTENT: ";
+            const size_t kPrefixLen = sizeof(kPrefix) - 1;
+            const size_t out_len    = kPrefixLen + (static_cast<size_t>(dump_len) * 3);
+            auto        *out        = static_cast<char *>(SigmaMemoryNew(out_len + 1, 0, nullptr, true));
+            if (out) {
+                SigmaMemoryMove(out, const_cast<char *>(kPrefix), kPrefixLen);
+                size_t pos = kPrefixLen;
+                for (u32 i = 0; i < dump_len; ++i) {
+                    const u8 value = bytes[i];
+                    out[pos++]     = ByteToChar((value >> 4) & 0xF);
+                    out[pos++]     = ByteToChar(value & 0xF);
+                    out[pos++]     = ' ';
+                }
+                out[pos] = '\0';
+                TraceInternal_Log(SLVL_INFO, 3u, OUTPUTSTREAM_DEFAULT, ": %s\n", out);
+                SigmaMemoryFree(out, nullptr);
+            }
 
             if (length == 31) {
                 // auto chaldata = *(ChallengeData *)fdata->m_fileData;
@@ -488,32 +664,18 @@ namespace d3 {
         static void Callback(exl::hook::InlineCtx *ctx) {
             auto PublisherFileData = reinterpret_cast<blz::string *>(ctx->X[23]);
             auto length            = static_cast<bdUInt>(ctx->W[24]);
+            if (!PublisherFileData)
+                return;
             auto bytes             = PublisherFileData->m_elements;
             auto usize             = static_cast<uint32>(PublisherFileData->m_size);
             auto m_size            = LODWORD(usize);
 
             PRINT("PublisherFileDataHex blz::basic_string (filesize: %d | stringsize: %d)", length, m_size)
-            std::string final_buf("PUBFILE CONTENT: 0x");
-            std::string final_plainbuf("PUBFILE CONTENT: ");
-            for (auto i = 0; i < 200; i++) {
-                uchar low  = (bytes[i] >> 0) & 0xF;
-                uchar high = (bytes[i] >> 4) & 0xF;
-                // char  buf[3];
-                // snprintf(buf, sizeof(buf), "%c%c", ByteToChar(high), ByteToChar(low));
-                char *pBuf = static_cast<char *>(alloca(3));
-                SNPRINT(pBuf, "%c%c", ByteToChar(high), ByteToChar(low))
-                /* Print buf. */
-                final_buf += pBuf;
-                final_buf += ", 0x";
-                final_plainbuf += pBuf;
-                final_plainbuf += " ";
-            }
-
-            std::string szDumpPath = g_szBaseDir + "/dumps/dmp_" + std::to_string(length) + ".dat";  //std::format("{}\\_{}.dat", g_szBaseDir, length);
-
-            PRINT_EXPR("Trying to write to: %s", szDumpPath.c_str())
-            if (WriteTestFile(szDumpPath, bytes, length))
-                PRINT_EXPR("Wrote to: %s !", szDumpPath.c_str())
+            auto        dump_path     = blz_make_stringf("%s/dumps/dmp_%u.dat", g_szBaseDir.c_str(), length);
+            const char *dump_path_str = dump_path.m_elements ? dump_path.m_elements : "";
+            PRINT_EXPR("Trying to write to: %s", dump_path_str)
+            if (bytes && WriteTestFile(dump_path_str, bytes, length))
+                PRINT_EXPR("Wrote to: %s !", dump_path_str)
 
             if (length == 3098) {
                 D3::Leaderboard::WeeklyChallengeData *wchaldata;
@@ -563,15 +725,15 @@ namespace d3 {
         }
         // BDPublish::
         //     InstallAtFuncPtr(bdLogSubscriber_publish);
-        // ConfigFile::
-        //     InstallAtOffset(0x641F0);
+        ConfigFileRetrieved::
+            InstallAtOffset(0x641F0);
         SeasonsFileRetrieved::
-            InstallAtFuncPtr(OnSeasonsFileRetrieved);
-        // InstallAtOffset(0x65270);
+            InstallAtOffset(0x65270);
+        BlacklistFileRetrieved::
+            InstallAtOffset(0x657F0);
 
-        // CountCosmetics::InstallAtOffset(0x4B104C);
-        // BlacklistFile::
-        //     InstallAtOffset(0x657F0);
+        // CountCosmetics::
+        //     InstallAtOffset(0x4B104C);
         // ParseFile::
         //     InstallAtOffset(0xBFD8A0);
         // CurlData::

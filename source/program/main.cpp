@@ -207,7 +207,7 @@ namespace d3 {
             if (global_config.rare_cheats.active && global_config.rare_cheats.fhd_mode)
                 PatchResolutionTargets();
             if (global_config.events.active)
-                PatchForcedEvents();
+                PatchDynamicEvents();
             if (global_config.seasons.active)
                 PatchDynamicSeasonal();
             PatchBase();

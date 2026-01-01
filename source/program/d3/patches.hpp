@@ -179,10 +179,20 @@ namespace d3 {
             return;
 
         PRINT("SEASON CONFIG: %d", global_config.seasons.number)
+        XVarBool_Set(&s_varSeasonsOverrideEnabled, true, 3u);
+        XVarUint32_Set(&s_varSeasonNum, global_config.seasons.number, 3u);
+        XVarUint32_Set(&s_varSeasonState, 1, 3u);
+
         auto jest = patch::RandomAccessPatcher();
-        jest.Patch<Movz>(0x72ED98, W3, global_config.seasons.number);   // Num (of Season)
-        jest.Patch<Movz>(0x72EDD0, W3, 1);                              // State (of Season)
+        // // jest.Patch<Movz>(0x72ED98, W3, global_config.seasons.number);   // Num (of Season)
+        // // jest.Patch<Movz>(0x72EDD0, W3, 1);
+        // Update season_created uses at runtime (UIOnlineActions::SetGameParamsForHero).
         jest.Patch<Movz>(0x1BD140, W21, global_config.seasons.number);  // season_created = ...
+        // Ignore mismatched hero season in UIHeroSelect (skip Rebirth/season prompt for old seasons).
+        jest.Patch<Nop>(0x358A7C);  // B.ne loc_358C74
+        // Hide "Create Seasonal Hero" main menu option (item 9) when forcing season number.
+        // ItemShouldBeVisible(case 9) calls IsSeasonsInitialized; forcing W0=0 makes it return false.
+        jest.Patch<Movz>(0x35C0C4, W0, 0);
     }
 
     void PatchForcedSeasonal() {
@@ -196,10 +206,11 @@ namespace d3 {
         jest.Patch<Ret>(0x65270);             // stub Console::Online::LobbyServiceInternal::OnSeasonsFileRetrieved() to override server data
 
         jest.Patch<Movz>(0x5FF0C, W0, 1);     // always true for Console::Online::IsSeasonsInitialized()
-        jest.Patch<Movz>(0x72ED98, W3, global_config.seasons.number);   // Num (of Season)
-        jest.Patch<Movz>(0x72EDD0, W3, 1);    // State (of Season)
+        // Leave season num/state dynamic; PatchDynamicSeasonal applies after config loads.
+        // jest.Patch<Movz>(0x72ED98, W3, global_config.seasons.number);   // Num (of Season)
+        // jest.Patch<Movz>(0x72EDD0, W3, 1);    // State (of Season)
         jest.Patch<Nop>(0x1BD09C);            // if ( OnlineService::GetSeasonNum() != season_created ) in Console::UIOnlineActions::SetGameParamsForHero()
-        jest.Patch<Movz>(0x1BD140, W21, global_config.seasons.number);  // season_created = ...
+        // season_created set dynamically in PatchDynamicSeasonal.
         jest.Patch<Nop>(0x1BD388);            // skip actual SeasonNum check in Console::UIOnlineActions::IsActiveSeason
         jest.Patch<Movz>(0x1BF5F0, W0, 0);    // error_none for Console::UIOnlineActions::ValidateHeroForPartyMember
         jest.Patch<Ret>(0x1BF5F4);            // ^ ret
@@ -216,59 +227,97 @@ namespace d3 {
     }
 
     void PatchForcedEvents() {
-        if (!global_config.events.active)
-            return;
         auto jest = patch::RandomAccessPatcher();
-        jest.Patch<Ret>(0x641F0);           // stub Console::Online::LobbyServiceInternal::OnConfigFileRetrieved() to override server data
-        jest.Patch<Branch>(0x64228, 0x24);  //0x28
-        jest.Patch<Nop>(0x4A6148);
-        jest.Patch<Nop>(0x4A614C);
-        jest.Patch<Branch>(0x4A6158, 0x1C);
-        jest.Patch<Nop>(0x64254);           // stub Console::Online::LobbyServiceInternal::OnConfigFileRetrieved() ?
+        // jest.Patch<Ret>(0x641F0);           // stub Console::Online::LobbyServiceInternal::OnConfigFileRetrieved() to override server data
+        // jest.Patch<Branch>(0x64228, 0x24);  //0x28
+        // jest.Patch<Nop>(0x4A6148);
+        // jest.Patch<Nop>(0x4A614C);
+        // jest.Patch<Branch>(0x4A6158, 0x1C);
+        // jest.Patch<Nop>(0x64254);           // stub Console::Online::LobbyServiceInternal::OnConfigFileRetrieved() ?
 
-        jest.Patch<Ret>(0xB2340);           // hey look im doing bullshit
-        jest.Patch<dword>(0xF07FB8, make_bytes(0x01, 0x02, 0x03, 0x04));
+        // jest.Patch<Ret>(0xB2340);           // hey look im doing bullshit
+        // jest.Patch<dword>(0xF07FB8, make_bytes(0x01, 0x02, 0x03, 0x04));
 
-        // try for challenge rift
-        // jest.Patch<dword>(0x66B10, make_bytes(0xFE, 0xDE, 0xFF, 0xE7));
+        // // try for challenge rift
+        // // jest.Patch<dword>(0x66B10, make_bytes(0xFE, 0xDE, 0xFF, 0xE7));
 
-        jest.Patch<Movz>(0x185F9C, W0, 0);  // always STORAGE_SUCCESS
+        // jest.Patch<Movz>(0x185F9C, W0, 0);  // always STORAGE_SUCCESS
 
         jest.Patch<Movz>(0x56B10, W0, 1);   // always Console::GamerProfile::IsSignedInOnline
         jest.Patch<Ret>(0x56B14);           // ^ ret
+    }
 
-        if (global_config.events.DarkAlchemy)            jest.Patch<Movz>(0x4A7E98, W3, 1);
-        if (global_config.events.IgrEnabled)             jest.Patch<Movz>(0x4A7F24, W3, 1);
-        if (global_config.events.AnniversaryEnabled)     jest.Patch<Movz>(0x4A7F84, W3, 1);
-        if (global_config.events.EasterEggWorldEnabled)  jest.Patch<Movz>(0x4A7FB4, W3, 1);
+    void PatchDynamicEvents() {
+        if (!global_config.events.active)
+            return;
 
-        // CommunityEventXP / LegendaryFind / GoldFind + IgrXP
-        // jest.Patch<dword>(0x4A7B30, make_bytes(0x48, 0x50, 0x00, 0xB0));
-        // jest.Patch<dword>(0x4A7B34, make_bytes(0x08, 0x59, 0x4A, 0xBD));  // 1.0e12 @ 0xEB0A58 (100 Trillion)
-        // // jest.Patch<dword>(0x4A7B34, make_bytes(0x08, 0xF0, 0x27, 0x1E));
-        // // jest.Patch<dword>(0x4A7B34, make_bytes(0x08, 0xE9, 0x4C, 0xBD));  // 1.0 @ 0xEB0CE8
-        // // jest.Patch<dword>(0x4A7B34, make_bytes(0x08, 0x79, 0x4B, 0xBD)); // 1.0e10 @ 0xEB0B78
-        // // jest.Patch<dword>(0x4A7B34, make_bytes(0x08, 0xE5, 0x49, 0xBD));  // 1.0+14 @ 0xEB09E4
+        constexpr s64 kBuffStartFallback = 1;
+        constexpr s64 kBuffEndFallback   = 0x7FFFFFFFFFFFFFFFLL;
 
-        if (global_config.events.DoubleRiftKeystones)    jest.Patch<Movz>(0x4A7BD8, W3, 1);
-        if (global_config.events.DoubleBloodShards)      jest.Patch<Movz>(0x4A7C04, W3, 1);
-        if (global_config.events.DoubleTreasureGoblins)  jest.Patch<Movz>(0x4A7C30, W3, 1);
-        if (global_config.events.DoubleBountyBags)       jest.Patch<Movz>(0x4A7C5C, W3, 1);
-        if (global_config.events.RoyalGrandeur)          jest.Patch<Movz>(0x4A7C88, W3, 1);
-        if (global_config.events.LegacyOfNightmares)     jest.Patch<Movz>(0x4A7CB4, W3, 1);
-        if (global_config.events.TriunesWill)            jest.Patch<Movz>(0x4A7CE0, W3, 1);
-        if (global_config.events.Pandemonium)            jest.Patch<Movz>(0x4A7D0C, W3, 1);
-        if (global_config.events.KanaiPowers)            jest.Patch<Movz>(0x4A7D38, W3, 1);
-        if (global_config.events.TrialsOfTempests)       jest.Patch<Movz>(0x4A7D64, W3, 1);
-        if (global_config.events.ShadowClones)           jest.Patch<Movz>(0x4A7D90, W3, 1);
-        if (global_config.events.FourthKanaisCubeSlot)   jest.Patch<Movz>(0x4A7DBC, W3, 1);
-        if (global_config.events.EthrealItems)           jest.Patch<Movz>(0x4A7DE8, W3, 1);
-        if (global_config.events.SoulShards)             jest.Patch<Movz>(0x4A7E14, W3, 1);
-        if (global_config.events.SwarmRifts)             jest.Patch<Movz>(0x4A7E40, W3, 1);
-        if (global_config.events.SanctifiedItems)        jest.Patch<Movz>(0x4A7E6C, W3, 1);
-        if (global_config.events.DarkAlchemy)            jest.Patch<Movz>(0x4A7E98, W3, 1);
-        if (global_config.events.NestingPortals)         jest.Patch<Movz>(0x4A7EF4, W3, 1);
+        auto *buff_start = *reinterpret_cast<s64 **>(GameOffset(0x114ACB8));
+        auto *buff_end   = *reinterpret_cast<s64 **>(GameOffset(0x114ACC0));
+        if (buff_start && buff_end && (!*buff_start || !*buff_end || *buff_end <= *buff_start)) {
+            *buff_start = kBuffStartFallback;
+            *buff_end   = kBuffEndFallback;
+        }
 
+        if (auto *egg_flag = *reinterpret_cast<u32 **>(GameOffset(0x114AE38)))
+            *egg_flag = global_config.events.EasterEggWorldEnabled ? 1u : 0u;
+
+        if (auto *igr = *reinterpret_cast<uintptr_t **>(GameOffset(0x1154BF0)))
+            XVarBool_Set(igr, global_config.events.IgrEnabled, 3u);
+        if (auto *ann = *reinterpret_cast<uintptr_t **>(GameOffset(0x1154C00)))
+            XVarBool_Set(ann, global_config.events.AnniversaryEnabled, 3u);
+        if (auto *egg_xvar = *reinterpret_cast<uintptr_t **>(GameOffset(0x1152CC8)))
+            XVarBool_Set(egg_xvar, global_config.events.EasterEggWorldEnabled, 3u);
+        if (auto *event_enabled = *reinterpret_cast<uintptr_t **>(GameOffset(0x114ACD8)))
+            XVarBool_Set(event_enabled, true, 3u);
+        if (auto *event_season_only = *reinterpret_cast<uintptr_t **>(GameOffset(0x114ACE8)))
+            XVarBool_Set(event_season_only, false, 3u);
+
+        auto set_bool = [](uintptr_t *var, bool value) {
+            if (var)
+                XVarBool_Set(var, value, 3u);
+        };
+
+        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x18FFFC8)), global_config.events.DoubleRiftKeystones);
+        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x1900080)), global_config.events.DoubleBloodShards);
+        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x1900138)), global_config.events.DoubleTreasureGoblins);
+        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x19001F0)), global_config.events.DoubleBountyBags);
+        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x19002A8)), global_config.events.RoyalGrandeur);
+        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x1900360)), global_config.events.LegacyOfNightmares);
+        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x1900418)), global_config.events.TriunesWill);
+        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x19004D0)), global_config.events.Pandemonium);
+        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x1900588)), global_config.events.KanaiPowers);
+        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x1900640)), global_config.events.TrialsOfTempests);
+        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x19006F8)), global_config.events.ShadowClones);
+        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x19007B0)), global_config.events.FourthKanaisCubeSlot);
+        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x1900868)), global_config.events.EthrealItems);
+        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x1900920)), global_config.events.SoulShards);
+        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x19009D8)), global_config.events.SwarmRifts);
+        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x1900A90)), global_config.events.SanctifiedItems);
+        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x1900B48)), global_config.events.DarkAlchemy);
+        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x18FF848)), global_config.events.NestingPortals);
+        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x1900C00)), false);  // ParagonCap off by default
+
+        // if (global_config.events.DoubleRiftKeystones)    jest.Patch<Movz>(0x4A7BD8, W3, 1);
+        // if (global_config.events.DoubleBloodShards)      jest.Patch<Movz>(0x4A7C04, W3, 1);
+        // if (global_config.events.DoubleTreasureGoblins)  jest.Patch<Movz>(0x4A7C30, W3, 1);
+        // if (global_config.events.DoubleBountyBags)       jest.Patch<Movz>(0x4A7C5C, W3, 1);
+        // if (global_config.events.RoyalGrandeur)          jest.Patch<Movz>(0x4A7C88, W3, 1);
+        // if (global_config.events.LegacyOfNightmares)     jest.Patch<Movz>(0x4A7CB4, W3, 1);
+        // if (global_config.events.TriunesWill)            jest.Patch<Movz>(0x4A7CE0, W3, 1);
+        // if (global_config.events.Pandemonium)            jest.Patch<Movz>(0x4A7D0C, W3, 1);
+        // if (global_config.events.KanaiPowers)            jest.Patch<Movz>(0x4A7D38, W3, 1);
+        // if (global_config.events.TrialsOfTempests)       jest.Patch<Movz>(0x4A7D64, W3, 1);
+        // if (global_config.events.ShadowClones)           jest.Patch<Movz>(0x4A7D90, W3, 1);
+        // if (global_config.events.FourthKanaisCubeSlot)   jest.Patch<Movz>(0x4A7DBC, W3, 1);
+        // if (global_config.events.EthrealItems)           jest.Patch<Movz>(0x4A7DE8, W3, 1);
+        // if (global_config.events.SoulShards)             jest.Patch<Movz>(0x4A7E14, W3, 1);
+        // if (global_config.events.SwarmRifts)             jest.Patch<Movz>(0x4A7E40, W3, 1);
+        // if (global_config.events.SanctifiedItems)        jest.Patch<Movz>(0x4A7E6C, W3, 1);
+        // if (global_config.events.DarkAlchemy)            jest.Patch<Movz>(0x4A7E98, W3, 1);
+        // if (global_config.events.NestingPortals)         jest.Patch<Movz>(0x4A7EF4, W3, 1);
         // jest.Patch<Movz>(0x4A7EC4, W3, 0);  // ParagonCap
     }
 
@@ -458,6 +507,17 @@ namespace d3 {
 
         /* Fix path for stat tracing */
         MakeAdrlPatch(0x7B1C50, reinterpret_cast<uintptr_t>(&c_szTraceStat), X0);
+
+        if (!global_config.debug.enable_pubfile_dump && !global_config.debug.enable_debug_flags) {
+            // Hide "Connect to Diablo Servers" menu entry (main menu item 12).
+            jest.Patch<Branch>(0x35C1A0, -0x90);  // force false path in ItemShouldBeVisible
+            // Hide Diablo Network status hint (connected/disconnected) above season text.
+            jest.Patch<Movz>(0x3627EC, W1, 0);  // off_1151298 visibility = 0 (connected path)
+            jest.Patch<Movz>(0x362800, W1, 0);  // off_1151290 visibility = 0 (disconnected path)
+            // Hide the status text itself by calling SetVisible(0) on the text control instead of SetText.
+            jest.Patch<dword>(0x362840, make_bytes(0x08, 0x29, 0x40, 0xF9));  // LDR X8, [X8,#0x50]
+            jest.Patch<Movz>(0x362844, W1, 0);                                // W1 = 0 (invisible)
+        }
 
         /* ItemCanDrop bypass */
         // jest.Patch<dword>(0x369384, make_bytes(0x10, 0x00, 0x00, 0x14));
