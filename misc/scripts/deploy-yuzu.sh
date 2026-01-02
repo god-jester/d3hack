@@ -7,7 +7,7 @@ if [ -z "${YUZU_PATH}" ]; then
 fi
 
 # Setup the path to the game's mods folder.
-export MODS_PATH=${YUZU_PATH}/${PROGRAM_ID}/dupe
+export MODS_PATH=${YUZU_PATH}/${PROGRAM_ID}/d3hack
 
 # Ensure directory exists.
 mkdir -p ${MODS_PATH}/exefs;

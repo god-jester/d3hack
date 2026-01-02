@@ -78,6 +78,221 @@ namespace {
         return out;
     }
 
+    PatchConfig::SeasonEventMapMode ParseSeasonEventMapMode(std::string_view input, PatchConfig::SeasonEventMapMode fallback) {
+        auto normalized = NormalizeKey(input);
+        if (normalized.empty())
+            return fallback;
+        if (normalized == "maponly" || normalized == "map" || normalized == "seasonmap" || normalized == "simulate")
+            return PatchConfig::SeasonEventMapMode::MapOnly;
+        if (normalized == "overlay" || normalized == "overlayconfig" || normalized == "add" || normalized == "additive" || normalized == "merge")
+            return PatchConfig::SeasonEventMapMode::OverlayConfig;
+        if (normalized == "disabled" || normalized == "off" || normalized == "none" || normalized == "false")
+            return PatchConfig::SeasonEventMapMode::Disabled;
+        return fallback;
+    }
+
+    PatchConfig::SeasonEventMapMode ReadSeasonEventMapMode(const toml::table& table, std::initializer_list<std::string_view> keys, PatchConfig::SeasonEventMapMode fallback) {
+        if (auto value = ReadValue<std::string>(table, keys))
+            return ParseSeasonEventMapMode(*value, fallback);
+        if (auto value = ReadValue<bool>(table, keys))
+            return *value ? PatchConfig::SeasonEventMapMode::MapOnly : PatchConfig::SeasonEventMapMode::Disabled;
+        return fallback;
+    }
+
+    struct SeasonEventFlags {
+        bool IgrEnabled = false;
+        bool AnniversaryEnabled = false;
+        bool EasterEggWorldEnabled = false;
+        bool DoubleRiftKeystones = false;
+        bool DoubleBloodShards = false;
+        bool DoubleTreasureGoblins = false;
+        bool DoubleBountyBags = false;
+        bool RoyalGrandeur = false;
+        bool LegacyOfNightmares = false;
+        bool TriunesWill = false;
+        bool Pandemonium = false;
+        bool KanaiPowers = false;
+        bool TrialsOfTempests = false;
+        bool ShadowClones = false;
+        bool FourthKanaisCubeSlot = false;
+        bool EtherealItems = false;
+        bool SoulShards = false;
+        bool SwarmRifts = false;
+        bool SanctifiedItems = false;
+        bool DarkAlchemy = false;
+        bool NestingPortals = false;
+    };
+
+    auto CaptureSeasonEventFlags(const PatchConfig& config) -> SeasonEventFlags {
+        return {
+            config.events.IgrEnabled,
+            config.events.AnniversaryEnabled,
+            config.events.EasterEggWorldEnabled,
+            config.events.DoubleRiftKeystones,
+            config.events.DoubleBloodShards,
+            config.events.DoubleTreasureGoblins,
+            config.events.DoubleBountyBags,
+            config.events.RoyalGrandeur,
+            config.events.LegacyOfNightmares,
+            config.events.TriunesWill,
+            config.events.Pandemonium,
+            config.events.KanaiPowers,
+            config.events.TrialsOfTempests,
+            config.events.ShadowClones,
+            config.events.FourthKanaisCubeSlot,
+            config.events.EtherealItems,
+            config.events.SoulShards,
+            config.events.SwarmRifts,
+            config.events.SanctifiedItems,
+            config.events.DarkAlchemy,
+            config.events.NestingPortals,
+        };
+    }
+
+    void ApplySeasonEventFlags(PatchConfig& config, const SeasonEventFlags& flags) {
+        config.events.IgrEnabled = flags.IgrEnabled;
+        config.events.AnniversaryEnabled = flags.AnniversaryEnabled;
+        config.events.EasterEggWorldEnabled = flags.EasterEggWorldEnabled;
+        config.events.DoubleRiftKeystones = flags.DoubleRiftKeystones;
+        config.events.DoubleBloodShards = flags.DoubleBloodShards;
+        config.events.DoubleTreasureGoblins = flags.DoubleTreasureGoblins;
+        config.events.DoubleBountyBags = flags.DoubleBountyBags;
+        config.events.RoyalGrandeur = flags.RoyalGrandeur;
+        config.events.LegacyOfNightmares = flags.LegacyOfNightmares;
+        config.events.TriunesWill = flags.TriunesWill;
+        config.events.Pandemonium = flags.Pandemonium;
+        config.events.KanaiPowers = flags.KanaiPowers;
+        config.events.TrialsOfTempests = flags.TrialsOfTempests;
+        config.events.ShadowClones = flags.ShadowClones;
+        config.events.FourthKanaisCubeSlot = flags.FourthKanaisCubeSlot;
+        config.events.EtherealItems = flags.EtherealItems;
+        config.events.SoulShards = flags.SoulShards;
+        config.events.SwarmRifts = flags.SwarmRifts;
+        config.events.SanctifiedItems = flags.SanctifiedItems;
+        config.events.DarkAlchemy = flags.DarkAlchemy;
+        config.events.NestingPortals = flags.NestingPortals;
+    }
+
+    auto OverlaySeasonEventFlags(const SeasonEventFlags& map, const SeasonEventFlags& extra) -> SeasonEventFlags {
+        SeasonEventFlags out = map;
+        out.IgrEnabled |= extra.IgrEnabled;
+        out.AnniversaryEnabled |= extra.AnniversaryEnabled;
+        out.EasterEggWorldEnabled |= extra.EasterEggWorldEnabled;
+        out.DoubleRiftKeystones |= extra.DoubleRiftKeystones;
+        out.DoubleBloodShards |= extra.DoubleBloodShards;
+        out.DoubleTreasureGoblins |= extra.DoubleTreasureGoblins;
+        out.DoubleBountyBags |= extra.DoubleBountyBags;
+        out.RoyalGrandeur |= extra.RoyalGrandeur;
+        out.LegacyOfNightmares |= extra.LegacyOfNightmares;
+        out.TriunesWill |= extra.TriunesWill;
+        out.Pandemonium |= extra.Pandemonium;
+        out.KanaiPowers |= extra.KanaiPowers;
+        out.TrialsOfTempests |= extra.TrialsOfTempests;
+        out.ShadowClones |= extra.ShadowClones;
+        out.FourthKanaisCubeSlot |= extra.FourthKanaisCubeSlot;
+        out.EtherealItems |= extra.EtherealItems;
+        out.SoulShards |= extra.SoulShards;
+        out.SwarmRifts |= extra.SwarmRifts;
+        out.SanctifiedItems |= extra.SanctifiedItems;
+        out.DarkAlchemy |= extra.DarkAlchemy;
+        out.NestingPortals |= extra.NestingPortals;
+        return out;
+    }
+
+    bool BuildSeasonEventMap(u32 season, SeasonEventFlags& out) {
+        out = SeasonEventFlags{};
+        switch (season) {
+        case 14:
+            out.DoubleTreasureGoblins = true;
+            return true;
+        case 15:
+            out.DoubleBountyBags = true;
+            return true;
+        case 16:
+            out.RoyalGrandeur = true;
+            return true;
+        case 17:
+            out.LegacyOfNightmares = true;
+            return true;
+        case 18:
+            out.TriunesWill = true;
+            return true;
+        case 19:
+            out.Pandemonium = true;
+            return true;
+        case 20:
+            out.KanaiPowers = true;
+            return true;
+        case 21:
+            out.TrialsOfTempests = true;
+            return true;
+        case 22:
+            out.ShadowClones = true;
+            out.FourthKanaisCubeSlot = true;
+            return true;
+        case 24:
+            out.EtherealItems = true;
+            return true;
+        case 25:
+            out.SoulShards = true;
+            return true;
+        case 26:
+            out.SwarmRifts = true;
+            return true;
+        case 27:
+            out.SanctifiedItems = true;
+            return true;
+        case 28:
+            out.DarkAlchemy = true;
+            return true;
+        case 29:
+            out.NestingPortals = true;
+            return true;
+        case 30:
+            out.SoulShards = true;
+            return true;
+        case 31:
+            out.KanaiPowers = true;
+            return true;
+        case 32:
+            out.EtherealItems = true;
+            return true;
+        case 33:
+            out.ShadowClones = true;
+            out.FourthKanaisCubeSlot = true;
+            return true;
+        case 34:
+            out.SanctifiedItems = true;
+            return true;
+        case 35:
+            out.Pandemonium = true;
+            return true;
+        case 36:
+            out.SoulShards = true;
+            return true;
+        case 37:
+            out.KanaiPowers = true;
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    void ApplySeasonEventMapIfNeeded(PatchConfig& config) {
+        if (config.events.SeasonMapMode == PatchConfig::SeasonEventMapMode::Disabled)
+            return;
+        if (!config.seasons.active)
+            return;
+        SeasonEventFlags map{};
+        if (!BuildSeasonEventMap(config.seasons.number, map))
+            return;
+        auto current = CaptureSeasonEventFlags(config);
+        auto merged = config.events.SeasonMapMode == PatchConfig::SeasonEventMapMode::OverlayConfig
+            ? OverlaySeasonEventFlags(map, current)
+            : map;
+        ApplySeasonEventFlags(config, merged);
+    }
+
     int AncientRankToValue(std::string_view input, int fallback) {
         auto normalized = NormalizeKey(input);
         if (normalized == "0" || normalized == "normal" || normalized == "none")
@@ -170,6 +385,7 @@ void PatchConfig::ApplyTable(const toml::table& table) {
 
     if (const auto* section = FindTable(table, "events")) {
         events.active = ReadBool(*section, {"SectionEnabled", "Enabled", "Active"}, events.active);
+        events.SeasonMapMode = ReadSeasonEventMapMode(*section, {"SeasonMapMode", "SeasonEventMapMode", "SeasonEventMap", "SeasonMap"}, events.SeasonMapMode);
         events.IgrEnabled = ReadBool(*section, {"IgrEnabled"}, events.IgrEnabled);
         events.AnniversaryEnabled = ReadBool(*section, {"AnniversaryEnabled"}, events.AnniversaryEnabled);
         events.EasterEggWorldEnabled = ReadBool(*section, {"EasterEggWorldEnabled"}, events.EasterEggWorldEnabled);
@@ -185,7 +401,7 @@ void PatchConfig::ApplyTable(const toml::table& table) {
         events.TrialsOfTempests = ReadBool(*section, {"TrialsOfTempests"}, events.TrialsOfTempests);
         events.ShadowClones = ReadBool(*section, {"ShadowClones"}, events.ShadowClones);
         events.FourthKanaisCubeSlot = ReadBool(*section, {"FourthKanaisCubeSlot"}, events.FourthKanaisCubeSlot);
-        events.EthrealItems = ReadBool(*section, {"EthrealItems"}, events.EthrealItems);
+        events.EtherealItems = ReadBool(*section, {"EtherealItems", "EthrealItems"}, events.EtherealItems);
         events.SoulShards = ReadBool(*section, {"SoulShards"}, events.SoulShards);
         events.SwarmRifts = ReadBool(*section, {"SwarmRifts"}, events.SwarmRifts);
         events.SanctifiedItems = ReadBool(*section, {"SanctifiedItems"}, events.SanctifiedItems);
@@ -237,6 +453,8 @@ void PatchConfig::ApplyTable(const toml::table& table) {
         debug.enable_error_traces = ReadBool(*section, {"EnableErrorTraces", "ErrorTraces"}, debug.enable_error_traces);
         debug.enable_debug_flags = ReadBool(*section, {"EnableDebugFlags", "DebugFlags"}, debug.enable_debug_flags);
     }
+
+    ApplySeasonEventMapIfNeeded(*this);
 
     initialized = true;
     defaults_only = false;

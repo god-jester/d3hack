@@ -7,6 +7,12 @@ struct PatchConfig {
     bool initialized = false;
     bool defaults_only = true;
 
+    enum class SeasonEventMapMode : u8 {
+        MapOnly,
+        OverlayConfig,
+        Disabled,
+    };
+
     struct {
         bool active = true;
         bool allow_online = false;
@@ -22,6 +28,7 @@ struct PatchConfig {
 
     struct {
         bool active = true;
+        SeasonEventMapMode SeasonMapMode = SeasonEventMapMode::Disabled;
         bool IgrEnabled = false;
         bool AnniversaryEnabled = false;
         bool EasterEggWorldEnabled = false;
@@ -37,7 +44,7 @@ struct PatchConfig {
         bool TrialsOfTempests = false;
         bool ShadowClones = false;
         bool FourthKanaisCubeSlot = false;
-        bool EthrealItems = false;
+        bool EtherealItems = false;
         bool SoulShards = false;
         bool SwarmRifts = false;
         bool SanctifiedItems = false;

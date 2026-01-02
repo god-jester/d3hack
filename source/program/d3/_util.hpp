@@ -299,32 +299,47 @@ namespace d3 {
         return nullptr;
     }
 
+    void ReplaceBlzString(blz::string &dst, const char *data, size_t len) {
+        if (dst.m_elements) {
+            const char *storage_start = &dst.m_storage[0];
+            const char *storage_end   = storage_start + sizeof(dst.m_storage);
+            if (dst.m_elements < storage_start || dst.m_elements >= storage_end)
+                SigmaMemoryFree(dst.m_elements, nullptr);
+        }
+
+        auto *buf = static_cast<char *>(SigmaMemoryNew(len + 1, 0, nullptr, true));
+        if (!buf) {
+            dst.m_elements             = nullptr;
+            dst.m_size                 = 0;
+            dst.m_capacity             = 0;
+            dst.m_capacity_is_embedded = 0;
+            return;
+        }
+        if (len && data)
+            SigmaMemoryMove(buf, const_cast<char *>(data), len);
+        buf[len]                   = '\0';
+        dst.m_elements             = buf;
+        dst.m_size                 = len;
+        dst.m_capacity             = len;
+        dst.m_capacity_is_embedded = 0;
+    }
+
     blz::string BlizzStringFromFile(LPCSTR szFilenameSD, u32 dwSize = 0) {
         if (char *pFileBuffer = ReadFileToBuffer(szFilenameSD, &dwSize); pFileBuffer) {
-            blz::string sReturnString = {pFileBuffer, dwSize};
-            if (sReturnString.m_size != dwSize) {
-                PRINT("dwSize: %d | size is mismatched, forcing correction: dest[%ld]", dwSize, sReturnString.m_size)
-                sReturnString.m_size = dwSize;
-            }
+            blz::string sReturnString;
+            ReplaceBlzString(sReturnString, pFileBuffer, dwSize);
             SigmaMemoryFree(&pFileBuffer, 0LL);
             return sReturnString;
         }
         return blz::string {};
     }
 
-    void ChallengeHelper(google::protobuf::MessageLite *dest, std::string szPath, u32 dwSize = 0) {
-        PRINT_EXPR("ENTERED: %s", szPath.c_str())
-        if (char *pFileBuffer = ReadFileToBuffer(szPath, &dwSize); pFileBuffer) {
-            blz::string sFileData {pFileBuffer, dwSize};
-            SigmaMemoryFree(&pFileBuffer, 0LL);
-            PRINT_EXPR("parse status: %d | %s (blz.size: %ld)", ParsePartialFromString(dest, &sFileData), szPath.c_str(), sFileData.m_size)
-        }
-    }
-
     bool PopulateChallengeRiftData(D3::ChallengeRifts::ChallengeData &ptChalConf, D3::Leaderboard::WeeklyChallengeData &ptChalData) {
         auto PopulateData = [](google::protobuf::MessageLite *dest, const std::string &szPath, u32 dwSize = 0) -> bool {
+            PRINT_EXPR("%s", szPath.c_str())
             if (char *pFileBuffer = ReadFileToBuffer(szPath, &dwSize); pFileBuffer) {
-                blz::string sFileData {pFileBuffer, dwSize};
+                blz::string sFileData;
+                ReplaceBlzString(sFileData, pFileBuffer, dwSize);
                 ParsePartialFromString(dest, &sFileData);
                 SigmaMemoryFree(&pFileBuffer, 0LL);
                 return true;
@@ -339,21 +354,34 @@ namespace d3 {
             ? static_cast<u32>(GameRandRangeInt(static_cast<int>(nMin), static_cast<int>(nMax)))
             : nMin;
 
-        auto szFormat = "/rift_data/challengerift_%u.dat";
+        auto  szFormat = "/rift_data/challengerift_%02d.dat";
         auto dwSize   = BITSIZEOF(szFormat) + 10;
         auto *lpBuf   = static_cast<char *>(alloca(dwSize));
         snprintf(lpBuf, dwSize + 1, szFormat, nPick);
 
         const auto config_ok = PopulateData(&ptChalConf, g_szBaseDir + "/rift_data/challengerift_config.dat");
+        if (config_ok) {
+            // PRINT_EXPR("%li", ptChalConf.challenge_end_unix_time_console_);
+            // Force the challenge window to be "always active" offline.
+            // Use 32-bit safe end time in case the game casts to s32.
+            ptChalConf.challenge_number_                   = GameRandRangeInt(0, 900);
+            ptChalConf.challenge_start_unix_time_          = 0;
+            ptChalConf.challenge_last_broadcast_unix_time_ = 0;
+            ptChalConf.challenge_end_unix_time_console_    = 0x7FFFFFFFLL;
+            // PRINT_EXPR("post: %li", ptChalConf.challenge_end_unix_time_console_);
+        }
         const auto data_ok = PopulateData(&ptChalData, g_szBaseDir + std::string(lpBuf));
+        // PRINT_EXPR("%u", ptChalData.bnet_account_id_);
+        PRINT_EXPR("%d | %d", config_ok, data_ok)
         return config_ok && data_ok;
     }
 
-    void InterceptChallengeRift(void *bind, Console::Online::StorageResult *eRes, D3::ChallengeRifts::ChallengeData &ptChalConf, D3::Leaderboard::WeeklyChallengeData &ptChalData) {
+    [[maybe_unused]] void InterceptChallengeRift(void *bind, Console::Online::StorageResult *eRes, D3::ChallengeRifts::ChallengeData &ptChalConf, D3::Leaderboard::WeeklyChallengeData &ptChalData) {
         if (!PopulateChallengeRiftData(ptChalConf, ptChalData))
             return;
         *eRes = Console::Online::STORAGE_SUCCESS;
         sOnGetChallengeRiftData(bind, eRes, *(&ptChalConf), *(&ptChalData));
+        PRINT("Called sOnGetChallengeRiftData! Result: %d", *eRes)
     };
 
 }  // namespace d3

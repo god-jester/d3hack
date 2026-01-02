@@ -198,10 +198,7 @@ namespace d3 {
     void PatchForcedSeasonal() {
         auto jest = patch::RandomAccessPatcher();
 
-        jest.Patch<Movz>(0x185F9C, W0, 0);    // always STORAGE_SUCCESS
-
-        jest.Patch<Movz>(0x56B10, W0, 1);     // always Console::GamerProfile::IsSignedInOnline
-        jest.Patch<Ret>(0x56B14);             // ^ ret
+        // jest.Patch<Movz>(0x185F9C, W0, 0);    // always STORAGE_SUCCESS
 
         jest.Patch<Ret>(0x65270);             // stub Console::Online::LobbyServiceInternal::OnSeasonsFileRetrieved() to override server data
 
@@ -228,23 +225,20 @@ namespace d3 {
 
     void PatchForcedEvents() {
         auto jest = patch::RandomAccessPatcher();
-        // jest.Patch<Ret>(0x641F0);           // stub Console::Online::LobbyServiceInternal::OnConfigFileRetrieved() to override server data
-        // jest.Patch<Branch>(0x64228, 0x24);  //0x28
-        // jest.Patch<Nop>(0x4A6148);
-        // jest.Patch<Nop>(0x4A614C);
+        // jest.Patch<Ret>(0x641F0);          // stub Console::Online::LobbyServiceInternal::OnConfigFileRetrieved() to override server data
+        // jest.Patch<Branch>(0x64228, 0x24);  //0x28 branch in OnConfigFileRetrieved
+        // jest.Patch<Nop>(0x64254);  // stub Console::Online::LobbyServiceInternal::OnConfigFileRetrieved() ?
+        // jest.Patch<Nop>(0x4A6148); // Community_Event_Buff
+        // jest.Patch<Nop>(0x4A614C); // ^
         // jest.Patch<Branch>(0x4A6158, 0x1C);
-        // jest.Patch<Nop>(0x64254);           // stub Console::Online::LobbyServiceInternal::OnConfigFileRetrieved() ?
 
-        // jest.Patch<Ret>(0xB2340);           // hey look im doing bullshit
+        // jest.Patch<Ret>(0xB2340);  // stub Console::Online::TaskManager::Process (interferes with rift hooking)
         // jest.Patch<dword>(0xF07FB8, make_bytes(0x01, 0x02, 0x03, 0x04));
 
-        // // try for challenge rift
-        // // jest.Patch<dword>(0x66B10, make_bytes(0xFE, 0xDE, 0xFF, 0xE7));
+        // // try for challenge rift (crashes if also hooked)
+        // // jest.Patch<dword>(0x66B10, make_bytes(0xFE, 0xDE, 0xFF, 0xE7));  // Console::Online::StorageGetPublisherFile
 
         // jest.Patch<Movz>(0x185F9C, W0, 0);  // always STORAGE_SUCCESS
-
-        jest.Patch<Movz>(0x56B10, W0, 1);   // always Console::GamerProfile::IsSignedInOnline
-        jest.Patch<Ret>(0x56B14);           // ^ ret
     }
 
     void PatchDynamicEvents() {
@@ -292,7 +286,7 @@ namespace d3 {
         set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x1900640)), global_config.events.TrialsOfTempests);
         set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x19006F8)), global_config.events.ShadowClones);
         set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x19007B0)), global_config.events.FourthKanaisCubeSlot);
-        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x1900868)), global_config.events.EthrealItems);
+        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x1900868)), global_config.events.EtherealItems);
         set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x1900920)), global_config.events.SoulShards);
         set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x19009D8)), global_config.events.SwarmRifts);
         set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x1900A90)), global_config.events.SanctifiedItems);
@@ -312,7 +306,7 @@ namespace d3 {
         // if (global_config.events.TrialsOfTempests)       jest.Patch<Movz>(0x4A7D64, W3, 1);
         // if (global_config.events.ShadowClones)           jest.Patch<Movz>(0x4A7D90, W3, 1);
         // if (global_config.events.FourthKanaisCubeSlot)   jest.Patch<Movz>(0x4A7DBC, W3, 1);
-        // if (global_config.events.EthrealItems)           jest.Patch<Movz>(0x4A7DE8, W3, 1);
+        // if (global_config.events.EtherealItems)          jest.Patch<Movz>(0x4A7DE8, W3, 1);
         // if (global_config.events.SoulShards)             jest.Patch<Movz>(0x4A7E14, W3, 1);
         // if (global_config.events.SwarmRifts)             jest.Patch<Movz>(0x4A7E40, W3, 1);
         // if (global_config.events.SanctifiedItems)        jest.Patch<Movz>(0x4A7E6C, W3, 1);
@@ -468,6 +462,15 @@ namespace d3 {
 
         PortCheatCodes();
 
+        // XVarBool_Set(&s_varOnlineServicePTR, true, 3u);
+        XVarBool_Set(&s_varLocalLoggingEnable, true, 3u);
+        XVarBool_Set(&s_varFreeToPlay, true, 3u);
+        XVarBool_Set(&s_varExperimentalScheduling, true, 3u);
+        if (global_config.challenge_rifts.active)
+            XVarBool_Set(&s_varChallengeEnabled, true, 3u);
+        jest.Patch<Movz>(0x56B10, W0, 1);  // always Console::GamerProfile::IsSignedInOnline
+        jest.Patch<Ret>(0x56B14);          // ^ ret
+
         /* String swap for autosave screen */
         MakeAdrlPatch(0x335B68, reinterpret_cast<uintptr_t>(&c_szHackVerAutosave), X0);
 
@@ -499,7 +502,7 @@ namespace d3 {
         jest.Patch<Ret>(0x483D00); /* void ActorCommonData::SetAssignedHeroID(ActorCommonData *this, OnlineService::HeroId idHero) */
         jest.Patch<Ret>(0x7B71D0); /* void SGameSoftPause(BOOL bPause) */
 
-        /* Stub logging to RingBufer */
+        /* Stub logging to RingBuffer */
         jest.Patch<Ret>(0xA2C6B0); /* void FileOutputStream::LogToRingBuffer(int, char const*, char const*) */
 
         /* Stub net message tracing */
@@ -508,7 +511,7 @@ namespace d3 {
         /* Fix path for stat tracing */
         MakeAdrlPatch(0x7B1C50, reinterpret_cast<uintptr_t>(&c_szTraceStat), X0);
 
-        if (!global_config.debug.enable_pubfile_dump && !global_config.debug.enable_debug_flags) {
+        if (!global_config.seasons.allow_online) {
             // Hide "Connect to Diablo Servers" menu entry (main menu item 12).
             jest.Patch<Branch>(0x35C1A0, -0x90);  // force false path in ItemShouldBeVisible
             // Hide Diablo Network status hint (connected/disconnected) above season text.

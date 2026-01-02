@@ -10,6 +10,7 @@
 #include "config.hpp"
 #include "d3/hooks/util.hpp"
 #include "d3/hooks/debug.hpp"
+#include "d3/hooks/season_events.hpp"
 #include "d3/hooks/lobby.hpp"
 #include "idadefs.h"
 #include <cstring>
@@ -191,6 +192,7 @@ namespace d3 {
             if (!g_config_hooks_installed) {
                 SetupUtilityHooks();
                 SetupDebuggingHooks();
+                SetupSeasonEventHooks();
                 SetupLobbyHooks();
                 g_config_hooks_installed = true;
             }

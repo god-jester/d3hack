@@ -9,30 +9,35 @@ SeasonNumber = 37
 SectionEnabled = true
 MakeRiftsRandom = true
 RiftRangeStart = 0
-RiftRangeEnd = 9
+RiftRangeEnd = 28
 
 [events]
 SectionEnabled = true
+# Season map modes: "MapOnly" | "OverlayConfig" | "Disabled"
+# - MapOnly: apply the season's mapped theme (Seasons 14-37 only), ignore flags below.
+# - OverlayConfig: apply map, then OR with any event flags below.
+# - Disabled: ignore the map and use flags below as-is.
+SeasonMapMode = "OverlayConfig"
 IgrEnabled = false
 AnniversaryEnabled = false
 EasterEggWorldEnabled = false
-DoubleRiftKeystones = true
-DoubleBloodShards = true
-DoubleTreasureGoblins = true
-DoubleBountyBags = true
+DoubleRiftKeystones = false
+DoubleBloodShards = false
+DoubleTreasureGoblins = false
+DoubleBountyBags = false
 RoyalGrandeur = false
-LegacyOfNightmares = true
+LegacyOfNightmares = false
 TriunesWill = false
 Pandemonium = false
 KanaiPowers = false
 TrialsOfTempests = false
 ShadowClones = false
 FourthKanaisCubeSlot = false
-EthrealItems = false
+EtherealItems = false
 SoulShards = false
 SwarmRifts = false
 SanctifiedItems = false
-DarkAlchemy = true
+DarkAlchemy = false
 NestingPortals = false
 
 [rare_cheats]

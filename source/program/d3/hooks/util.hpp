@@ -206,7 +206,7 @@ namespace d3 {
 
     HOOK_DEFINE_TRAMPOLINE(Enum_GB_Types) {
         static void Callback(GameBalanceType eType, GBHandleList *listResults) {
-            if (global_config.defaults_only || !global_config.debug.active || !global_config.debug.enable_debug_flags) {
+            if (true) {  // global_config.defaults_only || !global_config.debug.active || !global_config.debug.enable_debug_flags) {
                 Orig(eType, listResults);
                 return;
             }

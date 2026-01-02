@@ -1,98 +1,95 @@
 # D3Hack
 
-**The first-ever runtime mod for Diablo III on Nintendo Switch.**
+**Runtime modding for Diablo III on Nintendo Switch.**
 
-Seasons offline. Challenge Rifts without servers. Community events on demand. Loot table tweaks, instant crafting, and dozens of QoL options. All running inside the game process: native C++ engine hooks for real-time game modification.
+Seasons offline. Challenge Rifts without servers. Community events on demand. Loot table tweaks, instant crafting, and quality-of-life tools. All running inside the game process via native C++ hooks.
 
-Want a quick feel for everything you can toggle? Check the example config: [`examples/config/d3hack-nx/config.toml`](examples/config/d3hack-nx/config.toml).
+Want the full toggle list? Start with the example config: [`examples/config/d3hack-nx/config.toml`](examples/config/d3hack-nx/config.toml).
 
-> Note: This project is for research, modding, and offline experimentation. Respect the game, other players, and applicable laws/ToS.
+> This project is for research, modding, and offline experimentation. Respect the game, other players, and applicable laws/ToS.
 
-## Releases
+---
 
-Grab the latest build from the **Releases** section. No build environment required. Just drop the files into your emulator or Atmosphère setup and play.
+## Highlights (Jan 2026)
+
+- **Publisher file overrides**: intercepts Config/Seasons/Blacklist retrieval and injects local data in-place (reliable offline behavior).
+- **Season event map**: one switch to auto-enable the correct seasonal theme flags for **Seasons 14–37**.
+- **Challenge Rifts offline fix**: SD card protobufs now parse at full size (previous `blz::string` ctor issue resolved).
+- **Dynamic seasonal patching**: season number/state and UI gating are set at runtime after config load.
+- **Safer offline UX**: hides “Connect to Diablo Servers” and network hints when `AllowOnlinePlay = false`.
 
 ---
 
 ## What It Does
 
-d3hack-nx is an exlaunch-based module that hooks into D3 at runtime. While similar in spirit to cheat codes, it operates natively and independently of Atmosphère’s dmnt cheat sysmodule (EdiZon-style cheats) or emulator cheat managers, modifying game behavior live to enable features previously impossible offline.
+d3hack-nx is an exlaunch-based module that hooks D3 at runtime. It modifies game behavior live without relying on Atmosphère’s dmnt cheats or emulator cheat managers.
 
-| Category | Highlights & Technical Specifics |
-|----------|----------------------------------|
-| **Offline Seasons** | Force any season number/state locally via `s_varSeasonNum`. Full seasonal features and themes without NSO. |
-| **Challenge Rifts** | Inject protobuf blobs from SD by hooking `sOnGetChallengeRiftData`. Pick a specific week or randomize from a pool. |
-| **Community Events** | Toggle 20+ `c_szConfigSwap` flags: Double Goblins, Royal Grandeur, Ethereals, Soul Shards, and Fourth Cube Slot. |
-| **Loot Research** | Control `DisableAncientDrops`, `ForcedILevel`, and `TieredLootRunLevel` (GR logic) for drop table experimentation. |
-| **QoL Cheats** | Instant portal/crafts, `MovementSpeedMultiplier`, `NoCooldowns`, and `EquipAnySlot` logic for streamlined gameplay. |
-| **Visuals & Performance** | Engine overlays for FPS/DDM labels and `PatchResolutionTargets` to force 1080p or specific dynamic res bounds. |
-| **Safety & Core** | Lightweight `exl::hook` implementation that verifies game version `2.7.6.90885` before applying patches. |
-| **Debug Overlays** | On-screen FPS, variable-res readout, build watermarks, DDM labels. |
-
-## Features & Examples
-*   Offline Seasons Mode
-    *   Forces Seasons to be active even offline by stubbing network checks and setting live XVar flags (`s_varSeasonsOverrideEnabled`, `s_varSeasonNum`, `s_varSeasonState`).
-    *   Injects season timing/config without servers by calling the game's file callback with `c_szSeasonSwap`/`c_szConfigSwap` data (see `source/program/d3/setting.hpp`).
-
-*   Offline Challenge Rifts (Weekly) Emulation
-    *   Hooks `sOnGetChallengeRiftData` and feeds protobuf messages for weekly content.
-    *   Controlled by `[challenge_rifts]` in `config.toml` (enable/disable, random vs fixed, range start/end).
-
-*   Community Buffs & Events (toggle-able)
-    *   Enables many special-event flags even out of season; most toggles live in `c_szConfigSwap` and `PatchForcedEvents()` (see `source/program/d3/patches.hpp`).
-
-*   Loot/Gameplay Research Tools
-    *   Loot controls and QoL helpers live in `PatchConfig` (see `source/program/config.hpp`).
-
-*   Reverse-Engineered Type & Symbol DB
-    *   D3 types live under `source/program/d3/types/`; symbols under `source/program/symbols/*.hpp`; hook helpers under `source/lib/hook/*`.
+| Category | Highlights & Technical Notes |
+|----------|------------------------------|
+| **Offline Seasons** | Force seasons on locally, set season number/state via XVars, and hide network prompts. |
+| **Season Theme Map** | `SeasonMapMode` can apply the official theme flags for Seasons 14–37, optionally OR’d with your custom flags. |
+| **Challenge Rifts** | Hooks the challenge rift callback and injects protobuf blobs from SD (`rift_data`). |
+| **Community Events** | Toggle 20+ flags (Ethereals, Soul Shards, Fourth Cube Slot, etc.) with runtime XVar updates. |
+| **Loot Research** | Control Ancient/Primal drops, GR tier logic, and item level forcing for drop-table experiments. |
+| **QoL Cheats** | Instant portal/crafts, movement speed multiplier, no cooldowns, equip-any-slot, and more. |
+| **Visuals & Performance** | FPS/DDM overlays and resolution targets for 1080p or specific dynamic-res bounds. |
+| **Safety & Core** | Patches are gated by a lightweight signature guard for game build `2.7.6.90885`. |
 
 ---
 
 ## Quick Start
 
-### 1. Download & Install
-*   Grab the release archive.
-*   Copy `subsdk9` and `main.npdm` to:
-    *   **Atmosphère**: `atmosphere/contents/01001b300b9be000/exefs/`
-    *   **Ryujinx/Yuzu**: The appropriate mods folder for title ID `01001b300b9be000`.
+### 1) Install
+- Grab the latest release archive.
+- Copy `subsdk9` and `main.npdm` to:
+  - **Atmosphère**: `atmosphere/contents/01001b300b9be000/exefs/`
+  - **Ryujinx/Yuzu**:
+    `%AppData%\yuzu\load\01001B300B9BE000\d3hack\exefs\` (Windows)
+    `~/Library/Application Support/Ryujinx/mods/contents/01001b300b9be000/d3hack/exefs/` (macOS)
 
-### 2. Configure
+### 2) Configure
 Place `config.toml` at:
-*   `sd:/config/d3hack-nx/config.toml` (hardware or emulator SD)
+- `sd:/config/d3hack-nx/config.toml` (hardware)
+- **Ryujinx/Yuzu**:
+    `%AppData%\yuzu\sdmc\config\d3hack-nx\config.toml` (Windows)
+    `~/Library/Application Support/Ryujinx/sdcard/config/d3hack-nx/config.toml` (macOS)
 
-See `examples/config/d3hack-nx/config.toml` for all options.
-*   `[seasons]`: Control `SeasonNumber` and active state.
-*   `[challenge_rifts]`: Toggle `MakeRiftsRandom` or define specific `RiftRange` limits.
-*   `[events]`: Enable individual buffs like `RoyalGrandeur`, `Pandemonium`, and `DarkAlchemy`.
-*   `[rare_cheats]`: QoL tweaks including `DropAnyItems`, `SocketGemsToAnySlot`, and `NoCooldowns`.
-*   `[overlays]`: Toggle specific on-screen elements like `FPSLabel` and `BuildLockerWatermark`.
-*   `[loot_modifiers]`: Drop table research tools for `SuppressGiftGeneration` or `ForcedILevel`.
-*   `[debug]`: Advanced controls for error traces and debug flags.
+Key sections:
+- `[seasons]`: `SeasonNumber`, `AllowOnlinePlay`.
+- `[events]`: seasonal flags + `SeasonMapMode` (`MapOnly`, `OverlayConfig`, `Disabled`).
+- `[challenge_rifts]`: enable/disable, randomize, or define a range.
+- `[rare_cheats]`, `[overlays]`, `[loot_modifiers]`, `[debug]`.
 
-### 3. Challenge Rift Data
-To enable offline Challenge Rifts, place captured weekly files under `sd:/config/d3hack-nx/rift_data/`:
+### 3) (Optional) Challenge Rift data
+Put weekly files under `sd:/config/d3hack-nx/rift_data/`:
 ```
 challengerift_config.dat
-challengerift_0.dat
+challengerift_00.dat
 ...
-challengerift_19.dat
+challengerift_99.dat
 ```
-The hooks in `source/program/d3/hooks/debug.hpp` will intercept the game's network requests and feed it these local binaries instead.
+The hook in `source/program/d3/hooks/debug.hpp` intercepts the network callback and feeds local protobufs.
 
-Tip: capture real weekly files once, then iterate offline instantly without reconnecting.
+Tip: capture real weekly files once, then iterate offline instantly. There’s a helper available: `python3 tools/import_challenge_dumps.py --src ~/dumps --dst examples/config/d3hack-nx/rift_data --dry-run` then rerun without `--dry-run`.
 
-Example tree to copy to SD/emulator: `examples/config/d3hack-nx/rift_data/` (contains old captures and a README).
-Import helper: `python3 tools/import_challenge_dumps.py --src ~/dumps --dst examples/config/d3hack-nx/rift_data --dry-run` then rerun without `--dry-run`.
+### 4) Launch
+Start D3 normally. The mod verifies build `2.7.6.90885`, loads config, then applies patches/hooks.
 
-### 4. Launch
-Start D3 normally. The mod loads automatically, verifies game version `2.7.6.90885`, and applies your config.
+---
+
+## Season Theme Mapping (14–37)
+
+Set `[events].SeasonMapMode` to map the correct theme flags for a given season number:
+
+- `MapOnly`: apply the season’s mapped theme, ignore event flags.
+- `OverlayConfig`: apply the map, then OR with flags in your config.
+- `Disabled`: skip mapping and use only your configured flags.
 
 ---
 
 ## Building from Source
 
-**Requirements**: devkitPro with devkitA64 + libnx (`$DEVKITPRO` must be set); Python 3 (optional `ftputil` for FTP deployments).
+**Requirements**: devkitPro with devkitA64 + libnx (`$DEVKITPRO` set); Python 3 (optional `ftputil` for FTP deploys).
 
 Configure build/deploy in `config.mk` by setting the deploy targets you plan to use (FTP IP/port, `RYU_*`, `YUZU_PATH`).
 
@@ -115,40 +112,39 @@ Outputs land in `deploy/` as `subsdk9` and `main.npdm`.
 ---
 
 ## Project Structure
-*   `source/` — gameplay/engine hooks and helpers (subfolders are modules).
-*   `include/` — public headers (vendored libs live under `include/tomlplusplus/`).
-*   `misc/mk` and `misc/scripts/` — build and deploy logic (Makefile includes these).
-*   `deploy/` — post-build outputs (`subsdk9`, `main.npdm`).
-*   `config.mk` — your local build/deploy settings (PROGRAM_ID, deploy targets, flags).
 
-## Build Details
-*   Toolchain flags: `-Wall -Werror -Ofast`, `gnu++23`, no exceptions/RTTI.
-*   Artifacts are packaged via `misc/scripts/post-build.sh` and staged to `deploy/`.
-*   Additional targets:
-    *   `make clean` — remove artifacts
-    *   `make npdm-json` — regen NPDM JSON (from `misc/npdm-json/*`)
+- `source/` — gameplay/engine hooks and helpers (modules live here)
+- `include/` — public headers (vendored libs under `include/tomlplusplus/`)
+- `misc/scripts/` — build/deploy logic (Makefile includes these)
+- `deploy/` — post-build outputs (`subsdk9`, `main.npdm`)
+- `config.mk` — local build/deploy settings
 
-## Development Notes
-*   Add new functionality under `source/<module>/`; keep shared headers in `include/`.
-*   Avoid modifying vendor headers under `include/tomlplusplus/`.
+---
 
-## Safety & Fair-Play
-*   Use on your own device and content. Don’t redistribute game assets or proprietary files.
-*   Don’t take mods into online play; it’s disrespectful and risks bans.
-*   Scripts used by `make deploy-sd` use `sudo mount`; read them before running.
+## Compatibility & Safety
 
-## Compatibility
-*   Target game build: `2.7.6.90885` (see `source/program/d3/setting.hpp`). Offsets and patches are tied to this version; other versions will need symbol/offset updates.
-    *   A lightweight signature guard checks a few known instruction/string bytes at startup and aborts if they do not match this build.
+- **Target build**: `2.7.6.90885`. Offsets and patches are tied to this version.
+- A lightweight signature guard checks known bytes at startup and aborts on mismatch.
+- Use offline; don’t take mods into online play.
+
+---
+
+## Feature Map (Code Pointers)
+
+- **Season overrides**: `source/program/d3/hooks/debug.hpp` (Config/Seasons/Blacklist retrieval hooks)
+- **Dynamic seasonal patching**: `source/program/d3/patches.hpp` (`PatchDynamicSeasonal`)
+- **Season theme map**: `source/program/config.cpp` (`BuildSeasonEventMap`)
+- **Challenge rifts**: `source/program/d3/_util.hpp` + `source/program/d3/hooks/debug.hpp`
+- **Config load**: `source/program/config.cpp` (`LoadPatchConfig`)
 
 ---
 
 ## Technical Highlights
 
-*   **Type Database**: Over 1.2MB of reverse-engineered structs and enums in `source/program/d3/types/`.
-*   **Hooking**: Uses `exl::hook::Trampoline` and `exl::hook::MakeInline` for clean detours.
-*   **Offsets**: All offsets are static and verified against build `2.7.6.90885`. A mismatch triggers an immediate abort to prevent corruption.
-*   **Config**: Runtime TOML parsing via [tomlplusplus](https://github.com/marzer/tomlplusplus), mapped directly to the global `PatchConfig` struct.
+- **Type Database**: Over 1.2MB of reverse-engineered structs and enums in `source/program/d3/types/`.
+- **Hooking**: Uses `exl::hook::Trampoline` and `exl::hook::MakeInline` for clean detours.
+- **Offsets**: All offsets are static and verified against build `2.7.6.90885`. A mismatch triggers an immediate abort to prevent corruption.
+- **Config**: Runtime TOML parsing via [tomlplusplus](https://github.com/marzer/tomlplusplus), mapped directly to the global `PatchConfig` struct.
 
 ---
 
