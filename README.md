@@ -40,39 +40,47 @@ d3hack-nx is an exlaunch-based module that hooks D3 at runtime. It modifies game
 ## Quick Start
 
 ### 1) Install
+
 - Grab the latest release archive.
 - Copy `subsdk9` and `main.npdm` to:
   - **Atmosphère**: `atmosphere/contents/01001b300b9be000/exefs/`
   - **Ryujinx/Yuzu**:
-    `%AppData%\yuzu\load\01001B300B9BE000\d3hack\exefs\` (Windows)
-    `~/Library/Application Support/Ryujinx/mods/contents/01001b300b9be000/d3hack/exefs/` (macOS)
+    - Windows: `%AppData%\yuzu\load\01001B300B9BE000\d3hack\exefs\`
+    - macOS: `~/Library/Application Support/Ryujinx/mods/contents/01001b300b9be000/d3hack/exefs`
 
 ### 2) Configure
+
 Place `config.toml` at:
+
 - `sd:/config/d3hack-nx/config.toml` (hardware)
 - **Ryujinx/Yuzu**:
-    `%AppData%\yuzu\sdmc\config\d3hack-nx\config.toml` (Windows)
-    `~/Library/Application Support/Ryujinx/sdcard/config/d3hack-nx/config.toml` (macOS)
+  - Windows: `%AppData%\yuzu\sdmc\config\d3hack-nx\config.toml`
+  - macOS: `~/Library/Application Support/Ryujinx/sdcard/config/d3hack-nx/config.toml`
 
 Key sections:
+
 - `[seasons]`: `SeasonNumber`, `AllowOnlinePlay`.
 - `[events]`: seasonal flags + `SeasonMapMode` (`MapOnly`, `OverlayConfig`, `Disabled`).
 - `[challenge_rifts]`: enable/disable, randomize, or define a range.
 - `[rare_cheats]`, `[overlays]`, `[loot_modifiers]`, `[debug]`.
 
 ### 3) (Optional) Challenge Rift data
+
 Put weekly files under `sd:/config/d3hack-nx/rift_data/`:
+
 ```
 challengerift_config.dat
 challengerift_00.dat
 ...
 challengerift_99.dat
 ```
+
 The hook in `source/program/d3/hooks/debug.hpp` intercepts the network callback and feeds local protobufs.
 
 Tip: capture real weekly files once, then iterate offline instantly. There’s a helper available: `python3 tools/import_challenge_dumps.py --src ~/dumps --dst examples/config/d3hack-nx/rift_data --dry-run` then rerun without `--dry-run`.
 
 ### 4) Launch
+
 Start D3 normally. The mod verifies build `2.7.6.90885`, loads config, then applies patches/hooks.
 
 ---
