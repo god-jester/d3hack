@@ -29,6 +29,7 @@ SETUP_FUNC_PTR(GetGameMessageTypeAndSize);
 SETUP_FUNC_PTR(DisplaySeasonEndingMessage);
 SETUP_FUNC_PTR(DisplayLongMessageForPlayer);
 SETUP_FUNC_PTR(DisplayGameMessageForAllPlayers);
+SETUP_FUNC_PTR(GfxWindowChangeDisplayMode);
 SETUP_FUNC_PTR(ImageTextureFrame_ctor);
 SETUP_FUNC_PTR(FormatTruncatedNumber);
 SETUP_FUNC_PTR(XVarBool_ToString);

@@ -1,12 +1,10 @@
 #include "lib/hook/inline.hpp"
 #include "lib/hook/replace.hpp"
 #include "lib/hook/trampoline.hpp"
+#include "lib/util/modules.hpp"
 #include "../../config.hpp"
-#include <cstdint>
-#include <cstdio>
-#include <cstring>
-#include <string>
-#include <string_view>
+#include "nvn.hpp"
+#include "d3/types/common.hpp"
 
 namespace d3 {
 
@@ -287,6 +285,299 @@ namespace d3 {
     HOOK_DEFINE_INLINE(ShowX0) {
         static void Callback(exl::hook::InlineCtx *ctx) {
             PRINT("~[0x%lx]X0_TEXT: %s", ctx->X[30], (char *)(ctx->X[0]))
+        }
+    };
+
+    HOOK_DEFINE_INLINE(GfxWindowChangeDisplayModeHook) {
+        // @ void __fastcall GfxWindowChangeDisplayMode(const DisplayMode *tMode)
+        static void Callback(exl::hook::InlineCtx *ctx) {
+            auto *tMode = reinterpret_cast<DisplayMode *>(ctx->X[0]);
+            if (!tMode) {
+                PRINT("GfxWindowChangeDisplayMode X0=null LR=0x%lx", ctx->X[30])
+                return;
+            }
+            PRINT("GfxWindowChangeDisplayMode X0=%p LR=0x%lx", tMode, ctx->X[30])
+            PRINT(
+                "  dwFlags=0x%x dwWindowMode=%d nWinLeft=%d nWinTop=%d nWinWidth=%d nWinHeight=%d",
+                tMode->dwFlags, tMode->dwWindowMode, tMode->nWinLeft, tMode->nWinTop, tMode->nWinWidth, tMode->nWinHeight
+            )
+            PRINT(
+                "  dwUIOptWidth=%u dwUIOptHeight=%u dwWidth=%u dwHeight=%u nRefreshRate=%d dwBitDepth=%u dwMSAALevel=%u",
+                tMode->dwUIOptWidth, tMode->dwUIOptHeight, tMode->dwWidth, tMode->dwHeight, tMode->nRefreshRate, tMode->dwBitDepth, tMode->dwMSAALevel
+            )
+            PRINT("  flAspectRatio=%f", tMode->flAspectRatio)
+        }
+    };
+
+    using GFXNX64NVNHandle                 = uintptr_t;
+    using GfxViewportSetFn                 = void (*)(GFXNX64NVNHandle *self, IRect2D *rectViewport);
+    inline GfxViewportSetFn GfxViewportSet = reinterpret_cast<GfxViewportSetFn>(GameOffset(0x0F0280));
+
+    HOOK_DEFINE_TRAMPOLINE(GfxViewportSetHook) {
+        // @ 0x0F0280: void __fastcall GFXNX64NVN::ViewportSet(GFXNX64NVN*, IRect2D*)
+        static void Callback(GFXNX64NVNHandle *self, IRect2D *rectViewport) {
+            if (!rectViewport) {
+                Orig(self, rectViewport);
+                return;
+            }
+
+            if (g_ptGfxData) {
+                struct RenderTargetView {
+                    SNO   snoRTTex;
+                    int32 eCubeMapFace;
+                };
+
+                RenderTargetView rt0 {};
+                memcpy(&rt0, &g_ptGfxData->workerData[0].tCurrentRTs[0], sizeof(rt0));
+
+                if (rt0.snoRTTex == 0) {
+                    const uint32 out_w = static_cast<uint32>(std::max(g_ptGfxData->tCurrentMode.nWinWidth, 0));
+                    const uint32 out_h = static_cast<uint32>(std::max(g_ptGfxData->tCurrentMode.nWinHeight, 0));
+                    const uint32 vp_w  = static_cast<uint32>(std::max(rectViewport->right - rectViewport->left, 0));
+                    const uint32 vp_h  = static_cast<uint32>(std::max(rectViewport->bottom - rectViewport->top, 0));
+
+                    auto calc_scale = [](uint32 width, uint32 height) -> float {
+                        constexpr uint32 kMaxRenderDim = 2048;
+                        if (width == 0 || height == 0)
+                            return 1.0f;
+                        float scale = 1.0f;
+                        if (width > kMaxRenderDim) {
+                            scale = static_cast<float>(kMaxRenderDim) / static_cast<float>(width);
+                        }
+                        if (height > kMaxRenderDim) {
+                            const float hscale = static_cast<float>(kMaxRenderDim) / static_cast<float>(height);
+                            if (hscale < scale)
+                                scale = hscale;
+                        }
+                        if (scale > 1.0f)
+                            scale = 1.0f;
+                        if (scale <= 0.0f)
+                            scale = 1.0f;
+                        return scale;
+                    };
+
+                    auto scale_dim = [](uint32 dim, float scale) -> uint32 {
+                        auto scaled = static_cast<uint32>(dim * scale);
+                        scaled &= ~1u;
+                        if (scaled < 2)
+                            scaled = 2;
+                        return scaled;
+                    };
+
+                    const float  scale          = calc_scale(out_w, out_h);
+                    const uint32 expected_vp_w  = scale_dim(out_w, scale);
+                    const uint32 expected_vp_h  = scale_dim(out_h, scale);
+                    const bool   is_scaled_vp   = (vp_w == expected_vp_w && vp_h == expected_vp_h);
+                    const bool   is_smaller_vp  = (out_w > vp_w || out_h > vp_h);
+                    const bool   is_valid_sizes = (out_w > 0 && out_h > 0);
+
+                    // Only override the swapchain viewport if it looks like our internal clamped render resolution.
+                    // This avoids breaking legitimate partial-screen viewports (e.g. splitscreen/UI sub-views).
+                    if (is_valid_sizes && is_smaller_vp && is_scaled_vp) {
+                        static uint32 s_last_vp_w  = 0;
+                        static uint32 s_last_vp_h  = 0;
+                        static uint32 s_last_out_w = 0;
+                        static uint32 s_last_out_h = 0;
+                        if (vp_w != s_last_vp_w || vp_h != s_last_vp_h || out_w != s_last_out_w || out_h != s_last_out_h) {
+                            PRINT("ViewportSet swapchain override: %ux%u -> %ux%u", vp_w, vp_h, out_w, out_h)
+                            s_last_vp_w  = vp_w;
+                            s_last_vp_h  = vp_h;
+                            s_last_out_w = out_w;
+                            s_last_out_h = out_h;
+                        }
+                        rectViewport->left   = 0;
+                        rectViewport->top    = 0;
+                        rectViewport->right  = static_cast<int32>(out_w);
+                        rectViewport->bottom = static_cast<int32>(out_h);
+                    }
+                }
+                // Instrumentation: log first time we see a clamped viewport, and what RT we're on.
+                if (rectViewport->left == 0 && rectViewport->top == 0 && rectViewport->right == 2048 && rectViewport->bottom == 1152) {
+                    static bool s_logged_2048_swap = false;
+                    static bool s_logged_2048_rt   = false;
+                    const bool  is_swap            = (rt0.snoRTTex == 0);
+                    if ((is_swap && !s_logged_2048_swap) || (!is_swap && !s_logged_2048_rt)) {
+                        const auto out_w = static_cast<uint32>(std::max(g_ptGfxData->tCurrentMode.nWinWidth, 0));
+                        const auto out_h = static_cast<uint32>(std::max(g_ptGfxData->tCurrentMode.nWinHeight, 0));
+                        PRINT("ViewportSet saw 2048x1152 (rt0.sno=%d out=%ux%u)", rt0.snoRTTex, out_w, out_h)
+                        if (is_swap)
+                            s_logged_2048_swap = true;
+                        else
+                            s_logged_2048_rt = true;
+                    }
+                }
+                if (rectViewport->left == 0 && rectViewport->top == 0 && rectViewport->right == 2560 && rectViewport->bottom == 1440) {
+                    static bool s_logged_2560 = false;
+                    if (!s_logged_2560) {
+                        PRINT("ViewportSet saw 2560x1440 (rt0.sno=%d)", rt0.snoRTTex)
+                        s_logged_2560 = true;
+                    }
+                }
+            }
+
+            Orig(self, rectViewport);
+        }
+    };
+
+    namespace {
+        constexpr uint32 kStencilMaxDim = 2048;
+
+        inline float CalcStencilScale(uint32 width, uint32 height) {
+            if (width == 0 || height == 0)
+                return 1.0f;
+            float scale = 1.0f;
+            if (width > kStencilMaxDim)
+                scale = static_cast<float>(kStencilMaxDim) / static_cast<float>(width);
+            if (height > kStencilMaxDim) {
+                const float hscale = static_cast<float>(kStencilMaxDim) / static_cast<float>(height);
+                if (hscale < scale)
+                    scale = hscale;
+            }
+            if (scale > 1.0f)
+                scale = 1.0f;
+            if (scale <= 0.0f)
+                scale = 1.0f;
+            return scale;
+        }
+
+        inline uint32 ScaleStencilDim(uint32 dim, float scale) {
+            auto scaled = static_cast<uint32>(dim * scale);
+            scaled &= ~1u;
+            if (scaled < 2)
+                scaled = 2;
+            return scaled;
+        }
+
+        struct RenderTargetView {
+            SNO   snoRTTex;
+            int32 eCubeMapFace;
+        };
+
+        inline bool GetRT0(RenderTargetView &out) {
+            if (!g_ptGfxData)
+                return false;
+            memcpy(&out, &g_ptGfxData->workerData[0].tCurrentRTs[0], sizeof(out));
+            return true;
+        }
+    }  // namespace
+
+    HOOK_DEFINE_INLINE(GfxStencilBufferEnableHook) {
+        // @ 0x0EFCD0: void __fastcall GFXNX64NVN::StencilBufferEnable(GFXNX64NVN*, int)
+        static void Callback(exl::hook::InlineCtx *ctx) {
+            if (!ctx)
+                return;
+
+            const uint32 mode           = static_cast<uint32>(ctx->W[1]);
+            const bool   auto_disable   = global_config.resolution_hack.active;
+            const bool   should_disable = auto_disable;
+
+            if (!global_config.debug.active && !should_disable)
+                return;
+
+            RenderTargetView rt0 {};
+            const bool       have_rt0 = GetRT0(rt0);
+            const bool       is_swap  = have_rt0 && (rt0.snoRTTex == 0);
+            const uint32     out_w    = g_ptGfxData ? static_cast<uint32>(std::max(g_ptGfxData->tCurrentMode.nWinWidth, 0)) : 0u;
+            const uint32     out_h    = g_ptGfxData ? static_cast<uint32>(std::max(g_ptGfxData->tCurrentMode.nWinHeight, 0)) : 0u;
+            const float      scale    = CalcStencilScale(out_w, out_h);
+            const uint32     int_w    = ScaleStencilDim(out_w ? out_w : 1u, scale);
+            const uint32     int_h    = ScaleStencilDim(out_h ? out_h : 1u, scale);
+            const bool       scaled   = (scale < 1.0f);
+
+            const uintptr_t lr        = static_cast<uintptr_t>(ctx->X[30]);
+            const uintptr_t lr_offset = lr ? (lr - exl::util::modules::GetTargetStart()) : 0u;
+
+            if (should_disable && is_swap && scaled && mode != 0) {
+                ctx->W[1] = 0;
+                PRINT(
+                    "StencilEnable swapchain override: %u->0 (rt0=%d out=%ux%u int=%ux%u LR=0x%lx%s)",
+                    mode,
+                    have_rt0 ? rt0.snoRTTex : -1,
+                    out_w,
+                    out_h,
+                    int_w,
+                    int_h,
+                    lr_offset,
+                    " auto"
+                );
+                return;
+            }
+
+            if (global_config.debug.active) {
+                static uint32 s_logged = 0;
+                if (s_logged < 64 && scaled && is_swap && mode != 0) {
+                    PRINT(
+                        "StencilEnable: mode=%u rt0=%d out=%ux%u int=%ux%u LR=0x%lx",
+                        mode,
+                        rt0.snoRTTex,
+                        out_w,
+                        out_h,
+                        int_w,
+                        int_h,
+                        lr_offset
+                    );
+                    ++s_logged;
+                }
+            }
+        }
+    };
+
+    HOOK_DEFINE_INLINE(GfxStencilBufferSetParamsHook) {
+        // @ 0x0EFE60: void __fastcall GFXNX64NVN::StencilBufferSetParams(GFXNX64NVN*, CompareFunc, ref, ops...)
+        static void Callback(exl::hook::InlineCtx *ctx) {
+            if (!ctx)
+                return;
+            if (!global_config.debug.active)
+                return;
+
+            RenderTargetView rt0 {};
+            if (!GetRT0(rt0))
+                return;
+
+            const uint32 out_w   = static_cast<uint32>(std::max(g_ptGfxData->tCurrentMode.nWinWidth, 0));
+            const uint32 out_h   = static_cast<uint32>(std::max(g_ptGfxData->tCurrentMode.nWinHeight, 0));
+            const float  scale   = CalcStencilScale(out_w, out_h);
+            const bool   scaled  = (scale < 1.0f);
+            const bool   is_swap = (rt0.snoRTTex == 0);
+            if (!scaled || !is_swap)
+                return;
+
+            const uint32 int_w = ScaleStencilDim(out_w ? out_w : 1u, scale);
+            const uint32 int_h = ScaleStencilDim(out_h ? out_h : 1u, scale);
+
+            const uintptr_t lr        = static_cast<uintptr_t>(ctx->X[30]);
+            const uintptr_t lr_offset = lr ? (lr - exl::util::modules::GetTargetStart()) : 0u;
+
+            static uint32 s_logged = 0;
+            if (s_logged < 128) {
+                PRINT(
+                    "StencilParams: W1=%u W2=%u W3=%u W4=%u W5=%u W6=%u W7=%u (rt0=%d out=%ux%u int=%ux%u LR=0x%lx)",
+                    static_cast<uint32>(ctx->W[1]),
+                    static_cast<uint32>(ctx->W[2]),
+                    static_cast<uint32>(ctx->W[3]),
+                    static_cast<uint32>(ctx->W[4]),
+                    static_cast<uint32>(ctx->W[5]),
+                    static_cast<uint32>(ctx->W[6]),
+                    static_cast<uint32>(ctx->W[7]),
+                    rt0.snoRTTex,
+                    out_w,
+                    out_h,
+                    int_w,
+                    int_h,
+                    lr_offset
+                );
+                ++s_logged;
+            }
+        }
+    };
+
+    // NVN texture hooks live in nvn.hpp.
+
+    HOOK_DEFINE_REPLACE(RejectInvalidModes) {
+        // @ 0x298A20: uint32 __fastcall sRejectInvalidModes(DisplayMode *ptDisplayModes, uint32 dwDisplayModeCount)
+        static auto Callback([[maybe_unused]] DisplayMode *ptDisplayModes, uint32 dwDisplayModeCount) -> uint32 {
+            PRINT("RejectInvalidModes called with dwDisplayModeCount=%u", dwDisplayModeCount)
+            return dwDisplayModeCount;
         }
     };
 
@@ -587,6 +878,33 @@ namespace d3 {
             //     InstallAtOffset(0xA2AE14);
             Print_ErrorStringFinal::
                 InstallAtOffset(0xA2AE74);
+        }
+        if (global_config.debug.active) {
+            // GfxWindowChangeDisplayModeHook::
+            //     InstallAtPtr(reinterpret_cast<uintptr_t>(GfxWindowChangeDisplayMode));
+            // RejectInvalidModes::
+            //     InstallAtOffset(0x298A20);
+            // GfxNX64NVNGetValidDisplayModesWidth::
+            //     InstallAtOffset(0xEA1A8);
+            // GfxNX64NVNGetValidDisplayModesHeight::
+            //     InstallAtOffset(0xEA1BC);
+        }
+        if (global_config.resolution_hack.active) {
+            // GfxWindowChangeDisplayModeHook::
+            //     InstallAtPtr(reinterpret_cast<uintptr_t>(GfxWindowChangeDisplayMode));
+            // GfxViewportSetHook::
+            //     InstallAtPtr(reinterpret_cast<uintptr_t>(GfxViewportSet));
+            // GfxStencilBufferEnableHook::
+            //     InstallAtOffset(0x0EFCD0);
+            // if (global_config.debug.active) {
+            //     GfxStencilBufferSetParamsHook::
+            //         InstallAtOffset(0x0EFE60);
+            //     PRINT("%s installed", "GfxStencilBufferSetParamsHook")
+            // }
+            // Phase 1 rollback: disable NVN texture mutation hook to isolate mosaic issues.
+            // (Keep display-mode logging enabled for visibility.)
+            // nvn::NVNTexInfoCreateHook::
+            //     InstallAtOffset(0xE6B20);
         }
         // BDPublish::
         //     InstallAtFuncPtr(bdLogSubscriber_publish);

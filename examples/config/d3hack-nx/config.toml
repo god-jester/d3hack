@@ -1,4 +1,15 @@
-# d3hack-nx example configuration
+# d3hack example configuration
+
+[resolution_hack]
+SectionEnabled = true
+# - 900 -> 1600x900  (aliases "900p" | "default" | "unchanged")
+# - 1080 -> 1920x1080 (aliases "1080p" | "FHD")
+# - 1440 -> 2560x1440 (aliases "1440p" | "2K" | "QHD")
+OutputTarget = 1080
+# Minimum resolution scale (percentage) to apply. 100% = locked resolution.
+MinResScale = 85
+# MUST be enabled for higher resolutions to avoid crashes above 1152p (2048x1152)!
+ClampTextures2048 = true
 
 [seasons]
 SectionEnabled = true
@@ -42,9 +53,6 @@ NestingPortals = false
 
 [rare_cheats]
 SectionEnabled = true
-DrawFPS = true
-DrawVariableResolution = true
-Target1080pResolution = true
 MovementSpeedMultiplier = 1.5
 GuaranteedLegendaryChance = false
 DropAnyItems = true
@@ -57,9 +65,8 @@ EquipAnySlot = false
 
 [overlays]
 SectionEnabled = true
-BuildLockerWatermark = true
-DDMLabels = true
-FPSLabel = true
+BuildLockerWatermark = false
+FPSLabel = false
 VariableResLabel = true
 
 [loot_modifiers]

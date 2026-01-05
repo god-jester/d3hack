@@ -5,6 +5,7 @@
 Seasons offline. Challenge Rifts without servers. Community events on demand. Loot table tweaks, instant crafting, and quality-of-life tools. All running inside the game process via native C++ hooks.
 
 Want the full toggle list? Start with the example config: [`examples/config/d3hack-nx/config.toml`](examples/config/d3hack-nx/config.toml).
+New: [1080p+ Output & Resolution Hack breakdown](#1080p-output--resolution-hack) (how the patches + hooks work, and why depth detachment is required at 1152p+).
 
 > This project is for research, modding, and offline experimentation. Respect the game, other players, and applicable laws/ToS.
 
@@ -17,6 +18,19 @@ Want the full toggle list? Start with the example config: [`examples/config/d3ha
 - **Challenge Rifts offline fix**: SD card protobufs now parse at full size (previous `blz::string` ctor issue resolved).
 - **Dynamic seasonal patching**: season number/state and UI gating are set at runtime after config load.
 - **Safer offline UX**: hides “Connect to Diablo Servers” and network hints when `AllowOnlinePlay = false`.
+
+---
+
+## 1080p+ Output & Resolution Hack
+
+This path makes **1920x1080** (and optional **2560x1440**) swapchain output practical while keeping internal RTs clamped to **<=2048** for stability. The critical fix is **depth detachment on the swapchain**; without it, a 2048x1152 depth attachment clamps the render area and the UI hard-clips. That hard-clip only showed up at **1152p+ output**; 1080p runs clean without depth detachment.
+
+Breakdown:
+
+- **Config**: `[resolution_hack]` in `config.toml` sets `OutputHeight` (`1080`/`1440`/`2160`), `fixed_res`, and `clamp_textures_2048` (recommended; 4K output is unstable).
+- **Patches**: `PatchResolutionTargets()` in `source/program/d3/patches.hpp` rewrites the default display mode pair, forces docked/perf checks, and nudges font point sizes for high-res output.
+- **Hooks (shipping path)**: `source/program/d3/hooks/resolution.hpp` installs `PostFXInitClampDims` (internal RT clamp) plus `GfxSetRenderAndDepthTargetSwapchainFix` / `GfxSetDepthTargetSwapchainFix` (depth detach fix for the hard-clip). These only install when output exceeds the internal clamp, so 1080p skips them.
+- **Notes**: UI basis/NDC/UIC conversion hooks and stencil overrides were tested but do **not** fix the clip, so they stay out of the shipping path.
 
 ---
 
@@ -144,6 +158,7 @@ Outputs land in `deploy/` as `subsdk9` and `main.npdm`.
 - **Season theme map**: `source/program/config.cpp` (`BuildSeasonEventMap`)
 - **Challenge rifts**: `source/program/d3/_util.hpp` + `source/program/d3/hooks/debug.hpp`
 - **Config load**: `source/program/config.cpp` (`LoadPatchConfig`)
+- **Resolution hack (1080p/1440p)**: `source/program/d3/hooks/resolution.hpp` + `source/program/d3/patches.hpp` (`PatchResolutionTargets`)
 
 ---
 

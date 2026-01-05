@@ -25,6 +25,7 @@ FUNC_PTR(0x719010, GetGameMessageTypeAndSize,               BOOL (*)(GameMessage
 FUNC_PTR(0x1E0DF0, DisplaySeasonEndingMessage,              void (*)(int32 nMin));
 FUNC_PTR(0x1E0F60, DisplayLongMessageForPlayer,             void (*)(const CRefString *sMessage, const Player *ptPlayer, const ImageTextureFrame *tImage, BOOL bUseLargeIcon));
 FUNC_PTR(0x933EF0, DisplayGameMessageForAllPlayers,         void (*)(LPCSTR szStringDecoratedLabel, int nParam1, int nParam2));
+FUNC_PTR(0x29B0E0, GfxWindowChangeDisplayMode,             void (*)(const DisplayMode *tMode));
 FUNC_PTR(0x29CBB0, ImageTextureFrame_ctor,                  void (*)(ImageTextureFrame *, LPCSTR szDecoratedLabel));
 FUNC_PTR(0x34C8D0, FormatTruncatedNumber,             CRefString (*)(float flValue, BOOL bUseMillions, BOOL bIncludeSpecialChar));
 FUNC_PTR(0xA26F60, XVarBool_ToString,                blz::string (*)(uintptr_t * /* XVarBool *this */));

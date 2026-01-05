@@ -5,7 +5,7 @@
 
 #define DBGLOG
 #define DBGPRINT
-#define D3HACK_VER     "D3Hack v2.1"
+#define D3HACK_VER     "D3Hack v2.2"
 #define D3HACK_AUTHOR  "jester"
 #define D3HACK_WEB     "https://jester.dev"
 #define D3CLIENT_VER   "2.7.6.90885"

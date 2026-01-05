@@ -154,7 +154,7 @@ namespace d3 {
         }
 
         void OverrideBlacklistIfNeeded(blz::shared_ptr<blz::string> *pszFileData) {
-            if (!pszFileData || !global_config.rare_cheats.drop_anything)
+            if (!pszFileData)
                 return;
             static constexpr const char kEmptyBlacklist[] =
                 "# Blacklist overridden by d3hack\n"

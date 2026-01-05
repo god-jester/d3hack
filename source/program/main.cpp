@@ -9,15 +9,11 @@
 #include "d3/patches.hpp"
 #include "config.hpp"
 #include "d3/hooks/util.hpp"
+#include "d3/hooks/resolution.hpp"
 #include "d3/hooks/debug.hpp"
 #include "d3/hooks/season_events.hpp"
 #include "d3/hooks/lobby.hpp"
 #include "idadefs.h"
-#include <cstring>
-#include <string_view>
-// #include "arm_neon.h"
-// #include "c++/13.2.0/debug/string"
-// #include "bits/stdc++.h"
 
 #define to_float(v)         __coerce<float>(v)
 #define to_s32(v)           vcvtps_s32_f32(v)
@@ -147,12 +143,12 @@ namespace d3 {
             // XVarBool_Set(&s_varSeasonsOverrideEnabled, true, 3u);
             // XVarBool_Set(&s_varChallengeEnabled, true, 3u);
             // XVarBool_Set(&s_varExperimentalScheduling, true, 3u);
-            PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varLocalLoggingEnable).m_elements)
-            PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varOnlineServicePTR).m_elements)
-            PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varFreeToPlay).m_elements)
-            PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varSeasonsOverrideEnabled).m_elements)
-            PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varChallengeEnabled).m_elements)
-            PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varExperimentalScheduling).m_elements)
+            // PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varLocalLoggingEnable).m_elements)
+            // PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varOnlineServicePTR).m_elements)
+            // PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varFreeToPlay).m_elements)
+            // PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varSeasonsOverrideEnabled).m_elements)
+            // PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varChallengeEnabled).m_elements)
+            // PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varExperimentalScheduling).m_elements)
             // blz::shared_ptr<blz::basic_string<char,blz::char_traits<char>,blz::allocator<char> > > *pszFileData
             // auto pszFileData = std::make_shared<std::string>(c_szSeasonSwap);
             // OnSeasonsFileRetrieved(nullptr, 0, &pszFileData);
@@ -180,38 +176,37 @@ namespace d3 {
     };
     HOOK_DEFINE_TRAMPOLINE(MainInit){
         static void Callback() {
-            // Require our SD to be mounted before running nnMain()
-            R_ABORT_UNLESS(nn::fs::MountSdCardForDebug("sd"));
-            LoadPatchConfig();
-
             if (!VerifySignature()) {
                 PRINT("Signature guard failed; expected build %s", D3CLIENT_VER);
                 EXL_ABORT("Signature guard failed: offsets mismatch.");
             }
 
-            if (!g_config_hooks_installed) {
-                SetupUtilityHooks();
-                SetupDebuggingHooks();
-                SetupSeasonEventHooks();
-                SetupLobbyHooks();
-                g_config_hooks_installed = true;
-            }
+            // Require our SD to be mounted before running nnMain()
+            R_ABORT_UNLESS(nn::fs::MountSdCardForDebug("sd"));
+            LoadPatchConfig();
 
             // Apply patches based on config
-            if (global_config.overlays.active && global_config.overlays.buildlocker_watermark)
-                PatchBuildlocker();
-            if (global_config.overlays.active && global_config.overlays.ddm_labels)
-                PatchDDMLabels();
-            if (global_config.overlays.active && global_config.overlays.var_res_label)
+            if (!g_config_hooks_installed) {
+                SetupUtilityHooks();
+                SetupResolutionHooks();
+                SetupDebuggingHooks();
+                SetupSeasonEventHooks();
                 PatchVarResLabel();
-            if (global_config.overlays.active && global_config.overlays.fps_label)
                 PatchReleaseFPSLabel();
-            if (global_config.rare_cheats.active && global_config.rare_cheats.fhd_mode)
-                PatchResolutionTargets();
+                g_config_hooks_installed = true;
+            }
+            if (global_config.debug.enable_crashes)
+                SetupLobbyHooks();
             if (global_config.events.active)
                 PatchDynamicEvents();
             if (global_config.seasons.active)
                 PatchDynamicSeasonal();
+            if (global_config.overlays.active && global_config.overlays.buildlocker_watermark)
+                PatchBuildlocker();
+            if (global_config.overlays.active && global_config.overlays.ddm_labels)
+                PatchDDMLabels();
+            if (global_config.resolution_hack.active)
+                PatchResolutionTargets();
             PatchBase();
 
             // Allow game loop to start
@@ -228,43 +223,12 @@ namespace d3 {
         /* Setup hooking environment. */
         exl::hook::Initialize();
 
-        // PRINT_EXPR("0x%lx", offsetof(SGameGlobals, uHeroIdCreator))
-        // PRINT_EXPR("0x%lx", sizeof(ChallengeData))
-        // PRINT_EXPR("0x%lx", sizeof(bdRemoteTaskRef))
-        // PRINT_EXPR("0x%lx", sizeof(google::protobuf::UnknownFieldNew))
-        // PRINT_EXPR("0x%lx", sizeof(google::protobuf::UnknownField))
-        // PRINT_EXPR("0x%lx", sizeof(google::protobuf::UnknownFieldStable))
-        // PRINT_EXPR("0x%lx", sizeof(google::protobuf::UnknownFieldSet))
-        // PRINT_EXPR("0x%lx", sizeof(bdRemoteTaskRefB))
-        // PRINT_EXPR("0x%lx", sizeof(bdRemoteTaskRefC))
-        // PRINT_EXPR("0x%lx", sizeof(bdRemoteTaskRefD))
-        // PRINT_EXPR("0x%lx", sizeof(bdStorage))
-        // PRINT_EXPR("0x%lx", sizeof(std::shared_ptr<blz::string>))
-        // PRINT_EXPR("0x%lx", offsetof(std::shared_ptr<blz::string>, ))
-        // PRINT_EXPR("0x%lx", offsetof(SGameGlobals, uszCreatorHeroName))
-        // PRINT_EXPR("0x%lx", offsetof(SGameGlobals, uszCreatorAccountName))
-        // PRINT_EXPR("0x%lx", offsetof(GameParams, idGameConnection))
-        // PRINT_EXPR("0x%lx", offsetof(GameParams, idSGame))
-        // PRINT_EXPR("0x%lx", offsetof(LootSpecifier, eAncientRank))
         MainInit::InstallAtOffset(0x480);
         GfxInit::InstallAtOffset(0x298BD0);
         ShellInitialize::InstallAtOffset(0x667830);
-
         GameCommonDataInit::InstallAtOffset(0x4CABA0);
-        SGameInitialize::InstallAtOffset(0x7B08A0);
-        sInitializeWorld::InstallAtOffset(0x8127A0);
-        // XVarBool_Set(&s_varFreeToPlay, true, 3u);
-        // XVarBool_Set(&s_varSeasonsOverrideEnabled, true, 3u);
-        // XVarBool_Set(&s_varChallengeEnabled, true, 3u);
-        // XVarBool_Set(&s_varExperimentalScheduling, true, 3u);
-        PatchForcedSeasonal();
-        PatchForcedEvents();
-        // auto jest = patch::RandomAccessPatcher();
-        // jest.Patch<Ret>(0x65270);             // stub Console::Online::LobbyServiceInternal::OnSeasonsFileRetrieved() to override server data
-        // if (global_config.events.active)
-            // PatchForcedEvents();
-        // if (global_config.seasons.active)
-            // PatchForcedSeasonal();
+        // SGameInitialize::InstallAtOffset(0x7B08A0);
+        // sInitializeWorld::InstallAtOffset(0x8127A0);
         // StubCopyright::InstallAtFuncPtr(nn::oe::SetCopyrightVisibility);
     }
 

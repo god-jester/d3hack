@@ -781,6 +781,24 @@ struct Rect2D {
     float bottom;
 };
 
+struct IRect2D {
+    int32 left;
+    int32 top;
+    int32 right;
+    int32 bottom;
+};
+
+/* 9401 */
+enum CubeMapFace : int32 {
+    CUBEMAPFACE_POSX = 0x0,
+    CUBEMAPFACE_NEGX = 0x1,
+    CUBEMAPFACE_POSY = 0x2,
+    CUBEMAPFACE_NEGY = 0x3,
+    CUBEMAPFACE_POSZ = 0x4,
+    CUBEMAPFACE_NEGZ = 0x5,
+    NUM_CUBEMAPFACES = 0x6,
+};
+
 struct RequiredMessageHeader {
     uint16          dwSize;
     int8            nControllerIndex;

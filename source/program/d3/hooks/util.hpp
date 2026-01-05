@@ -2,6 +2,7 @@
 #include "lib/hook/replace.hpp"
 #include "lib/hook/trampoline.hpp"
 #include "../../config.hpp"
+#include "d3/types/common.hpp"
 
 namespace nn::os {
     auto GetHostArgc() -> u64;
@@ -150,18 +151,41 @@ namespace d3 {
 
     HOOK_DEFINE_INLINE(VarResHook) {
         static void Callback(exl::hook::InlineCtx *ctx) {
+            auto ptVarRWindow = reinterpret_cast<VariableResRWindowData *>(ctx->X[19]);
+            ctx->X[1]         = reinterpret_cast<uintptr_t>(&c_szVariableResString);
+            ctx->X[2]         = static_cast<uint32>(g_ptGfxData->workerData[0].dwRTHeight);
+            ctx->X[3]         = static_cast<uint32>(ptVarRWindow->flPercent * g_ptGfxData->tCurrentMode.dwHeight);
+
+            if (global_config.overlays.active && global_config.overlays.var_res_label)
+                AppDrawFlagSet(APP_DRAW_VARIABLE_RES_DEBUG_BIT, 1);
+            if (global_config.overlays.active && global_config.overlays.fps_label)
+                AppDrawFlagSet(APP_DRAW_FPS_BIT, 1);
+
+            // [[maybe_unused]] auto dwHeight     = g_ptGfxData->tCurrentMode.dwHeight;
+            // [[maybe_unused]] auto dwUIHeight   = g_ptGfxData->tCurrentMode.dwUIOptHeight;
+            // [[maybe_unused]] auto rtHeight     = g_ptGfxData->workerData[0].dwRTHeight;
+            // [[maybe_unused]] auto flResScale   = g_ptMainRWindow->m_ptVariableResRWindowData->flPercent;
+            // ptVarRWindow->flPercent = (ptVarRWindow->flPercent * rtHeight);
+            // ptVarRWindow->dwAvgHistoryUs = dwHeight;
+            // PRINT("VarResHook: UIHeight=%u, RTHeight=%u, Height=%u, Scale=%.3f", dwUIHeight, rtHeight, dwHeight, flResScale)
+            // PRINT("VarResHook: RTHeight=%u, RTWidth=%u, flRTHeight=%.3f, flRTWidth=%.3f, flRTInvHeight=%.3f, flRTInvWidth=%.3f", g_ptGfxData->workerData[0].dwRTHeight, g_ptGfxData->workerData[0].dwRTWidth, g_ptGfxData->workerData[0].flRTHeight, g_ptGfxData->workerData[0].flRTWidth, g_ptGfxData->workerData[0].flRTInvHeight, g_ptGfxData->workerData[0].flRTInvWidth)
+            // ptVarRWindow->flMinPercent   = 0.75f;
+            // ptVarRWindow->flMaxPercent   = 1.25f;
+            // ptVarRWindow->dwAvgHistoryUs = dwHeight;
+            // g_ptGfxData->tCurrentMode.dwHeight     = static_cast<uint32>(1080);
+            // g_ptGfxData->tCurrentMode.dwWidth      = static_cast<uint32>(1920);
+            // g_ptGfxData->tCurrentMode.dwUIOptWidth = static_cast<uint32>(1080);
+            // g_ptGfxData->tCurrentMode.dwUIOptWidth = static_cast<uint32>(1920);
+            // PRINT_EXPR("%f", ptVarRWindow->flMinPercent)
+            // PRINT_EXPR("%f", ptVarRWindow->flMaxPercent)
+            // ptVarRWindow->flMinPercent = 0.15f;
+            // 4096 =  3.8209f; // 2160 = 2.015625f; // 1440 = 1.34375f; // 1080 = 1.0075f;
+            // ptVarRWindow->flMaxPercent = 1.0f;
             // return;
-            auto ptVarRWindow            = reinterpret_cast<VariableResRWindowData *>(ctx->X[19]);
-            auto dwHeight                = g_ptGfxData->tCurrentMode.dwHeight;
-            auto flResScale              = g_ptMainRWindow->m_ptVariableResRWindowData->flPercent;
-            ptVarRWindow->dwAvgHistoryUs = (flResScale * dwHeight);
-            return;
-            PRINT_EXPR("%f", ptVarRWindow->flMinPercent)
-            PRINT_EXPR("%f", ptVarRWindow->flMaxPercent)
-            PRINT_EXPR("%i", ptVarRWindow->dwMinUs)
-            PRINT_EXPR("%i", ptVarRWindow->dwMaxUs)
-            PRINT_EXPR("%i", ptVarRWindow->dwAdjustCooldown)
-            PRINT_EXPR("%f", ptVarRWindow->flPercentIncr)
+            // PRINT_EXPR("%i", ptVarRWindow->dwMinUs)
+            // PRINT_EXPR("%i", ptVarRWindow->dwMaxUs)
+            // PRINT_EXPR("%i", ptVarRWindow->dwAdjustCooldown)
+            // PRINT_EXPR("%f", ptVarRWindow->flPercentIncr)
         };
     };
 
@@ -206,33 +230,40 @@ namespace d3 {
 
     HOOK_DEFINE_TRAMPOLINE(Enum_GB_Types) {
         static void Callback(GameBalanceType eType, GBHandleList *listResults) {
-            if (true) {  // global_config.defaults_only || !global_config.debug.active || !global_config.debug.enable_debug_flags) {
+            if (global_config.overlays.active && global_config.overlays.var_res_label)
+                AppDrawFlagSet(APP_DRAW_VARIABLE_RES_DEBUG_BIT, 1);
+            if (global_config.overlays.active && global_config.overlays.fps_label)
+                AppDrawFlagSet(APP_DRAW_FPS_BIT, 1);
+            if (global_config.overlays.ddm_labels)
+                sg_tAppGlobals.eDebugDisplayMode = DDM_FPS_SIMPLE;
+            if (global_config.defaults_only || !global_config.debug.active || !global_config.debug.enable_debug_flags) {
                 Orig(eType, listResults);
                 return;
             }
+
             // PRINT_EXPR("uint: %s", XVarUint32_ToString(&s_varSeasonNum).m_elements)
             // PRINT_EXPR("uint: %s", XVarUint32_ToString(&s_varSeasonState).m_elements)
 
-            auto pszFileData = std::make_shared<std::string>(c_szSeasonSwap);
+            // auto pszFileData = std::make_shared<std::string>(c_szSeasonSwap);
             // *pszFileData = testingok;
-            OnSeasonsFileRetrieved(nullptr, 0, &pszFileData);
+            // OnSeasonsFileRetrieved(nullptr, 0, &pszFileData);
             // XVarUint32_Set(&s_varSeasonNum, 30, 3u);
             // XVarUint32_Set(&s_varSeasonState, 1, 3u);
             // PRINT_EXPR("uint-post: %s", XVarUint32_ToString(&s_varSeasonNum).m_elements)
             // PRINT_EXPR("uint-post: %s", XVarUint32_ToString(&s_varSeasonState).m_elements)
-            XVarBool_Set(&s_varOnlineServicePTR, true, 3u);
-            XVarBool_Set(&s_varLocalLoggingEnable, true, 3u);
+            // XVarBool_Set(&s_varOnlineServicePTR, true, 3u);
+            // XVarBool_Set(&s_varLocalLoggingEnable, true, 3u);
             // XVarBool_Set(&s_varFreeToPlay, true, 3u);
-            XVarBool_Set(&s_varSeasonsOverrideEnabled, true, 3u);
-            XVarBool_Set(&s_varChallengeEnabled, true, 3u);
-            XVarBool_Set(&s_varExperimentalScheduling, true, 3u);
+            // XVarBool_Set(&s_varSeasonsOverrideEnabled, true, 3u);
+            // XVarBool_Set(&s_varChallengeEnabled, true, 3u);
+            // XVarBool_Set(&s_varExperimentalScheduling, true, 3u);
             // sg_tAppGlobals->eDebugDisplayMode = DDM_CONVERSATIONS // DDM_SOUND_STATUS // DDM_FPS_SIMPLE; // DDM_FPS_QA // DDM_FPS_PROGRAMMER
-            sg_tAppGlobals.eDebugDisplayMode = DDM_LOOT_REST_BONUS;
+            // sg_tAppGlobals.eDebugDisplayMode = DDM_LOOT_REST_BONUS;
             sg_tAppGlobals.eDebugFadeMode    = DFM_FADE_NEVER;
             sg_tAppGlobals.eDebugSoundMode   = DSM_FULL;
             // sg_tAppGlobals.flDebugDrawRadius = 0.4f;
             // sg_tAppGlobals.eStringDebugMode  = STRINGDEBUG_LABEL;
-            AppDrawFlagSet(APP_DRAW_VARIABLE_RES_DEBUG_BIT, 1);
+            // AppDrawFlagSet(APP_DRAW_VARIABLE_RES_DEBUG_BIT, 1);
             // AppDrawFlagSet(APP_DRAW_FPS_BIT, 1);
             AppDrawFlagSet(APP_DRAW_CONTROLLER_AUTO_TARGETING, 1);
             AppDrawFlagSet(APP_DRAW_LOW_POLY_SHADOWS_BIT, 1);
@@ -281,6 +312,7 @@ namespace d3 {
             // AppGlobalFlagDisable(3, APP_GLOBAL3_PLAYER_MUTE_REQUESTED_BIT);
 
             Orig(eType, listResults);
+            return;
             if (eType == GB_ITEMS) {
                 // int counter = 0;
                 PRINT_EXPR("%d", sg_tAppGlobals.ptItemAppGlobals->nItems)
@@ -311,10 +343,8 @@ namespace d3 {
     };
 
     void SetupUtilityHooks() {
-        if (!global_config.defaults_only && global_config.debug.active && global_config.debug.enable_debug_flags) {
-            Enum_GB_Types::
-                InstallAtFuncPtr(GBEnumerate);
-        }
+        Enum_GB_Types::
+            InstallAtFuncPtr(GBEnumerate);  // A relatively consistent call to refresh without spamming every frame
 
         if (global_config.rare_cheats.active && global_config.rare_cheats.equip_any_slot) {
             EquipAny::
@@ -328,10 +358,9 @@ namespace d3 {
         HostArgV::
             InstallAtFuncPtr(nn::os::GetHostArgv);
 
-        if (global_config.overlays.active && global_config.overlays.var_res_label &&
-            global_config.rare_cheats.active && global_config.rare_cheats.draw_var_res) {
+        if (global_config.overlays.active && global_config.overlays.var_res_label) {
             VarResHook::
-                InstallAtOffset(0x03CC58);
+                InstallAtOffset(0x3CC74);
         }
         if (global_config.loot_modifiers.active) {
             ForceAncient::

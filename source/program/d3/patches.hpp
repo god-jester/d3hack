@@ -77,25 +77,19 @@ namespace d3 {
 
     /* String swap and formatting for APP_DRAW_VARIABLE_RES_DEBUG_BIT */
     void PatchVarResLabel() {
-        if (!(global_config.overlays.active && global_config.overlays.var_res_label))
-            return;
-        if (!(global_config.rare_cheats.active && global_config.rare_cheats.draw_var_res))
-            return;
         auto jest = patch::RandomAccessPatcher();
         jest.Patch<Movz>(0x03CC20, W0, (8 + GLOBALSNO_FONT_EXOCETLIGHT));
-        MakeAdrlPatch(0x03CC68, reinterpret_cast<uintptr_t>(&c_szVariableResString), X1);
         // 3CC78    movz x8, #0x42c8, lsl #16   --> 100.0f
         jest.Patch<Movz>(0x03CC78, X8, 0x4288, ShiftValue_16);  // X-axis: 68.0f
         // 3CC7C    movk x8, #0x4316, lsl #48   --> 150.0f
         jest.Patch<Movk>(0x03CC7C, X8, 0x4080, ShiftValue_48);  // Y-axis: 4.0f
+
+        // MakeAdrlPatch(0x03CC68, reinterpret_cast<uintptr_t>(&c_szVariableResString), X1);
+        // AppDrawFlagSet(APP_DRAW_VARIABLE_RES_DEBUG_BIT, 1);     // Must be run each frame in another hook
     }
 
     /* String swap and formatting for APP_DRAW_FPS_BIT */
     void PatchReleaseFPSLabel() {
-        if (!(global_config.overlays.active && global_config.overlays.fps_label))
-            return;
-        if (!(global_config.rare_cheats.active && global_config.rare_cheats.draw_fps))
-            return;
         auto jest = patch::RandomAccessPatcher();
         jest.Patch<Movz>(0x3F654, W0, (8 + GLOBALSNO_FONT_EXOCETLIGHT));
         auto szReleaseFPSFormat = reinterpret_cast<std::array<char, 10> *>(jest.RwFromAddr(0xE46144));
@@ -117,11 +111,11 @@ namespace d3 {
         jest.Patch<Nop>(0x03FB80);
         jest.Patch<Nop>(0x03FC7C);
         jest.Patch<Nop>(0x03FD78);
+
+        // AppDrawFlagSet(APP_DRAW_FPS_BIT, 1);  // Must be run each frame in another hook
     }
 
     void PatchDDMLabels() {
-        if (!(global_config.overlays.active && global_config.overlays.ddm_labels))
-            return;
         auto jest = patch::RandomAccessPatcher();
         /* String swap and formatting for DDM_FPS_QA */
         jest.Patch<Movz>(0x03E530, W0, (8 + GLOBALSNO_FONT_SCRIPT));
@@ -139,92 +133,122 @@ namespace d3 {
     }
 
     void PatchResolutionTargets() {
-        if (!(global_config.rare_cheats.active && global_config.rare_cheats.fhd_mode))
+        if (!(global_config.resolution_hack.active))
             return;
+
         auto jest = patch::RandomAccessPatcher();
-        /* Patch both operation mode checks to 0 (docked) */
-        jest.Patch<Movz>(0x6678B8, W0, 0);
-        jest.Patch<Movz>(0x667AE8, W0, 0);
 
-        /* Patch both performance mode checks to 1 (boost) */
-        jest.Patch<Movz>(0x6678C8, W0, 1);
-        jest.Patch<Movz>(0x667B04, W0, 1);
+        const u32 out_w = global_config.resolution_hack.OutputWidthPx();
+        const u32 out_h = global_config.resolution_hack.OutputHeightPx();
 
-        /* 1080p (1905*1072 * 1.01) forced */
-        jest.Patch<Movz>(0x0E7858, X8, 1905);
-        jest.Patch<Movk>(0x0E7860, X8, 1072, ShiftValue_32);
+        // Display mode pair (full). GFXNX64NVN::Init (0x0E7850).
+        // 0x0E7858: MOV X8, #1600
+        // 0x0E7860: MOVK X8, #900, LSL#32
+        jest.Patch<Movz>(0x0E7858, X8, out_w);
+        jest.Patch<Movk>(0x0E7860, X8, out_h, ShiftValue_32);
 
-        /* 900p (1600*900) fallback */
-        jest.Patch<Movz>(0x0E785C, X9, 1600);
-        jest.Patch<Movk>(0x0E7864, X9, 900, ShiftValue_32);
+        // Fallback/base scale mode (same block).
+        // 0x0E785C: MOV X9, #1280
+        // 0x0E7864: MOVK X9, #720, LSL#32
+        jest.Patch<Movz>(0x0E785C, X9, out_w);
+        jest.Patch<Movk>(0x0E7864, X9, out_h, ShiftValue_32);
 
-        /* VariableResRWindowData->flMinPercent = 0.70f -  MOVK     X9, #0x3F33,LSL#48 */
-        jest.Patch<Movk>(0x03CBBC, X9, 0x3F40, ShiftValue_48);  // 75% (0.75f) minimum resolution scale
+        if (global_config.resolution_hack.fixed_res) {
+            /* VariableResRWindowData->flMinPercent = 0.70f - 0x03CBBC: MOVK X9, #0x3F33, LSL#48 (CGameVariableResInitializeForRWindow) */
+            jest.Patch<Movk>(0x03CBBC, X9, 0x3F80, ShiftValue_48);  // 100% (1.0f) minimum resolution scale
+        }
 
-        /* VariableResRWindowData->flMaxPercent = 1.00f -  MOVZ     W8, #0x3F80,LSL#16 */
-        jest.Patch<Movz>(0x03CBCC, W8, 0x3F81, ShiftValue_16);  // 101% (1.007f) maximum resolution scale
+        /* VariableResRWindowData->flMaxPercent = 1.00f - 0x03CBCC: MOV W8, #0x3F800000 */
+        // jest.Patch<Movz>(0x03CBCC, W8, 0x3FA0, ShiftValue_16);  // 125% (1.25f) maximum resolution scale (>1.0f breaks rendering)
 
-        /* VariableResRWindowData->flPercentIncr = 0.05f - MOVK     X9, #0x3D4C,LSL#48 */
+        /* VariableResRWindowData->flPercentIncr = 0.05f - 0x03CBD4: MOVK X9, #0x3D4C, LSL#48 */
         jest.Patch<Movk>(0x03CBD4, X9, 0x3CF5, ShiftValue_48);  // 3% (0.03f) resolution adjust percentage
 
-        /* UI scaling fixes for 1080p */
-        // EB0E68 00 00 34 44                   dword_EB0E68:.long 0x44340000 (720)
-        // jest.Patch<uint32_t>(0xEB0E68, 0x443B8000);  // 0x443B8000 = 750.0
-        // EB09E0 00 00 70 44                   dword_EB09E0:.long 0x44700000 (960)
-        // jest.Patch<uint32_t>(0xEB09E0, 0x447A0000);  // 1000.0
+        /* FontDefinition::GetPointSizeData (0x276A60/0x276A6C). */
+        /* 0x276A60: MOV W9, #8   | 0x276A6C: MOV W8, #0x10 */
+        jest.Patch<Movz>(0x276A60, W9, 32);
+        jest.Patch<Movz>(0x276A6C, W8, 32);
+
+        // ShellInitialize (0x6678B8): BL nn::oe::GetOperationMode
+        // ShellEventLoop (0x667AE8): BL nn::oe::GetOperationMode
+        jest.Patch<Movz>(0x6678B8, W0, 0);  // 0 = "Docked"
+        jest.Patch<Movz>(0x667AE8, W0, 0);  // 0 = "Docked"
+        // ShellInitialize (0x6678C8): BL nn::oe::GetPerformanceMode
+        // ShellEventLoop (0x667B04): BL nn::oe::GetPerformanceMode
+        jest.Patch<Movz>(0x6678C8, W0, 1);  // 1 = "Boost"
+        jest.Patch<Movz>(0x667B04, W0, 1);  // 1 = "Boost"
+
+        /* UIC conversion constants (experiment; adjusts scaling but does not fix the 2048x1152 clip). */
+        /* Dead-end notes: UI conversion constants were explored, but they only change scaling and do not fix clipping. */
+        // dword_EB0E68:.long 0x44340000 (720.0f)  -- SetUICConversionConstansts: height / 720.0
+        // jest.Patch<uint32_t>(0xEB0E68, 0x44100000);  // 576.0f
+        // jest.Patch<uint32_t>(0xEB0E68, 0x443B8000);  // 750.0f
+        // dword_EB09E0:.long 0x44700000 (960.0f)  -- SetUICConversionConstansts: width / 960.0
+        // jest.Patch<uint32_t>(0xEB09E0, 0x44400000);  // 768.0f
+        // jest.Patch<uint32_t>(0xEB09E0, 0x447A0000);  // 1000.0f
+
+        /* Suboptimal Performance Boosters, Crashes */
+        // jest.Patch<Movz>(0xC71DD8, W0, 1);
+        // jest.Patch<Ret>(0xC71DDC);
+        // jest.Patch<Movz>(0xC71DE8, W0, 1);
+        // jest.Patch<Ret>(0xC71DEC);
     }
 
     void PatchDynamicSeasonal() {
-        if (!global_config.seasons.active)
+        if (global_config.seasons.active) {
+            PRINT("Setting active Season to %d", global_config.seasons.number)
+            XVarBool_Set(&s_varSeasonsOverrideEnabled, true, 3u);
+            XVarUint32_Set(&s_varSeasonNum, global_config.seasons.number, 3u);
+            XVarUint32_Set(&s_varSeasonState, 1, 3u);
+
+            auto jest = patch::RandomAccessPatcher();
+            jest.Patch<Movz>(0x72ED98, W3, global_config.seasons.number);  // Season.Num
+            jest.Patch<Movz>(0x72EDD0, W3, 1);                             // Season.State
+            jest.Patch<Movz>(0x351CBC, W1, 1);                             // always true for UIHeroCreate::Console::bSeasonConfirmedAvailable() (skip B.ne and always confirm)
+            jest.Patch<Movz>(0x5FF0C, W0, 1);                              // always true for Console::Online::IsSeasonsInitialized()
+
+            // Update season_created uses at runtime (UIOnlineActions::SetGameParamsForHero).
+            // jest.Patch<Movz>(0x1BD140, W21, global_config.seasons.number);  // season_created = ...
+            // Ignore mismatched hero season in UIHeroSelect (skip Rebirth/season prompt for old seasons).
+            // jest.Patch<Nop>(0x358A7C);  // B.ne loc_358C74
+            // Hide "Create Seasonal Hero" main menu option (item 9) when forcing season number.
+            // ItemShouldBeVisible(case 9) calls IsSeasonsInitialized; forcing W0=0 makes it return false.
+            // jest.Patch<Movz>(0x35C0C4, W0, 0);
+        } else {
+            XVarBool_Set(&s_varSeasonsOverrideEnabled, false, 3u);
             return;
-
-        PRINT("SEASON CONFIG: %d", global_config.seasons.number)
-        XVarBool_Set(&s_varSeasonsOverrideEnabled, true, 3u);
-        XVarUint32_Set(&s_varSeasonNum, global_config.seasons.number, 3u);
-        XVarUint32_Set(&s_varSeasonState, 1, 3u);
-
-        auto jest = patch::RandomAccessPatcher();
-        // // jest.Patch<Movz>(0x72ED98, W3, global_config.seasons.number);   // Num (of Season)
-        // // jest.Patch<Movz>(0x72EDD0, W3, 1);
-        // Update season_created uses at runtime (UIOnlineActions::SetGameParamsForHero).
-        jest.Patch<Movz>(0x1BD140, W21, global_config.seasons.number);  // season_created = ...
-        // Ignore mismatched hero season in UIHeroSelect (skip Rebirth/season prompt for old seasons).
-        jest.Patch<Nop>(0x358A7C);  // B.ne loc_358C74
-        // Hide "Create Seasonal Hero" main menu option (item 9) when forcing season number.
-        // ItemShouldBeVisible(case 9) calls IsSeasonsInitialized; forcing W0=0 makes it return false.
-        jest.Patch<Movz>(0x35C0C4, W0, 0);
+        }
     }
 
     void PatchForcedSeasonal() {
-        auto jest = patch::RandomAccessPatcher();
+        // auto jest = patch::RandomAccessPatcher();
 
+        // /* Confirmed Required */
+        // jest.Patch<Movz>(0x351CBC, W1, 1);  // always true for UIHeroCreate::Console::bSeasonConfirmedAvailable() (skip B.ne and always confirm)
+        // jest.Patch<Movz>(0x5FF0C, W0, 1);   // always true for Console::Online::IsSeasonsInitialized()
+
+        /* Optional */
+        // jest.Patch<Nop>(0x1BD09C);         // if ( OnlineService::GetSeasonNum() != season_created ) in Console::UIOnlineActions::SetGameParamsForHero()
+        // jest.Patch<Ret>(0xBF6D50);         // stub bdEnvironmentString() to force net offline
+        // jest.Patch<Ret>(0x65270);             // stub Console::Online::LobbyServiceInternal::OnSeasonsFileRetrieved() to override server data
+        // jest.Patch<Movz>(0x57260, W0, 0);  // online_play_allowed for  Console::GamerProfile::GetOnlinePlayPrivilege(
+        // jest.Patch<Ret>(0x57264);          // ^ ret
+
+        /* Unintended Effects */
+        // jest.Patch<Movz>(0x72EEC0, W3, 1);    // always s_varSeasonsOverrideEnabled
         // jest.Patch<Movz>(0x185F9C, W0, 0);    // always STORAGE_SUCCESS
-
-        jest.Patch<Ret>(0x65270);             // stub Console::Online::LobbyServiceInternal::OnSeasonsFileRetrieved() to override server data
-
-        jest.Patch<Movz>(0x5FF0C, W0, 1);     // always true for Console::Online::IsSeasonsInitialized()
         // Leave season num/state dynamic; PatchDynamicSeasonal applies after config loads.
-        // jest.Patch<Movz>(0x72ED98, W3, global_config.seasons.number);   // Num (of Season)
-        // jest.Patch<Movz>(0x72EDD0, W3, 1);    // State (of Season)
-        jest.Patch<Nop>(0x1BD09C);            // if ( OnlineService::GetSeasonNum() != season_created ) in Console::UIOnlineActions::SetGameParamsForHero()
-        // season_created set dynamically in PatchDynamicSeasonal.
-        jest.Patch<Nop>(0x1BD388);            // skip actual SeasonNum check in Console::UIOnlineActions::IsActiveSeason
-        jest.Patch<Movz>(0x1BF5F0, W0, 0);    // error_none for Console::UIOnlineActions::ValidateHeroForPartyMember
-        jest.Patch<Ret>(0x1BF5F4);            // ^ ret
-        jest.Patch<Movz>(0x351CBC, W1, 1);    // always true for UIHeroCreate::Console::bSeasonConfirmedAvailable() (skip B.ne and always confirm)
-
-        jest.Patch<Ret>(0xBF6D50);            // stub bdEnvironmentString() to force net offline
-        jest.Patch<Movz>(0x1BD360, W0, 1);    // always true for Console::UIOnlineActions::IsActiveSeason
-        jest.Patch<Ret>(0x1BD364);
-
-        jest.Patch<Movz>(0x57260, W0, 0);  // online_play_allowed for  Console::GamerProfile::GetOnlinePlayPrivilege(
-        jest.Patch<Ret>(0x57264);
-
-        jest.Patch<Movz>(0x72EEC0, W3, 1);  // OverrideEnabled
+        // jest.Patch<Movz>(0x72ED98, W3, global_config.seasons.number);  // Season.Num
+        // jest.Patch<Movz>(0x72EDD0, W3, 1);    // Season.State
+        // jest.Patch<Nop>(0x1BD388);            // skip actual SeasonNum check in Console::UIOnlineActions::IsActiveSeason
+        // jest.Patch<Movz>(0x1BF5F0, W0, 0);    // error_none for Console::UIOnlineActions::ValidateHeroForPartyMember
+        // jest.Patch<Ret>(0x1BF5F4);            // ^ ret
+        // jest.Patch<Movz>(0x1BD360, W0, 1);    // always true for Console::UIOnlineActions::IsActiveSeason
+        // jest.Patch<Ret>(0x1BD364);            // ^ ret
     }
 
     void PatchForcedEvents() {
-        auto jest = patch::RandomAccessPatcher();
+        // auto jest = patch::RandomAccessPatcher();
         // jest.Patch<Ret>(0x641F0);          // stub Console::Online::LobbyServiceInternal::OnConfigFileRetrieved() to override server data
         // jest.Patch<Branch>(0x64228, 0x24);  //0x28 branch in OnConfigFileRetrieved
         // jest.Patch<Nop>(0x64254);  // stub Console::Online::LobbyServiceInternal::OnConfigFileRetrieved() ?

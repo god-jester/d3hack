@@ -2,10 +2,6 @@
 #include "d3/setting.hpp"
 #include "lib/diag/assert.hpp"
 #include "nn/fs.hpp"
-#include <algorithm>
-#include <cctype>
-#include <optional>
-#include <string_view>
 
 PatchConfig global_config{};
 
@@ -96,6 +92,43 @@ namespace {
             return ParseSeasonEventMapMode(*value, fallback);
         if (auto value = ReadValue<bool>(table, keys))
             return *value ? PatchConfig::SeasonEventMapMode::MapOnly : PatchConfig::SeasonEventMapMode::Disabled;
+        return fallback;
+    }
+
+    u32 ParseResolutionHackOutputTarget(std::string_view input, u32 fallback) {
+        const auto normalized = NormalizeKey(input);
+        if (normalized.empty())
+            return fallback;
+        if (normalized == "default" || normalized == "unchanged")
+            return 900;
+        if (normalized == "720" || normalized == "720p")
+            return 720;
+        if (normalized == "900" || normalized == "900p")
+            return 900;
+        if (normalized == "1080" || normalized == "1080p" || normalized == "fhd")
+            return 1080;
+        if (normalized == "1440" || normalized == "1440p" || normalized == "2k" || normalized == "qhd")
+            return 1440;
+        if (normalized == "2160willcrash")
+            return 2160;
+
+        u32         value = 0;
+        const auto *begin = normalized.data();
+        const auto *end   = normalized.data() + normalized.size();
+        auto [ptr, ec]    = std::from_chars(begin, end, value);
+        if (ec == std::errc() && ptr == end && value > 0)
+            return value;
+        return fallback;
+    }
+
+    u32 ReadResolutionHackOutputTarget(const toml::table &table, std::initializer_list<std::string_view> keys, u32 fallback) {
+        if (auto value = ReadValue<int64_t>(table, keys)) {
+            if (*value > 0 && *value <= std::numeric_limits<u32>::max())
+                return static_cast<u32>(*value);
+            return fallback;
+        }
+        if (auto value = ReadValue<std::string>(table, keys))
+            return ParseResolutionHackOutputTarget(*value, fallback);
         return fallback;
     }
 
@@ -409,11 +442,31 @@ void PatchConfig::ApplyTable(const toml::table& table) {
         events.NestingPortals = ReadBool(*section, {"NestingPortals"}, events.NestingPortals);
     }
 
+    const auto *resolution_section = FindTable(table, "resolution_hack");
+    if (resolution_section) {
+        resolution_hack.active = ReadBool(*resolution_section, {"SectionEnabled", "Enabled", "Active"}, resolution_hack.active);
+        const auto target_resolution = ReadResolutionHackOutputTarget(
+            *resolution_section,
+            {"OutputTarget", "OutputHeight", "Height", "OutputVertical", "Vertical", "OutputRes", "OutputResolution", "OutputWidth", "Width"},
+            resolution_hack.target_resolution
+        );
+        resolution_hack.SetTargetRes(target_resolution);
+        resolution_hack.min_res_scale = ReadDouble(
+            *resolution_section,
+            {"MinScale", "MinimumScale", "MinResScale", "MinimumResScale", "MinResolutionScale", "MinimumResolutionScale"},
+            resolution_hack.min_res_scale, 10.0, 100.0
+        );
+        resolution_hack.clamp_textures_2048 = ReadBool(
+            *resolution_section,
+            {"ClampTextures2048", "ClampTexturesTo2048", "ClampTextures", "ClampTex2048", "ClampTex"},
+            resolution_hack.clamp_textures_2048
+        );
+    } else {
+        resolution_hack.SetTargetRes(resolution_hack.target_resolution);
+    }
+
     if (const auto* section = FindTable(table, "rare_cheats")) {
         rare_cheats.active = ReadBool(*section, {"SectionEnabled", "Enabled", "Active"}, rare_cheats.active);
-        rare_cheats.draw_fps = ReadBool(*section, {"DrawFPS"}, rare_cheats.draw_fps);
-        rare_cheats.draw_var_res = ReadBool(*section, {"DrawVariableResolution"}, rare_cheats.draw_var_res);
-        rare_cheats.fhd_mode = ReadBool(*section, {"Target1080pResolution"}, rare_cheats.fhd_mode);
         rare_cheats.move_speed = ReadDouble(*section, {"MovementSpeedMultiplier", "MoveSpeedMultiplier"}, rare_cheats.move_speed, 0.1, 10.0);
         rare_cheats.guaranteed_legendaries = ReadBool(*section, {"GuaranteedLegendaryChance"}, rare_cheats.guaranteed_legendaries);
         rare_cheats.drop_anything = ReadBool(*section, {"DropAnyItems"}, rare_cheats.drop_anything);
@@ -449,6 +502,7 @@ void PatchConfig::ApplyTable(const toml::table& table) {
 
     if (const auto* section = FindTable(table, "debug")) {
         debug.active = ReadBool(*section, {"SectionEnabled", "Enabled", "Active"}, debug.active);
+        debug.enable_crashes = ReadBool(*section, {"Acknowledge_god_jester"}, debug.enable_crashes);
         debug.enable_pubfile_dump = ReadBool(*section, {"EnablePubFileDump", "PubFileDump"}, debug.enable_pubfile_dump);
         debug.enable_error_traces = ReadBool(*section, {"EnableErrorTraces", "ErrorTraces"}, debug.enable_error_traces);
         debug.enable_debug_flags = ReadBool(*section, {"EnableDebugFlags", "DebugFlags"}, debug.enable_debug_flags);

@@ -13,6 +13,24 @@ struct PatchConfig {
         Disabled,
     };
 
+    struct ResolutionHackConfig {
+        bool  active              = true;
+        u32   target_resolution   = 1080;   // boosted docked resolution
+        float min_res_scale       = 85.0f;  // boosted; default is 70%
+        bool  clamp_textures_2048 = false;
+
+        static constexpr float kAspectRatio = 16.0f / 9.0f;
+
+        static constexpr u32 WidthForHeight(u32 height) {
+            return static_cast<u32>(height * kAspectRatio);
+        }
+
+        constexpr void SetTargetRes(u32 height) { target_resolution = height; }
+
+        constexpr u32 OutputWidthPx() const { return WidthForHeight(target_resolution); }
+        constexpr u32 OutputHeightPx() const { return target_resolution; }
+    };
+
     struct {
         bool active = true;
         bool allow_online = false;
@@ -54,9 +72,6 @@ struct PatchConfig {
 
     struct {
         bool active = true;
-        bool draw_fps = true;
-        bool draw_var_res = true;
-        bool fhd_mode = false;
         double move_speed = 2.5;
         double attack_speed = 1.0;
         bool floating_damage_color = false;
@@ -71,11 +86,13 @@ struct PatchConfig {
         bool equip_any_slot = false;
     } rare_cheats;
 
+    ResolutionHackConfig resolution_hack {};
+
     struct {
         bool active = true;
-        bool buildlocker_watermark = true;
+        bool buildlocker_watermark = false;
         bool ddm_labels = true;
-        bool fps_label = true;
+        bool fps_label = false;
         bool var_res_label = true;
     } overlays;
 
@@ -94,6 +111,7 @@ struct PatchConfig {
 
     struct {
         bool active = true;
+        bool enable_crashes = false;
         bool enable_pubfile_dump = false;
         bool enable_error_traces = true;
         bool enable_debug_flags = false;
