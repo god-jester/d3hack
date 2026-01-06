@@ -265,14 +265,14 @@ namespace d3 {
 
     void SetupLobbyHooks() {
         SpecifiersFromModifier::
-            InstallAtOffset(0x8950B0);
+            InstallAtSymbol("hook_specifiers_from_modifier");
         EvalMod::
-            InstallAtOffset(0x896808);
+            InstallAtSymbol("hook_eval_mod");
         DupeDroppedItem::               // The primary hack trigger and functionality is here, when the host drops an item
-            InstallAtOffset(0x495BC0);  // FuncPtr(InventoryDropRequest); /* BOOL SACDInventoryProcessDropRequest(const ACDID idACDWantingToDrop, const ACDID idACDItem, const BOOL bCheckAlive) */
+            InstallAtSymbol("hook_dupe_dropped_item");  // FuncPtr(InventoryDropRequest); /* BOOL SACDInventoryProcessDropRequest(const ACDID idACDWantingToDrop, const ACDID idACDItem, const BOOL bCheckAlive) */
 
         RequestDropItemHook::          // The primary hack trigger and functionality is here, when the host drops an item
-            InstallAtOffset(0xBF630);  // @ void CACDInventoryRequestDrop(ActorCommonData *ptACD, const ACDID idACDOwner)
+            InstallAtSymbol("hook_request_drop_item");  // @ void CACDInventoryRequestDrop(ActorCommonData *ptACD, const ACDID idACDOwner)
 
         FastAttribGetIntValue::
             InstallAtFuncPtr(FastAttribGetValueInt);

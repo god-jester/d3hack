@@ -3,7 +3,10 @@
 #include <array>
 #include "sys/types.h"
 #include "lib/util/ptr_path.hpp"
+#include "lib/diag/assert.hpp"
+#include <lib/reloc/reloc.hpp>
 #include "d3/types/maps.hpp"
+#include "program/offsets.hpp"
 #include "d3/types/enums.hpp"
 #include "d3/types/namespaces.hpp"
 #include "d3/types/onlinebd.hpp"
@@ -25,6 +28,13 @@ struct Blizzard_Lock_Mutex : std::array<_BYTE, 0x20> {};
 
 inline uintptr_t GameOffset(uintptr_t offset) {
     return exl::util::GetMainModuleInfo().m_Total.m_Start + offset;
+}
+
+inline uintptr_t GameOffsetFromTable(const char *name) {
+    const auto *entry = exl::reloc::GetLookupTable().FindByName(name);
+    EXL_ABORT_UNLESS(entry != nullptr, "Missing lookup entry: %s", name);
+    const auto &module = exl::util::GetModuleInfo(entry->m_ModuleIndex);
+    return module.m_Total.m_Start + entry->m_Offset;
 }
 
 template<typename EndType, uintptr_t... Offsets>

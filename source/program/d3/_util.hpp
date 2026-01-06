@@ -8,6 +8,11 @@
 #include "d3/gamebalance.hpp"
 #include "d3/setting.hpp"
 #include "../config.hpp"
+#include "lib/util/stack_trace.hpp"
+#include "lib/util/sys/modules.hpp"
+#include "lib/util/strings.hpp"
+#include <cstddef>
+#include <cstdio>
 
 #define HASHMAP(m, id) ((m & (16777619 * ((16777619 * ((16777619 * ((16777619 * _BYTE(id ^ 0x811C9DC5)) ^ BYTE1(id))) ^ BYTE2(id))) ^ HIBYTE(id)))))
 
@@ -40,31 +45,79 @@
 namespace d3 {
     std::string              g_szBaseDir     = "sd:/config/d3hack-nx";
     constinit bool           sg_bServerCode  = true;
-    SigmaThreadLocalStorage &s_tThreadData   = *reinterpret_cast<SigmaThreadLocalStorage *const>(GameOffset(0x191CA70));
-    AttribDef *const        &cg_arAttribDefs = reinterpret_cast<AttribDef *const>(GameOffset(0x191EAD8));
-    AppGlobals              &sg_tAppGlobals  = *reinterpret_cast<AppGlobals *const>(GameOffset(0x1905610));
-    OnlineService::ItemId   &ItemInvalid     = *reinterpret_cast<OnlineService::ItemId *const>(GameOffset(0x1154B68));
-    WorldPlace              &cgplaceNull     = *reinterpret_cast<WorldPlace *const>(GameOffset(0x1A39CF0));
+    SigmaThreadLocalStorage &s_tThreadData   = *reinterpret_cast<SigmaThreadLocalStorage *const>(GameOffsetFromTable("sigma_thread_data"));
+    AttribDef *const        &cg_arAttribDefs = reinterpret_cast<AttribDef *const>(GameOffsetFromTable("attrib_defs"));
+    AppGlobals              &sg_tAppGlobals  = *reinterpret_cast<AppGlobals *const>(GameOffsetFromTable("app_globals"));
+    OnlineService::ItemId   &ItemInvalid     = *reinterpret_cast<OnlineService::ItemId *const>(GameOffsetFromTable("item_invalid"));
+    WorldPlace              &cgplaceNull     = *reinterpret_cast<WorldPlace *const>(GameOffsetFromTable("world_place_null"));
     GameCommonData          *g_ptGCData;
     GfxInternalData         *g_ptGfxData;
     RWindow                 *g_ptMainRWindow;
     GameConnectionID         gs_idGameConnection;
 
-    auto &s_varLocalLoggingEnable     = **reinterpret_cast<uintptr_t **const>(GameOffset(0x115A408));  // 115A408 s_varLocalLoggingEnable: .quad 0x7101A482C8
-    auto &s_varOnlineServicePTR       = **reinterpret_cast<uintptr_t **const>(GameOffset(0x1158FB0));  // 1158FB0 s_varOnlineServicePTR: .quad 0x7101A1B680
-    auto &s_varFreeToPlay             = **reinterpret_cast<uintptr_t **const>(GameOffset(0x1158FD0));  // 1158FD0 s_varFreeToPlay: .quad 0x7101A1B7F0
-    auto &s_varSeasonsOverrideEnabled = **reinterpret_cast<uintptr_t **const>(GameOffset(0x11590D8));  // 11590D8 s_varSeasonsOverrideEnabled: .quad 0x7101A1C1C8
-    auto &s_varChallengeEnabled       = **reinterpret_cast<uintptr_t **const>(GameOffset(0x11590E0));  // 11590E0 s_varChallengeEnabled:.quad 0x7101A1C338
-    auto &s_varSeasonNum              = **reinterpret_cast<uintptr_t **const>(GameOffset(0x114AC60));  // 114AC60 s_varSeasonNum: .quad 0x7101A1BD78
-    auto &s_varSeasonState            = **reinterpret_cast<uintptr_t **const>(GameOffset(0x114AC68));  // 114AC68 s_varSeasonState:.quad 0x7101A1BE30
-    auto &s_varMaxParagonLevel        = **reinterpret_cast<uintptr_t **const>(GameOffset(0x11551D0));  // 11551D0 s_varMaxParagonLevel:.quad 0x71019167F8
-    auto &s_varExperimentalScheduling = **reinterpret_cast<uintptr_t **const>(GameOffset(0x11597C8));  // 11597C8 s_varExperimentalScheduling:.quad 0x7101A38C88
+    auto &s_varLocalLoggingEnable     = **reinterpret_cast<uintptr_t **const>(GameOffsetFromTable("xvar_local_logging_enable_ptr"));
+    auto &s_varOnlineServicePTR       = **reinterpret_cast<uintptr_t **const>(GameOffsetFromTable("xvar_online_service_ptr"));
+    auto &s_varFreeToPlay             = **reinterpret_cast<uintptr_t **const>(GameOffsetFromTable("xvar_free_to_play_ptr"));
+    auto &s_varSeasonsOverrideEnabled = **reinterpret_cast<uintptr_t **const>(GameOffsetFromTable("xvar_seasons_override_enabled_ptr"));
+    auto &s_varChallengeEnabled       = **reinterpret_cast<uintptr_t **const>(GameOffsetFromTable("xvar_challenge_enabled_ptr"));
+    auto &s_varSeasonNum              = **reinterpret_cast<uintptr_t **const>(GameOffsetFromTable("xvar_season_num_ptr"));
+    auto &s_varSeasonState            = **reinterpret_cast<uintptr_t **const>(GameOffsetFromTable("xvar_season_state_ptr"));
+    auto &s_varMaxParagonLevel        = **reinterpret_cast<uintptr_t **const>(GameOffsetFromTable("xvar_max_paragon_level_ptr"));
+    auto &s_varExperimentalScheduling = **reinterpret_cast<uintptr_t **const>(GameOffsetFromTable("xvar_experimental_scheduling_ptr"));
+
+    auto &s_varDoubleRiftKeystones    = *reinterpret_cast<uintptr_t *const>(GameOffsetFromTable("event_double_keystones"));
+    auto &s_varDoubleBloodShards      = *reinterpret_cast<uintptr_t *const>(GameOffsetFromTable("event_double_blood_shards"));
+    auto &s_varDoubleTreasureGoblins  = *reinterpret_cast<uintptr_t *const>(GameOffsetFromTable("event_double_goblins"));
+    auto &s_varDoubleBountyBags       = *reinterpret_cast<uintptr_t *const>(GameOffsetFromTable("event_double_bounty_bags"));
+    auto &s_varRoyalGrandeur          = *reinterpret_cast<uintptr_t *const>(GameOffsetFromTable("event_royal_grandeur"));
+    auto &s_varLegacyOfNightmares     = *reinterpret_cast<uintptr_t *const>(GameOffsetFromTable("event_legacy_of_nightmares"));
+    auto &s_varTriunesWill            = *reinterpret_cast<uintptr_t *const>(GameOffsetFromTable("event_triunes_will"));
+    auto &s_varPandemonium            = *reinterpret_cast<uintptr_t *const>(GameOffsetFromTable("event_pandemonium"));
+    auto &s_varKanaiPowers            = *reinterpret_cast<uintptr_t *const>(GameOffsetFromTable("event_kanai_powers"));
+    auto &s_varTrialsOfTempests       = *reinterpret_cast<uintptr_t *const>(GameOffsetFromTable("event_trials_of_tempests"));
+    auto &s_varShadowClones           = *reinterpret_cast<uintptr_t *const>(GameOffsetFromTable("event_shadow_clones"));
+    auto &s_varFourthKanaisCubeSlot   = *reinterpret_cast<uintptr_t *const>(GameOffsetFromTable("event_fourth_cube_slot"));
+    auto &s_varEtherealItems          = *reinterpret_cast<uintptr_t *const>(GameOffsetFromTable("event_ethereal_items"));
+    auto &s_varSoulShards             = *reinterpret_cast<uintptr_t *const>(GameOffsetFromTable("event_soul_shards"));
+    auto &s_varSwarmRifts             = *reinterpret_cast<uintptr_t *const>(GameOffsetFromTable("event_swarm_rifts"));
+    auto &s_varSanctifiedItems        = *reinterpret_cast<uintptr_t *const>(GameOffsetFromTable("event_sanctified_items"));
+    auto &s_varDarkAlchemy            = *reinterpret_cast<uintptr_t *const>(GameOffsetFromTable("event_dark_alchemy"));
+    auto &s_varNestingPortals         = *reinterpret_cast<uintptr_t *const>(GameOffsetFromTable("event_nesting_portals"));
+    auto &s_varParagonCap             = *reinterpret_cast<uintptr_t *const>(GameOffsetFromTable("event_paragon_cap"));
 
     using std::unordered_map;
     using std::vector;
 
     unordered_map<ACDID, bool>   sg_mapLobby;
     unordered_map<Attrib, int32> g_mapCheckedAttribs;
+
+    inline void PrintAddressWithModule(const char *label, uintptr_t address) {
+        const auto *module = exl::util::TryGetModule(address);
+        if (module) {
+            char name_buf[exl::util::ModuleInfo::s_ModulePathLengthMax + 1];
+            exl::util::CopyString(name_buf, module->GetModuleName());
+            const auto offset = address - module->m_Total.m_Start;
+            PRINT("%s: %s+0x%lx (0x%lx)", label, name_buf, offset, address);
+        } else {
+            PRINT("%s: 0x%lx", label, address);
+        }
+    }
+
+    inline void DumpStackTrace(const char *tag, uintptr_t fp, size_t max_depth = 16) {
+        if (fp == 0) {
+            PRINT("%s stack trace unavailable (fp=0)", tag);
+            return;
+        }
+        auto it = exl::util::stack_trace::Iterator(fp, exl::util::mem_layout::s_Stack);
+        PRINT("%s stack trace:", tag);
+        size_t depth = 0;
+        while (it.Step() && depth < max_depth) {
+            char label[24];
+            snprintf(label, sizeof(label), "  #%zu", depth);
+            PrintAddressWithModule(label, it.GetReturnAddress());
+            depth++;
+        }
+    }
 
     auto GetItemPtr(GBID gbidItem) -> const Item * {
         if (ItemAppGlobals *ptItemAppGlobals = sg_tAppGlobals.ptItemAppGlobals; ptItemAppGlobals) {

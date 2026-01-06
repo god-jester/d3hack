@@ -10,7 +10,7 @@ namespace d3 {
     constinit const char c_szHackVerStart[]     = CRLF D3HACK_FULLVER CRLF CRLF CRLF;
 
     constinit const char      c_szTraceStat[]         = "sd:/config/d3hack-nx/debug.txt";
-    constinit const char      c_szVariableResString[] = "Resolution Multiplier: %4.2f | %4dp";
+    constinit const char      c_szVariableResString[] = "Output %4dp (Scaled %4dp)";
     constinit const Signature c_tSignature {
         "   " D3HACK_VER CRLF D3HACK_WEB CRLF " ", "Diablo III v", 2, 7, 6
     };
@@ -153,7 +153,7 @@ namespace d3 {
         jest.Patch<Movz>(0x0E785C, X9, out_w);
         jest.Patch<Movk>(0x0E7864, X9, out_h, ShiftValue_32);
 
-        if (global_config.resolution_hack.fixed_res) {
+        if (global_config.resolution_hack.min_res_scale >= 100.0f) {
             /* VariableResRWindowData->flMinPercent = 0.70f - 0x03CBBC: MOVK X9, #0x3F33, LSL#48 (CGameVariableResInitializeForRWindow) */
             jest.Patch<Movk>(0x03CBBC, X9, 0x3F80, ShiftValue_48);  // 100% (1.0f) minimum resolution scale
         }
@@ -272,25 +272,25 @@ namespace d3 {
         constexpr s64 kBuffStartFallback = 1;
         constexpr s64 kBuffEndFallback   = 0x7FFFFFFFFFFFFFFFLL;
 
-        auto *buff_start = *reinterpret_cast<s64 **>(GameOffset(0x114ACB8));
-        auto *buff_end   = *reinterpret_cast<s64 **>(GameOffset(0x114ACC0));
+        auto *buff_start = *reinterpret_cast<s64 **>(GameOffsetFromTable("event_buff_start_ptr"));
+        auto *buff_end   = *reinterpret_cast<s64 **>(GameOffsetFromTable("event_buff_end_ptr"));
         if (buff_start && buff_end && (!*buff_start || !*buff_end || *buff_end <= *buff_start)) {
             *buff_start = kBuffStartFallback;
             *buff_end   = kBuffEndFallback;
         }
 
-        if (auto *egg_flag = *reinterpret_cast<u32 **>(GameOffset(0x114AE38)))
+        if (auto *egg_flag = *reinterpret_cast<u32 **>(GameOffsetFromTable("event_egg_flag_ptr")))
             *egg_flag = global_config.events.EasterEggWorldEnabled ? 1u : 0u;
 
-        if (auto *igr = *reinterpret_cast<uintptr_t **>(GameOffset(0x1154BF0)))
+        if (auto *igr = *reinterpret_cast<uintptr_t **>(GameOffsetFromTable("event_igr_ptr")))
             XVarBool_Set(igr, global_config.events.IgrEnabled, 3u);
-        if (auto *ann = *reinterpret_cast<uintptr_t **>(GameOffset(0x1154C00)))
+        if (auto *ann = *reinterpret_cast<uintptr_t **>(GameOffsetFromTable("event_ann_ptr")))
             XVarBool_Set(ann, global_config.events.AnniversaryEnabled, 3u);
-        if (auto *egg_xvar = *reinterpret_cast<uintptr_t **>(GameOffset(0x1152CC8)))
+        if (auto *egg_xvar = *reinterpret_cast<uintptr_t **>(GameOffsetFromTable("event_egg_xvar_ptr")))
             XVarBool_Set(egg_xvar, global_config.events.EasterEggWorldEnabled, 3u);
-        if (auto *event_enabled = *reinterpret_cast<uintptr_t **>(GameOffset(0x114ACD8)))
+        if (auto *event_enabled = *reinterpret_cast<uintptr_t **>(GameOffsetFromTable("event_enabled_ptr")))
             XVarBool_Set(event_enabled, true, 3u);
-        if (auto *event_season_only = *reinterpret_cast<uintptr_t **>(GameOffset(0x114ACE8)))
+        if (auto *event_season_only = *reinterpret_cast<uintptr_t **>(GameOffsetFromTable("event_season_only_ptr")))
             XVarBool_Set(event_season_only, false, 3u);
 
         auto set_bool = [](uintptr_t *var, bool value) {
@@ -298,25 +298,25 @@ namespace d3 {
                 XVarBool_Set(var, value, 3u);
         };
 
-        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x18FFFC8)), global_config.events.DoubleRiftKeystones);
-        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x1900080)), global_config.events.DoubleBloodShards);
-        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x1900138)), global_config.events.DoubleTreasureGoblins);
-        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x19001F0)), global_config.events.DoubleBountyBags);
-        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x19002A8)), global_config.events.RoyalGrandeur);
-        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x1900360)), global_config.events.LegacyOfNightmares);
-        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x1900418)), global_config.events.TriunesWill);
-        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x19004D0)), global_config.events.Pandemonium);
-        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x1900588)), global_config.events.KanaiPowers);
-        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x1900640)), global_config.events.TrialsOfTempests);
-        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x19006F8)), global_config.events.ShadowClones);
-        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x19007B0)), global_config.events.FourthKanaisCubeSlot);
-        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x1900868)), global_config.events.EtherealItems);
-        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x1900920)), global_config.events.SoulShards);
-        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x19009D8)), global_config.events.SwarmRifts);
-        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x1900A90)), global_config.events.SanctifiedItems);
-        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x1900B48)), global_config.events.DarkAlchemy);
-        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x18FF848)), global_config.events.NestingPortals);
-        set_bool(reinterpret_cast<uintptr_t *>(GameOffset(0x1900C00)), false);  // ParagonCap off by default
+        set_bool(&s_varDoubleRiftKeystones, global_config.events.DoubleRiftKeystones);
+        set_bool(&s_varDoubleBloodShards, global_config.events.DoubleBloodShards);
+        set_bool(&s_varDoubleTreasureGoblins, global_config.events.DoubleTreasureGoblins);
+        set_bool(&s_varDoubleBountyBags, global_config.events.DoubleBountyBags);
+        set_bool(&s_varRoyalGrandeur, global_config.events.RoyalGrandeur);
+        set_bool(&s_varLegacyOfNightmares, global_config.events.LegacyOfNightmares);
+        set_bool(&s_varTriunesWill, global_config.events.TriunesWill);
+        set_bool(&s_varPandemonium, global_config.events.Pandemonium);
+        set_bool(&s_varKanaiPowers, global_config.events.KanaiPowers);
+        set_bool(&s_varTrialsOfTempests, global_config.events.TrialsOfTempests);
+        set_bool(&s_varShadowClones, global_config.events.ShadowClones);
+        set_bool(&s_varFourthKanaisCubeSlot, global_config.events.FourthKanaisCubeSlot);
+        set_bool(&s_varEtherealItems, global_config.events.EtherealItems);
+        set_bool(&s_varSoulShards, global_config.events.SoulShards);
+        set_bool(&s_varSwarmRifts, global_config.events.SwarmRifts);
+        set_bool(&s_varSanctifiedItems, global_config.events.SanctifiedItems);
+        set_bool(&s_varDarkAlchemy, global_config.events.DarkAlchemy);
+        set_bool(&s_varNestingPortals, global_config.events.NestingPortals);
+        set_bool(&s_varParagonCap, false);  // ParagonCap off by default
 
         // if (global_config.events.DoubleRiftKeystones)    jest.Patch<Movz>(0x4A7BD8, W3, 1);
         // if (global_config.events.DoubleBloodShards)      jest.Patch<Movz>(0x4A7C04, W3, 1);

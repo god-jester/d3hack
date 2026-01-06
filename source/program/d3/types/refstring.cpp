@@ -18,14 +18,16 @@ SETUP_CRS_PTR(CRefString_Allocate);
 SETUP_CRS_PTR(CRefString_Append);
 
 CRefString::CRefString() {
-    this->m_pData                    = reinterpret_cast<CRefStringData *>(g_RefStringDataBufferNil);
-    this->m_pszString                = g_RefStringDataBufferNil->m_szString;
+    auto *nil                        = GetRefStringDataBufferNil();
+    this->m_pData                    = reinterpret_cast<CRefStringData *>(nil);
+    this->m_pszString                = nil->m_szString;
     this->m_bForceAppLevelMemoryPool = 0;
 }
 
 CRefString::CRefString(int bForceAppLevelMemoryPool) {
-    this->m_pData                    = reinterpret_cast<CRefStringData *>(g_RefStringDataBufferNil);
-    this->m_pszString                = g_RefStringDataBufferNil->m_szString;
+    auto *nil                        = GetRefStringDataBufferNil();
+    this->m_pData                    = reinterpret_cast<CRefStringData *>(nil);
+    this->m_pszString                = nil->m_szString;
     this->m_bForceAppLevelMemoryPool = bForceAppLevelMemoryPool;
 }
 

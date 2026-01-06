@@ -2,6 +2,7 @@
 
 #include "lib/hook/trampoline.hpp"
 #include "../../config.hpp"
+#include "d3/types/common.hpp"
 #include <string>
 #include <string_view>
 
@@ -12,19 +13,19 @@ namespace d3 {
         }
 
         void ClearConfigRequestFlag() {
-            auto flag_ptr = reinterpret_cast<uint32_t **>(GameOffset(0x114AD48));
+            auto flag_ptr = reinterpret_cast<uint32_t **>(GameOffsetFromTable("season_config_request_flag_ptr"));
             if (flag_ptr && *flag_ptr)
                 **flag_ptr = 0;
         }
 
         void ClearSeasonsRequestFlag() {
-            auto flag_ptr = reinterpret_cast<uint8_t **>(GameOffset(0x114AD50));
+            auto flag_ptr = reinterpret_cast<uint8_t **>(GameOffsetFromTable("season_seasons_request_flag_ptr"));
             if (flag_ptr && *flag_ptr)
                 **flag_ptr = 0;
         }
 
         void ClearBlacklistRequestFlag() {
-            auto flag_ptr = reinterpret_cast<uint8_t **>(GameOffset(0x114AD68));
+            auto flag_ptr = reinterpret_cast<uint8_t **>(GameOffsetFromTable("season_blacklist_request_flag_ptr"));
             if (flag_ptr && *flag_ptr)
                 **flag_ptr = 0;
         }
@@ -224,10 +225,10 @@ namespace d3 {
 
     void SetupSeasonEventHooks() {
         ConfigFileRetrieved::
-            InstallAtOffset(0x641F0);
+            InstallAtSymbol("hook_config_file_retrieved");
         SeasonsFileRetrieved::
-            InstallAtOffset(0x65270);
+            InstallAtSymbol("hook_seasons_file_retrieved");
         BlacklistFileRetrieved::
-            InstallAtOffset(0x657F0);
+            InstallAtSymbol("hook_blacklist_file_retrieved");
     }
 }  // namespace d3

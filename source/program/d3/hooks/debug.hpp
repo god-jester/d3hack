@@ -3,6 +3,7 @@
 #include "lib/hook/trampoline.hpp"
 #include "lib/util/modules.hpp"
 #include "../../config.hpp"
+#include "d3/_util.hpp"
 #include "nvn.hpp"
 #include "d3/types/common.hpp"
 
@@ -120,6 +121,7 @@ namespace d3 {
             // DisplayInternalError(LPCSTR pszMessage, LPCSTR szFile, int32 nLine, ErrorCode eErrorCode)
             PRINT_EXPR("\t!!!INTERNAL ERROR!!!\n\tpszMessage: %s szFile: %s nLine: %d", (LPCSTR)ctx->X[0], (LPCSTR)ctx->X[1], (u32)ctx->X[2])
             PRINT_EXPR("eErrorCode: 0x%x | FP: 0x%lx LR: 0x%lx", (u32)ctx->X[3], ctx->X[29], ctx->X[30])
+            DumpStackTrace("DisplayInternalError", ctx->X[29]);
         }
     };
 
@@ -144,6 +146,7 @@ namespace d3 {
     HOOK_DEFINE_INLINE(Print_ErrorStringFinal) {
         static void Callback(exl::hook::InlineCtx *ctx) {
             PRINT_EXPR("DisplayErrorMessage strfinal: %s", (LPCSTR)ctx->X[0])
+            DumpStackTrace("DisplayErrorMessage", ctx->X[29]);
         }
     };
 
@@ -857,27 +860,27 @@ namespace d3 {
             // StorageGetPubFile::
             //     InstallAtFuncPtr(StorageGetPublisherFile);
             Print_ChallengeRiftFailed::
-                InstallAtOffset(0x185AA0);
+                InstallAtSymbol("hook_print_challenge_rift_failed");
             ChallengeRiftCallback::
-                InstallAtOffset(0x185F70);
+                InstallAtSymbol("hook_challenge_rift_callback");
             ParsePartialFromStringHook::
                 InstallAtFuncPtr(ParsePartialFromString);
         }
 
         if (!global_config.defaults_only && global_config.debug.active && global_config.debug.enable_pubfile_dump) {
             PubFileDataHex::
-                InstallAtOffset(0x6A2A8);  // Use to dump online files
+                InstallAtSymbol("hook_pubfile_data_hex");  // Use to dump online files
         }
 
         if (global_config.debug.active && global_config.debug.enable_error_traces) {
             Print_ErrorDisplay::
-                InstallAtOffset(0xA2AC60);
+                InstallAtSymbol("hook_print_error_display");
             // Print_Error::
             //     InstallAtOffset(0xA2AC70);
             // Print_ErrorString::
             //     InstallAtOffset(0xA2AE14);
             Print_ErrorStringFinal::
-                InstallAtOffset(0xA2AE74);
+                InstallAtSymbol("hook_print_error_string_final");
         }
         if (global_config.debug.active) {
             // GfxWindowChangeDisplayModeHook::
@@ -899,7 +902,7 @@ namespace d3 {
             // if (global_config.debug.active) {
             //     GfxStencilBufferSetParamsHook::
             //         InstallAtOffset(0x0EFE60);
-            //     PRINT("%s installed", "GfxStencilBufferSetParamsHook")
+            //     PRINT_LINE("GfxStencilBufferSetParamsHook installed");
             // }
             // Phase 1 rollback: disable NVN texture mutation hook to isolate mosaic issues.
             // (Keep display-mode logging enabled for visibility.)

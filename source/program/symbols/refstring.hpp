@@ -40,11 +40,15 @@ CRS_PTR(0xA49370, CRefString_Append,                void (*)(CRefString*, const 
 
 #undef CRS_PTR
 
-static TRefStringDataBuffer *g_RefStringDataBufferNil = reinterpret_cast<TRefStringDataBuffer *>(GameOffset(0x1A5F108));
+static inline TRefStringDataBuffer *GetRefStringDataBufferNil() {
+    static TRefStringDataBuffer *s_nil =
+        reinterpret_cast<TRefStringDataBuffer *>(GameOffsetFromTable("refstring_data_buffer_nil"));
+    return s_nil;
+}
 
 struct ALIGNED(8) CRefString {
-    CRefStringData *m_pData                    = reinterpret_cast<CRefStringData *>(g_RefStringDataBufferNil);
-    CHAR           *m_pszString                = g_RefStringDataBufferNil->m_szString;
+    CRefStringData *m_pData                    = reinterpret_cast<CRefStringData *>(GetRefStringDataBufferNil());
+    CHAR           *m_pszString                = GetRefStringDataBufferNil()->m_szString;
     BOOL            m_bForceAppLevelMemoryPool = 0;
 
     CRefString();

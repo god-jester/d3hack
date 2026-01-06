@@ -69,7 +69,7 @@ namespace d3 {
             array.SetNthBit(38, true);
             array.SetNthBit(40, true);
             for (int i = 0; i < 62; ++i) {
-                PRINT_EXPR("%i %i", i, CmdLineGetParams()->tBitArray.GetNthBit(i))
+                PRINT_EXPR("%i %i", i, CmdLineGetParams()->tBitArray.GetNthBit(i));
             }
         }
     };
@@ -82,7 +82,7 @@ namespace d3 {
                 return ret;
             FastAttribKey tKey;
             tKey.nValue = ATTACKS_PER_SECOND_TOTAL, ACD_AttributesSetFloat(ptACD, tKey, 3.0f);
-            PRINT_EXPR("ORIG ATKSPD: %f", ret)
+            PRINT_EXPR("ORIG ATKSPD: %f", ret);
             return ret * 5.5f;
         }
     };
@@ -156,10 +156,10 @@ namespace d3 {
             ctx->X[2]         = static_cast<uint32>(g_ptGfxData->workerData[0].dwRTHeight);
             ctx->X[3]         = static_cast<uint32>(ptVarRWindow->flPercent * g_ptGfxData->tCurrentMode.dwHeight);
 
-            if (global_config.overlays.active && global_config.overlays.var_res_label)
-                AppDrawFlagSet(APP_DRAW_VARIABLE_RES_DEBUG_BIT, 1);
-            if (global_config.overlays.active && global_config.overlays.fps_label)
-                AppDrawFlagSet(APP_DRAW_FPS_BIT, 1);
+            // if (global_config.overlays.active && global_config.overlays.var_res_label)
+            //     AppDrawFlagSet(APP_DRAW_VARIABLE_RES_DEBUG_BIT, 1);
+            // if (global_config.overlays.active && global_config.overlays.fps_label)
+            //     AppDrawFlagSet(APP_DRAW_FPS_BIT, 1);
 
             // [[maybe_unused]] auto dwHeight     = g_ptGfxData->tCurrentMode.dwHeight;
             // [[maybe_unused]] auto dwUIHeight   = g_ptGfxData->tCurrentMode.dwUIOptHeight;
@@ -212,10 +212,10 @@ namespace d3 {
             auto vecPointUIC = *reinterpret_cast<Vector2D **>(&ctx->X[2]);
             if (g_draw_count < 2) {
                 if (vecPointUIC != nullptr) {
-                    PRINT_EXPR("%f %f", vecPointUIC->x, vecPointUIC->y)
-                    PRINT_EXPR("%f %f %f", tProps->flStereoDepth, tProps->flAdvanceScalar, tProps->flScale)
-                    PRINT_EXPR("%i %i", tProps->nFontSize, tProps->snoFont)
-                    PRINT_EXPR("%i %i", tProps->fSnapToPixelCenterX, tProps->fSnapToPixelCenterY)
+                    PRINT_EXPR("%f %f", vecPointUIC->x, vecPointUIC->y);
+                    PRINT_EXPR("%f %f %f", tProps->flStereoDepth, tProps->flAdvanceScalar, tProps->flScale);
+                    PRINT_EXPR("%i %i", tProps->nFontSize, tProps->snoFont);
+                    PRINT_EXPR("%i %i", tProps->fSnapToPixelCenterX, tProps->fSnapToPixelCenterY);
                     // vecPointUIC->x -= 2.0f;
                     // vecPointUIC->y += 2.0f;
                     // PRINT_EXPR("%f %f", vecPointUIC->x, vecPointUIC->y)
@@ -315,7 +315,7 @@ namespace d3 {
             return;
             if (eType == GB_ITEMS) {
                 // int counter = 0;
-                PRINT_EXPR("%d", sg_tAppGlobals.ptItemAppGlobals->nItems)
+                PRINT_EXPR("%d", sg_tAppGlobals.ptItemAppGlobals->nItems);
                 // PRINT_EXPR("%d", sg_tAppGlobals.ptItemAppGlobals->tRootItemType.gbid)
                 // if (sg_tAppGlobals.ptItemAppGlobals->nItems > 0) {
 
@@ -352,7 +352,7 @@ namespace d3 {
         }
 
         CmdLineParse::
-            InstallAtOffset(0x758000);
+            InstallAtSymbol("hook_cmd_line_parse");
         HostArgC::
             InstallAtFuncPtr(nn::os::GetHostArgc);
         HostArgV::
@@ -368,25 +368,25 @@ namespace d3 {
         }
         if (global_config.rare_cheats.active && global_config.rare_cheats.move_speed != 1.0) {
             MoveSpeed::
-                InstallAtOffset(0xC8000);
+                InstallAtSymbol("hook_move_speed");
         }
         if (global_config.rare_cheats.active && global_config.rare_cheats.attack_speed != 1.0) {
             AttackSpeed::
-                InstallAtOffset(0x6CC600);
+                InstallAtSymbol("hook_attack_speed");
         }
         if (global_config.rare_cheats.active && global_config.rare_cheats.floating_damage_color) {
             FloatingDmgHook::
-                InstallAtOffset(0xBB5E8);
+                InstallAtSymbol("hook_floating_dmg");
         }
         if (global_config.rare_cheats.active && global_config.rare_cheats.font_hooks) {
             FontStringGetRenderedSizeHook::
-                InstallAtOffset(0x03FEE8);
+                InstallAtSymbol("hook_font_string_get_rendered_size");
             FontStringDrawHook::
-                InstallAtOffset(0x03FF50);
+                InstallAtSymbol("hook_font_string_draw_03ff50");
             FontStringDrawHook::
-                InstallAtOffset(0x03E5B0);
+                InstallAtSymbol("hook_font_string_draw_03e5b0");
             FontStringDrawHook::
-                InstallAtOffset(0x10C8);
+                InstallAtSymbol("hook_font_string_draw_0010c8");
         }
     }
 

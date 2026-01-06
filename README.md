@@ -29,7 +29,7 @@ Breakdown:
 
 - **Config**: `[resolution_hack]` in `config.toml` sets `OutputHeight` (`1080`/`1440`/`2160`), `fixed_res`, and `clamp_textures_2048` (recommended; 4K output is unstable).
 - **Patches**: `PatchResolutionTargets()` in `source/program/d3/patches.hpp` rewrites the default display mode pair, forces docked/perf checks, and nudges font point sizes for high-res output.
-- **Hooks (shipping path)**: `source/program/d3/hooks/resolution.hpp` installs `PostFXInitClampDims` (internal RT clamp) plus `GfxSetRenderAndDepthTargetSwapchainFix` / `GfxSetDepthTargetSwapchainFix` (depth detach fix for the hard-clip). These only install when output exceeds the internal clamp, so 1080p skips them.
+- **Hooks (shipping path)**: `source/program/d3/hooks/resolution.hpp` installs `PostFXInitClampDims` (internal RT clamp) plus `GfxViewportSetSwapchainDepthGate` + `GfxSetDepthTargetSwapchainFix` (detach the clamped swapchain depth target to prevent the hard-clip, without breaking inventory depth). These only install when output exceeds the internal clamp, so 1080p skips them.
 - **Notes**: UI basis/NDC/UIC conversion hooks and stencil overrides were tested but do **not** fix the clip, so they stay out of the shipping path.
 
 ---

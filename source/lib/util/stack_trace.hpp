@@ -131,6 +131,6 @@ namespace exl::util::stack_trace {
         Iterator(uintptr_t fp, Range stack): AbstractIterator(fp, 0, stack) {}
 
         inline bool IsValidLr(uintptr_t lr) const { return true; }
-        inline bool IsValidPointer(void*) const { return true; }
+        inline bool IsValidPointer(const void*) const { return true; }
     };
 }

@@ -2,13 +2,15 @@
 
 #include "symbols/common.hpp"
 #include "nn/util/util_snprintf.hpp"
+#include "program/build_info.hpp"
+#include "program/logging.hpp"
+#include <cstdio>
 
 #define DBGLOG
 #define DBGPRINT
 #define D3HACK_VER     "D3Hack v2.2"
 #define D3HACK_AUTHOR  "jester"
 #define D3HACK_WEB     "https://jester.dev"
-#define D3CLIENT_VER   "2.7.6.90885"
 #define CRLF           "\n"
 #define D3HACK_DESC    "Realtime hack for Diablo III: Eternal Collection" CRLF D3HACK_WEB
 #define D3HACK_BUILD   "(Built by " D3HACK_AUTHOR " @ " __DATE__ " " __TIME__ ")"
@@ -19,31 +21,35 @@
 #ifndef DBGLOG
 #define LOG(...) (static_cast<void>(sizeof(__VA_ARGS__)));
 #else
-#define LOG(fmt, ...) \
-    (TraceInternal_Log(SLVL_INFO, 3u, OUTPUTSTREAM_DEFAULT, ": " fmt "\n", __VA_ARGS__));
+#define LOG(fmt, ...)                                                \
+    {                                                                \
+        exl::log::LogFmt("[" EXL_MODULE_NAME "] " fmt, __VA_ARGS__); \
+    }
 #endif
 
 #ifndef DBGPRINT
 #define PRINT(...) (static_cast<void>(sizeof(__VA_ARGS__)));
-// #define PRINT      LOG
 #define PRINT_EXPR PRINT
 #else
-#define PRINT(fmt, ...)                                                     \
-    {                                                                       \
-        LOG(fmt, __VA_ARGS__)                                               \
-        const auto nSize   = snprintf(nullptr, 0, fmt, __VA_ARGS__);        \
-        char      *pBuf    = static_cast<char *>(alloca(nSize + 1));        \
-        const auto nLength = snprintf(pBuf, (nSize + 1), fmt, __VA_ARGS__); \
-        svcOutputDebugString(pBuf, nLength);                                \
+#define PRINT(fmt, ...)                                      \
+    {                                                        \
+        exl::log::PrintFmt(EXL_LOG_PREFIX fmt, __VA_ARGS__); \
     }
-#define PRINT_EXPR(fmt, ...) \
-    PRINT("\n> %s\n\t | " #__VA_ARGS__ ": " fmt, __PRETTY_FUNCTION__, __VA_ARGS__)  // __PRETTY_FUNCTION__ | __FUNCTION__
+#define PRINT_LINE(buf) (exl::log::PrintFmt(EXL_LOG_PREFIX "%s", buf))
+#define PRINT_EXPR(fmt, ...)                                                   \
+    {                                                                          \
+        exl::log::PrintFmt("\n"                                                \
+                           "[" EXL_MODULE_NAME "] @ %s\n"                      \
+                           "[" EXL_MODULE_NAME "]    " #__VA_ARGS__ " = " fmt, \
+                           __PRETTY_FUNCTION__, ##__VA_ARGS__);                \
+    }  // __PRETTY_FUNCTION__ | __FUNCTION__
+
 #endif
 
-#define SNPRINT(buf, fmt, ...)                                     \
-    {                                                              \
-        const auto nSize = snprintf(nullptr, 0, fmt, __VA_ARGS__); \
-        snprintf(buf, (nSize + 1), fmt, __VA_ARGS__);              \
+#define SNPRINT(buf, fmt, ...)                                    \
+    {                                                             \
+        const int nSize = snprintf(nullptr, 0, fmt, __VA_ARGS__); \
+        snprintf(buf, (nSize + 1), fmt, __VA_ARGS__);             \
     }
 
 constinit const char c_szSeasonSwap[] =

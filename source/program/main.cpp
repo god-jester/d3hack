@@ -3,6 +3,8 @@
 #include "lib/diag/assert.hpp"
 #include "lib/armv8/instructions.hpp"
 #include "lib/util/sys/modules.hpp"
+#include "lib/util/version.hpp"
+#include "program/build_info.hpp"
 #include "nn/fs/fs_mount.hpp"
 #include "d3/_util.hpp"
 #include "d3/_lobby.hpp"
@@ -28,32 +30,15 @@
 
 namespace d3 {
     namespace {
-        const char *FindStringInRange(const exl::util::Range &range, std::string_view needle) {
-            if (needle.empty() || range.m_Size < needle.size())
-                return nullptr;
-            const char *start = reinterpret_cast<const char *>(range.m_Start);
-            const char *end   = start + range.m_Size - needle.size();
-            for (const char *p = start; p <= end; ++p) {
-                if (std::memcmp(p, needle.data(), needle.size()) == 0)
-                    return p;
-            }
-            return nullptr;
-        }
-
-        bool CheckBuildString() {
-            const auto &mod = exl::util::GetMainModuleInfo();
-            return FindStringInRange(mod.m_Rodata, D3CLIENT_VER) != nullptr;
-        }
-
         bool VerifySignature() {
-            if (CheckBuildString())
+            if (exl::util::GetUserVersion() == exl::util::UserVersion::DEFAULT)
                 return true;
             PRINT("Signature guard failed; build string \"%s\" not found", D3CLIENT_VER);
             return false;
         }
 
         bool g_config_hooks_installed = false;
-    }
+    }  // namespace
 
     // static auto diablo_rounding(u32 nDamage) {
     //     float flTruncated = to_float(nDamage) / 1.0e12f;
@@ -83,7 +68,7 @@ namespace d3 {
     HOOK_DEFINE_TRAMPOLINE(GfxInit){
         static auto Callback() -> BOOL {
             auto ret    = Orig();
-            g_ptGfxData = *reinterpret_cast<GfxInternalData **const>(GameOffset(0x1830F68));
+            g_ptGfxData = *reinterpret_cast<GfxInternalData **const>(GameOffsetFromTable("gfx_internal_data_ptr"));
             return ret;
         }
     };
@@ -102,7 +87,7 @@ namespace d3 {
     HOOK_DEFINE_TRAMPOLINE(ShellInitialize){
         static auto Callback(uint32 hInstance, uint32 hWndParent) -> BOOL {
             auto ret        = Orig(hInstance, hWndParent);
-            g_ptMainRWindow = reinterpret_cast<RWindow *const>(GameOffset(0x17DE610));
+            g_ptMainRWindow = reinterpret_cast<RWindow *const>(GameOffsetFromTable("main_rwindow"));
 
             // char *pBuf = static_cast<char *>(alloca(0xFF));
             // for (u32 nDamage = 0x5dde0b6b; nDamage < 0x62e8d4a6; nDamage += 0x1) {
@@ -132,9 +117,9 @@ namespace d3 {
             //     }
             // }
 
-            PRINT("%s", "FINISHED!")
+            PRINT_LINE("ShellInitialized");
 
-            PRINT_EXPR("local logging: %d", *((BOOL *)(GameOffset(0x1A482C8) + 0xB0)))
+            // PRINT_EXPR("local logging: %d", *((BOOL *)(GameOffset(0x1A482C8) + 0xB0)));
             // auto sLocalLogging = *reinterpret_cast<uintptr_t *>(GameOffset(0x115A408));
             // auto sLocalLogging = FollowPtr<uintptr_t, 0>(GameOffset(0x115A408));
             // XVarBool_Set(sLocalLogging, true, 3);
@@ -161,7 +146,7 @@ namespace d3 {
         static auto Callback(GameParams *tParams, const OnlineService::PlayerResolveData *ptResolvedPlayer) -> SGameID {
             auto ret        = Orig(tParams, ptResolvedPlayer);
             auto sGameCurID = AppServerGetOnlyGame();
-            PRINT_EXPR("NEW SGameInitialize! %x : %i", sGameCurID, ServerIsLocal())
+            PRINT_EXPR("%x, %i", sGameCurID, ServerIsLocal());
             return ret;
         }
     };
@@ -169,9 +154,9 @@ namespace d3 {
         static void Callback(SNO snoWorld, uintptr_t *ptSWorld) {
             Orig(snoWorld, ptSWorld);
             auto tSGameGlobals   = SGameGlobalsGet();
-            auto sGameConnection = ServerGetOnlyGameConnection();
             auto sGameCurID      = AppServerGetOnlyGame();
-            PRINT("NEW sInitializeWorld! (SGame: %x | Connection: %x | Primary for connection: %p) %s %s", sGameCurID, sGameConnection, GetPrimaryPlayerForGameConnection(sGameConnection), tSGameGlobals->uszCreatorAccountName, tSGameGlobals->uszCreatorHeroName)
+            gs_idGameConnection  = ServerGetOnlyGameConnection();
+            PRINT("NEW sInitializeWorld! (SGame: %x | Connection: %x | Primary for connection: %p) %s %s", sGameCurID, gs_idGameConnection, GetPrimaryPlayerForGameConnection(gs_idGameConnection), tSGameGlobals->uszCreatorAccountName, tSGameGlobals->uszCreatorHeroName);
         }
     };
     HOOK_DEFINE_TRAMPOLINE(MainInit){
@@ -184,6 +169,8 @@ namespace d3 {
             // Require our SD to be mounted before running nnMain()
             R_ABORT_UNLESS(nn::fs::MountSdCardForDebug("sd"));
             LoadPatchConfig();
+
+            CGameVariableResInitializeForRWindowHook::InstallAtOffset(0x03CB90);
 
             // Apply patches based on config
             if (!g_config_hooks_installed) {
@@ -223,12 +210,12 @@ namespace d3 {
         /* Setup hooking environment. */
         exl::hook::Initialize();
 
-        MainInit::InstallAtOffset(0x480);
-        GfxInit::InstallAtOffset(0x298BD0);
-        ShellInitialize::InstallAtOffset(0x667830);
-        GameCommonDataInit::InstallAtOffset(0x4CABA0);
-        // SGameInitialize::InstallAtOffset(0x7B08A0);
-        // sInitializeWorld::InstallAtOffset(0x8127A0);
+        MainInit::InstallAtSymbol("hook_main_init");
+        GfxInit::InstallAtSymbol("hook_gfx_init");
+        ShellInitialize::InstallAtSymbol("hook_shell_initialize");
+        GameCommonDataInit::InstallAtSymbol("hook_game_common_data_init");
+        SGameInitialize::InstallAtSymbol("hook_sgame_initialize");
+        sInitializeWorld::InstallAtSymbol("hook_sinitialize_world");
         // StubCopyright::InstallAtFuncPtr(nn::oe::SetCopyrightVisibility);
     }
 
