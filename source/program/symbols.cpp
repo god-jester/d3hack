@@ -24,7 +24,7 @@ SETUP_FUNC_PTR(FileClose);
 SETUP_FUNC_PTR(FileWrite);
 SETUP_FUNC_PTR(sReadFile);
 SETUP_FUNC_PTR(TraceInternal_Log);
-SETUP_FUNC_PTR(/*Blizz::Thread::*/ GetLocalStorage);
+SETUP_FUNC_PTR(GetLocalStorage);
 SETUP_FUNC_PTR(GetGameMessageTypeAndSize);
 SETUP_FUNC_PTR(DisplaySeasonEndingMessage);
 SETUP_FUNC_PTR(DisplayLongMessageForPlayer);

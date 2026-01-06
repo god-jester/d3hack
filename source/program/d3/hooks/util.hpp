@@ -360,7 +360,7 @@ namespace d3 {
 
         if (global_config.overlays.active && global_config.overlays.var_res_label) {
             VarResHook::
-                InstallAtOffset(0x3CC74);
+                InstallAtSymbol("hook_var_res_label");
         }
         if (global_config.loot_modifiers.active) {
             ForceAncient::

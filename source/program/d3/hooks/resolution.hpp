@@ -4,14 +4,18 @@
 #include "lib/hook/trampoline.hpp"
 #include "d3/_util.hpp"
 #include "d3/types/common.hpp"
+#include <cstddef>
 
 namespace d3 {
     namespace {
         constexpr uint32 kInternalClampDim = 2048;
-        constexpr SNO    kSwapchainDetachDepthSno = -6115;  // Empirically: clamped swapchain depth (avoid inventory depth bugs).
-        constexpr uint32 kCompareUnknown          = 0;
-        constexpr uint32 kCompareAlways           = 8;
-        constexpr uint32 kRENDERLAYER_OPAQUE      = 5;
+        [[maybe_unused]] constexpr SNO    kSwapchainDetachDepthSno = -6115;  // Empirically: clamped swapchain depth (avoid inventory depth bugs).
+        [[maybe_unused]] constexpr uint32 kCompareUnknown          = 0;
+        [[maybe_unused]] constexpr uint32 kCompareAlways           = 8;
+        [[maybe_unused]] constexpr uint32 kRENDERLAYER_OPAQUE      = 5;
+        constexpr uint32                  kRenderLayerUI           = 10;
+        constexpr uint32                  kRenderLayerBnetUI       = 18;
+        constexpr uint32                  kRenderLayerUIOverlay    = 19;
 
         struct ResolutionRTView {
             SNO   snoRTTex;
@@ -51,6 +55,22 @@ namespace d3 {
             uint32                 eVertexPreprocessStep;
             ResolutionRenderParams tRenderParams;
         };
+
+        struct UIWindowLite {
+            uint8  pad0[0x88];
+            Rect2D m_rect;                // 0x88
+            uint8  pad1[0xAC - 0x88 - sizeof(Rect2D)];
+            uint32 m_dwFlags;             // 0xAC
+            uint8  pad2[0x160 - 0xAC - sizeof(uint32)];
+            Rect2D m_rectClipping;        // 0x160
+            uint8  pad3[0x1A0 - 0x160 - sizeof(Rect2D)];
+            Rect2D m_rectStoredClipping;  // 0x1A0
+        };
+
+        static_assert(offsetof(UIWindowLite, m_rect) == 0x88);
+        static_assert(offsetof(UIWindowLite, m_dwFlags) == 0xAC);
+        static_assert(offsetof(UIWindowLite, m_rectClipping) == 0x160);
+        static_assert(offsetof(UIWindowLite, m_rectStoredClipping) == 0x1A0);
 
         inline float CalcRenderScale(uint32 width, uint32 height) {
             if (width == 0 || height == 0)
@@ -106,6 +126,59 @@ namespace d3 {
             return (int_w > 0 && int_h > 0);
         }
 
+        inline bool ShouldLogSwapchainClip(uint32 &out_w, uint32 &out_h, uint32 &int_w, uint32 &int_h) {
+            if (!global_config.resolution_hack.active || !global_config.resolution_hack.clamp_textures_2048 || !g_ptGfxData)
+                return false;
+
+            ResolutionRTView rt0 {};
+            if (!GetResolutionRT0(rt0) || rt0.snoRTTex != 0)
+                return false;
+
+            if (!GetSwapchainDims(out_w, out_h))
+                return false;
+
+            float scale = 1.0f;
+            if (!GetInternalDims(out_w, out_h, int_w, int_h, scale))
+                return false;
+
+            return true;
+        }
+
+        inline bool IsSwapchainUILayer(uint32 layer) {
+            switch (layer) {
+            case kRenderLayerUI:
+            case kRenderLayerBnetUI:
+            case kRenderLayerUIOverlay:
+                return true;
+            default:
+                return false;
+            }
+        }
+
+        struct SwapchainLayerGateState {
+            uint32 layer;
+            bool   allow_detach;
+        };
+
+        static SwapchainLayerGateState s_swapchain_layer_gate = {};
+
+        inline void UpdateSwapchainLayerGate(uint32 layer, bool allow_detach) {
+            s_swapchain_layer_gate.layer        = layer;
+            s_swapchain_layer_gate.allow_detach = allow_detach;
+        }
+
+        inline void ClearSwapchainLayerGate() {
+            s_swapchain_layer_gate.allow_detach = false;
+        }
+
+        inline bool SwapchainLayerAllowsDetach() {
+            return s_swapchain_layer_gate.allow_detach;
+        }
+
+        inline bool ShouldDetachSwapchainDepth(SNO snoDepth) {
+            return snoDepth == kSwapchainDetachDepthSno;
+        }
+
         struct SwapchainDepthGateState {
             uint32 serial;
             uint32 consumed;
@@ -119,9 +192,12 @@ namespace d3 {
         static SwapchainDepthGateState s_swapchain_depth_gate = {};
 
         inline bool PassAllowsSwapchainDepthDetach(uint32 layer, uint32 z_write, uint32 z_cmp, uint32 stencil) {
-            if (z_write == 0 || stencil != 0)
-                return false;
-            return (z_cmp == 4 && layer == kRENDERLAYER_OPAQUE);
+            static_cast<void>(layer);
+            static_cast<void>(z_cmp);
+            static_cast<void>(stencil);
+            if (z_write != 0)  // || stencil != 0)
+                return true;
+            return true;
         }
 
         inline void UpdateSwapchainDepthGate(uint32 layer, uint32 z_write, uint32 z_cmp, uint32 stencil) {
@@ -137,7 +213,7 @@ namespace d3 {
             s_swapchain_depth_gate.allow_detach = false;
         }
 
-        inline bool ConsumeSwapchainDepthGate() {
+        [[maybe_unused]] inline bool ConsumeSwapchainDepthGate() {
             if (!s_swapchain_depth_gate.allow_detach)
                 return false;
             // if (s_swapchain_depth_gate.serial == s_swapchain_depth_gate.consumed)
@@ -213,6 +289,7 @@ namespace d3 {
 
             ResolutionRTView rt0 {};
             if (!GetResolutionRT0(rt0) || rt0.snoRTTex != 0) {
+                ClearSwapchainLayerGate();
                 Orig(snoDepth);
                 return;
             }
@@ -220,6 +297,7 @@ namespace d3 {
             uint32 out_w = 0;
             uint32 out_h = 0;
             if (!GetSwapchainDims(out_w, out_h)) {
+                ClearSwapchainLayerGate();
                 Orig(snoDepth);
                 return;
             }
@@ -228,12 +306,13 @@ namespace d3 {
             uint32 int_h = 0;
             float  scale = 1.0f;
             if (!GetInternalDims(out_w, out_h, int_w, int_h, scale)) {
+                ClearSwapchainLayerGate();
                 Orig(snoDepth);
                 return;
             }
 
-            // Detach only when the current swapchain pass does not use depth/stencil.
-            if (ConsumeSwapchainDepthGate()) {
+            // Detach only for the known clamped swapchain depth target.
+            if (ShouldDetachSwapchainDepth(snoDepth)) {
                 if (global_config.debug.active) {
                     struct DepthLogEntry {
                         SNO    depth;
@@ -258,7 +337,7 @@ namespace d3 {
 
                     if (count_ptr && *count_ptr < 32) {
                         PRINT(
-                            "Swapchain depth detach (state gate): depth=%d out=%ux%u int=%ux%u",
+                            "Swapchain depth detach (sno match): depth=%d out=%ux%u int=%ux%u",
                             snoDepth,
                             out_w,
                             out_h,
@@ -276,11 +355,140 @@ namespace d3 {
         }
     };
 
+    HOOK_DEFINE_TRAMPOLINE(GfxSetRenderAndDepthTargetSwapchainFix) {
+        // @ 0x29C670: GfxSetRenderAndDepthTarget(SNO color, SNO depth)
+        // Detach the clamped swapchain depth target.
+        static void Callback(const SNO snoColor, const SNO snoDepth) {
+            if (!global_config.resolution_hack.active || !global_config.resolution_hack.clamp_textures_2048 || !g_ptGfxData) {
+                Orig(snoColor, snoDepth);
+                return;
+            }
+
+            const bool is_swapchain = (snoColor == 0);
+            if (!is_swapchain) {
+                ClearSwapchainLayerGate();
+                Orig(snoColor, snoDepth);
+                return;
+            }
+
+            uint32 out_w = 0;
+            uint32 out_h = 0;
+            if (!GetSwapchainDims(out_w, out_h)) {
+                ClearSwapchainLayerGate();
+                Orig(snoColor, snoDepth);
+                return;
+            }
+
+            uint32 int_w = 0;
+            uint32 int_h = 0;
+            float  scale = 1.0f;
+            if (!GetInternalDims(out_w, out_h, int_w, int_h, scale)) {
+                ClearSwapchainLayerGate();
+                Orig(snoColor, snoDepth);
+                return;
+            }
+
+            if (ShouldDetachSwapchainDepth(snoDepth)) {
+                if (global_config.debug.active) {
+                    PRINT(
+                        "Swapchain depth detach (rt sno): color=%d depth=%d out=%ux%u int=%ux%u",
+                        snoColor,
+                        snoDepth,
+                        out_w,
+                        out_h,
+                        int_w,
+                        int_h
+                    );
+                }
+                Orig(snoColor, -1);
+                return;
+            }
+
+            Orig(snoColor, snoDepth);
+        }
+    };
+
+    HOOK_DEFINE_TRAMPOLINE(DisplayListDrawRenderLayerSwapchainGate) {
+        // @ 0x157294: DisplayList::DrawRenderLayer(RenderLayer)
+        static void Callback(void *self, const uint32 layer) {
+            if (!global_config.resolution_hack.active || !global_config.resolution_hack.clamp_textures_2048 || !g_ptGfxData) {
+                ClearSwapchainLayerGate();
+                Orig(self, layer);
+                return;
+            }
+
+            ResolutionRTView rt0 {};
+            if (!GetResolutionRT0(rt0) || rt0.snoRTTex != 0) {
+                ClearSwapchainLayerGate();
+                Orig(self, layer);
+                return;
+            }
+
+            uint32 out_w = 0;
+            uint32 out_h = 0;
+            if (!GetSwapchainDims(out_w, out_h)) {
+                ClearSwapchainLayerGate();
+                Orig(self, layer);
+                return;
+            }
+
+            uint32 int_w = 0;
+            uint32 int_h = 0;
+            float  scale = 1.0f;
+            if (!GetInternalDims(out_w, out_h, int_w, int_h, scale)) {
+                ClearSwapchainLayerGate();
+                Orig(self, layer);
+                return;
+            }
+
+            const bool allow_detach = IsSwapchainUILayer(layer);
+            UpdateSwapchainLayerGate(layer, allow_detach);
+
+            if (global_config.debug.active) {
+                struct LayerLogEntry {
+                    uint32 layer;
+                    uint32 count;
+                };
+                static LayerLogEntry s_entries[32] = {};
+                static uint32        s_num_entries = 0;
+
+                LayerLogEntry *entry = nullptr;
+                for (uint32 i = 0; i < s_num_entries; ++i) {
+                    if (s_entries[i].layer == layer) {
+                        entry = &s_entries[i];
+                        break;
+                    }
+                }
+                if (!entry && s_num_entries < 32) {
+                    entry        = &s_entries[s_num_entries++];
+                    entry->layer = layer;
+                    entry->count = 0;
+                }
+
+                if (entry && entry->count < 4) {
+                    PRINT(
+                        "Swapchain layer gate: layer=%u allow_detach=%u out=%ux%u int=%ux%u",
+                        layer,
+                        allow_detach ? 1u : 0u,
+                        out_w,
+                        out_h,
+                        int_w,
+                        int_h
+                    );
+                    ++entry->count;
+                }
+            }
+
+            Orig(self, layer);
+        }
+    };
+
     HOOK_DEFINE_TRAMPOLINE(SetStateBlockStatesSwapchainLog) {
         // @ 0x2A6E10: sSetStateBlockStates(RenderPass const*)
         // Log depth/stencil state when swapchain is bound and internal clamp is active.
         static void Callback(const ResolutionRenderPass *tPass) {
             if (!g_ptGfxData) {
+                ClearSwapchainLayerGate();
                 Orig(tPass);
                 return;
             }
@@ -288,6 +496,7 @@ namespace d3 {
             ResolutionRTView rt0 {};
             if (!GetResolutionRT0(rt0)) {  //} || rt0.snoRTTex != 0) {
                 ClearSwapchainDepthGate();
+                ClearSwapchainLayerGate();
                 Orig(tPass);
                 return;
             }
@@ -296,6 +505,7 @@ namespace d3 {
             uint32 out_h = 0;
             if (!GetSwapchainDims(out_w, out_h)) {
                 ClearSwapchainDepthGate();
+                ClearSwapchainLayerGate();
                 Orig(tPass);
                 return;
             }
@@ -305,6 +515,7 @@ namespace d3 {
             float  scale = 1.0f;
             if (!GetInternalDims(out_w, out_h, int_w, int_h, scale)) {
                 ClearSwapchainDepthGate();
+                ClearSwapchainLayerGate();
                 Orig(tPass);
                 return;
             }
@@ -368,6 +579,163 @@ namespace d3 {
         }
     };
 
+    HOOK_DEFINE_TRAMPOLINE(UIWindowGetCascadedClippingRectHook) {
+        // @ 0x3B2E70: UIWindow::GetCascadedClippingRect(UIWindow*)
+        static const Rect2D *Callback(UIWindowLite *self) {
+            const Rect2D *rect = Orig(self);
+
+            if (global_config.debug.active && self) {
+                uint32 out_w = 0;
+                uint32 out_h = 0;
+                uint32 int_w = 0;
+                uint32 int_h = 0;
+
+                if (ShouldLogSwapchainClip(out_w, out_h, int_w, int_h)) {
+                    static uint32 s_logged = 0;
+                    // const SNO     depth    = g_ptGfxData->workerData[0].snoCurrentDepthTarget;
+
+                    // if (depth != -1) {
+                    //     if (global_config.debug.active) {
+                    //         static uint32 s_detach_logged = 0;
+                    //         if (s_detach_logged < 32) {
+                    //             PRINT(
+                    //                 "Swapchain depth detach (ui clip): depth=%d out=%ux%u int=%ux%u",
+                    //                 depth,
+                    //                 out_w,
+                    //                 out_h,
+                    //                 int_w,
+                    //                 int_h
+                    //             );
+                    //             ++s_detach_logged;
+                    //         }
+                    //     }
+                    //     GfxSetDepthTargetSwapchainFix::Orig(-1);
+                    // }
+
+                    if (s_logged < 96) {
+                        PRINT(
+                            "UI clip cascaded: self=%p rect=[%.1f %.1f %.1f %.1f] clip=[%.1f %.1f %.1f %.1f]"
+                            " stored=[%.1f %.1f %.1f %.1f] out=%ux%u int=%ux%u",
+                            self,
+                            self->m_rect.left,
+                            self->m_rect.top,
+                            self->m_rect.right,
+                            self->m_rect.bottom,
+                            self->m_rectClipping.left,
+                            self->m_rectClipping.top,
+                            self->m_rectClipping.right,
+                            self->m_rectClipping.bottom,
+                            self->m_rectStoredClipping.left,
+                            self->m_rectStoredClipping.top,
+                            self->m_rectStoredClipping.right,
+                            self->m_rectStoredClipping.bottom,
+                            out_w,
+                            out_h,
+                            int_w,
+                            int_h
+                        );
+                        ++s_logged;
+                    }
+
+                    if (global_config.debug.enable_debug_flags) {
+                        self->m_rectStoredClipping.left   = 0.0f;
+                        self->m_rectStoredClipping.top    = 0.0f;
+                        self->m_rectStoredClipping.right  = static_cast<float>(out_w);
+                        self->m_rectStoredClipping.bottom = static_cast<float>(out_h);
+                        self->m_dwFlags |= 4;  // mark stored clip valid
+                        rect = &self->m_rectStoredClipping;
+                    }
+                }
+            }
+
+            return rect;
+        }
+    };
+
+    HOOK_DEFINE_TRAMPOLINE(UIWindowIsClippedHook) {
+        // @ 0x3B3A00: UIWindow::IsClipped() (mis-labeled in 2.7.6)
+        static bool Callback(UIWindowLite *self) {
+            const bool clipped = Orig(self);
+
+            if (global_config.debug.active && self) {
+                uint32 out_w = 0;
+                uint32 out_h = 0;
+                uint32 int_w = 0;
+                uint32 int_h = 0;
+
+                if (ShouldLogSwapchainClip(out_w, out_h, int_w, int_h)) {
+                    if (clipped || global_config.debug.enable_debug_flags) {
+                        static uint32 s_logged = 0;
+                        if (s_logged < 128) {
+                            PRINT(
+                                "UI clip test: self=%p clipped=%u rect=[%.1f %.1f %.1f %.1f]"
+                                " stored=[%.1f %.1f %.1f %.1f] out=%ux%u int=%ux%u",
+                                self,
+                                clipped ? 1u : 0u,
+                                self->m_rect.left,
+                                self->m_rect.top,
+                                self->m_rect.right,
+                                self->m_rect.bottom,
+                                self->m_rectStoredClipping.left,
+                                self->m_rectStoredClipping.top,
+                                self->m_rectStoredClipping.right,
+                                self->m_rectStoredClipping.bottom,
+                                out_w,
+                                out_h,
+                                int_w,
+                                int_h
+                            );
+                            ++s_logged;
+                        }
+                    }
+                }
+            }
+
+            if (global_config.debug.enable_debug_flags && self) {
+                uint32 out_w = 0;
+                uint32 out_h = 0;
+                uint32 int_w = 0;
+                uint32 int_h = 0;
+                if (ShouldLogSwapchainClip(out_w, out_h, int_w, int_h))
+                    return false;
+            }
+
+            return clipped;
+        }
+    };
+
+    HOOK_DEFINE_TRAMPOLINE(UITreeFolderDrawHook) {
+        // @ 0x3B07A0: UITreeFolder::Draw(UITreeFolder*, uint8, float*)
+        static void Callback(void *self, const uint8 bLayerAlpha, float *flZSlice) {
+            if (global_config.debug.active && global_config.debug.enable_debug_flags) {
+                uint32 out_w = 0;
+                uint32 out_h = 0;
+                uint32 int_w = 0;
+                uint32 int_h = 0;
+
+                if (ShouldLogSwapchainClip(out_w, out_h, int_w, int_h)) {
+                    static uint32 s_logged = 0;
+                    if (s_logged < 64) {
+                        const float z = flZSlice ? *flZSlice : 0.0f;
+                        PRINT(
+                            "UITreeFolder::Draw self=%p alpha=%u z=%.3f out=%ux%u int=%ux%u",
+                            self,
+                            bLayerAlpha,
+                            z,
+                            out_w,
+                            out_h,
+                            int_w,
+                            int_h
+                        );
+                        ++s_logged;
+                    }
+                }
+            }
+
+            Orig(self, bLayerAlpha, flZSlice);
+        }
+    };
+
     HOOK_DEFINE_TRAMPOLINE(GfxViewportSetSwapchainDepthGate) {
         // @ 0x0F0280: void __fastcall GFXNX64NVN::ViewportSet(GFXNX64NVN*, IRect2D*)
         using GFXNX64NVNHandle = uintptr_t;
@@ -384,6 +752,7 @@ namespace d3 {
 
             ResolutionRTView rt0 {};
             if (!GetResolutionRT0(rt0) || rt0.snoRTTex != 0) {
+                ClearSwapchainLayerGate();
                 Orig(self, rectViewport);
                 return;
             }
@@ -391,6 +760,7 @@ namespace d3 {
             uint32 out_w = 0;
             uint32 out_h = 0;
             if (!GetSwapchainDims(out_w, out_h)) {
+                ClearSwapchainLayerGate();
                 Orig(self, rectViewport);
                 return;
             }
@@ -399,6 +769,7 @@ namespace d3 {
             uint32 int_h = 0;
             float  scale = 1.0f;
             if (!GetInternalDims(out_w, out_h, int_w, int_h, scale)) {
+                ClearSwapchainLayerGate();
                 Orig(self, rectViewport);
                 return;
             }
@@ -412,7 +783,7 @@ namespace d3 {
                 // Only detach for the full swapchain viewport; partial viewports are used by UI sub-views.
                 if (vp_w == out_w && vp_h == out_h) {
                     const SNO current_depth = g_ptGfxData->workerData[0].snoCurrentDepthTarget;
-                    if (ConsumeSwapchainDepthGate() && current_depth != -1) {
+                    if (ShouldDetachSwapchainDepth(current_depth) && current_depth != -1) {
                         if (global_config.debug.active) {
                             struct DepthLogEntry {
                                 SNO    depth;
@@ -437,7 +808,7 @@ namespace d3 {
 
                             if (count_ptr && *count_ptr < 32) {
                                 PRINT(
-                                    "Swapchain depth detach (vp state gate): depth=%d vp=%ux%u out=%ux%u int=%ux%u",
+                                    "Swapchain depth detach (vp sno): depth=%d vp=%ux%u out=%ux%u int=%ux%u",
                                     current_depth,
                                     vp_w,
                                     vp_h,
@@ -488,9 +859,16 @@ namespace d3 {
         if (global_config.resolution_hack.clamp_textures_2048)
             PostFXInitClampDims::InstallAtOffset(0x12F218);
 
-        if (global_config.debug.active)
-            SetStateBlockStatesSwapchainLog::InstallAtOffset(0x2A6E10);
+        DisplayListDrawRenderLayerSwapchainGate::InstallAtOffset(0x157294);
 
+        if (global_config.debug.active) {
+            SetStateBlockStatesSwapchainLog::InstallAtOffset(0x2A6E10);
+            UIWindowGetCascadedClippingRectHook::InstallAtOffset(0x3B2E70);
+            UIWindowIsClippedHook::InstallAtOffset(0x3B3A00);
+            UITreeFolderDrawHook::InstallAtOffset(0x3B07A0);
+        }
+
+        GfxSetRenderAndDepthTargetSwapchainFix::InstallAtOffset(0x29C670);
         GfxSetDepthTargetSwapchainFix::InstallAtOffset(0x29C4E0);
         GfxViewportSetSwapchainDepthGate::InstallAtOffset(0x0F0280);
     }

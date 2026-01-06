@@ -30,6 +30,8 @@ Breakdown:
 - **Config**: `[resolution_hack]` in `config.toml` sets `OutputHeight` (`1080`/`1440`/`2160`), `fixed_res`, and `clamp_textures_2048` (recommended; 4K output is unstable).
 - **Patches**: `PatchResolutionTargets()` in `source/program/d3/patches.hpp` rewrites the default display mode pair, forces docked/perf checks, and nudges font point sizes for high-res output.
 - **Hooks (shipping path)**: `source/program/d3/hooks/resolution.hpp` installs `PostFXInitClampDims` (internal RT clamp) plus `GfxViewportSetSwapchainDepthGate` + `GfxSetDepthTargetSwapchainFix` (detach the clamped swapchain depth target to prevent the hard-clip, without breaking inventory depth). These only install when output exceeds the internal clamp, so 1080p skips them.
+- **Known issue (main menu text flicker)**: when label overlays are enabled and FPS or res scale fluctuates, the main menu text can flicker white as the text layer is re-created. This is how the engine works, and Blizzard never cared to fix it (the overlays were meant only for debug). **Fix: disable the label overlays** (FPS, resolution, etc.) in `config.toml` if it bothers you.
+- **Known issue (1152p+)**: when output height exceeds **1152p** (e.g. **1440p**), the inventory/pause screen 3D model can lose its **front-most layer** (nearest geometry) with the depth-detach workaround. Fixes are being extensively tested; please avoid filing duplicate bug reports.
 - **Notes**: UI basis/NDC/UIC conversion hooks and stencil overrides were tested but do **not** fix the clip, so they stay out of the shipping path.
 
 ---
@@ -166,7 +168,7 @@ Outputs land in `deploy/` as `subsdk9` and `main.npdm`.
 
 - **Type Database**: Over 1.2MB of reverse-engineered structs and enums in `source/program/d3/types/`.
 - **Hooking**: Uses `exl::hook::Trampoline` and `exl::hook::MakeInline` for clean detours.
-- **Offsets**: All offsets are static and verified against build `2.7.6.90885`. A mismatch triggers an immediate abort to prevent corruption.
+- **Offsets**: Centralized in a versioned lookup table (DEFAULT pinned to `2.7.6.90885`); signature guard + version checks abort on mismatch to prevent corruption.
 - **Config**: Runtime TOML parsing via [tomlplusplus](https://github.com/marzer/tomlplusplus), mapped directly to the global `PatchConfig` struct.
 
 ---

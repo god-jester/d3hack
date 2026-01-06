@@ -24,6 +24,10 @@ namespace d3 {
 
     using dword = std::array<std::byte, 0x4>;
 
+    inline uintptr_t PatchTable(const char *name) {
+        return GameOffsetFromTable(name) - exl::util::modules::GetTargetStart();
+    }
+
     void MakeAdrlPatch(const int32 main_addr, uintptr_t adrp_target, const exl::armv8::reg::Register register_target) {
         auto      jest       = patch::RandomAccessPatcher();
         uintptr_t AdrpOffset = main_addr;
@@ -41,14 +45,14 @@ namespace d3 {
             return;
         auto jest = patch::RandomAccessPatcher();
         /* Spoof the existence of a build signature so we can use the debug watermark (tSignature) */
-        jest.Patch<Nop>(0xF6C);
-        jest.Patch<Movz>(0xFD4, W20, (8 + GLOBALSNO_FONT_SCRIPT));
-        MakeAdrlPatch(0x000FA4, reinterpret_cast<uintptr_t>(&c_tSignature), X2);
-        MakeAdrlPatch(0x001040, reinterpret_cast<uintptr_t>(&crgbaTan), X19);
-        MakeAdrlPatch(0x001228, reinterpret_cast<uintptr_t>(&c_szHackVerWatermark), X1);
-        auto szBuildLockerFormat = reinterpret_cast<std::array<char, 21> *>(jest.RwFromAddr(0xE6D9E4));
+        jest.Patch<Nop>(PatchTable("patch_buildlocker_01_nop"));
+        jest.Patch<Movz>(PatchTable("patch_buildlocker_02_movz"), W20, (8 + GLOBALSNO_FONT_SCRIPT));
+        MakeAdrlPatch(PatchTable("patch_buildlocker_03_adrl"), reinterpret_cast<uintptr_t>(&c_tSignature), X2);
+        MakeAdrlPatch(PatchTable("patch_buildlocker_04_adrl"), reinterpret_cast<uintptr_t>(&crgbaTan), X19);
+        MakeAdrlPatch(PatchTable("patch_buildlocker_05_adrl"), reinterpret_cast<uintptr_t>(&c_szHackVerWatermark), X1);
+        auto szBuildLockerFormat = reinterpret_cast<std::array<char, 21> *>(jest.RwFromAddr(PatchTable("data_build_locker_format_rw")));
         *szBuildLockerFormat     = std::to_array("%s%s%d.%d.%d\0\0\0\0\0\0\0\0");
-        jest.Patch<Movz>(0x1088, W21, 0x13);  // RENDERLAYER_UI_OVERLAY
+        jest.Patch<Movz>(PatchTable("patch_buildlocker_06_movz"), W21, 0x13);  // RENDERLAYER_UI_OVERLAY
 
         /* 0x10CC - lower right */
 
@@ -57,60 +61,60 @@ namespace d3 {
         //      0x10D4 0A D0 25 1E                   FMOV            S10, #15.0
         //      0x10D8 21 28 2A 1E                   FADD            S1, S1, S10 <- Y-axis from top
         //      0x10FC 00 28 29 1E                   FADD            S0, S0, S9  <- X-axis from left
-        jest.Patch<dword>(0x10FC, make_bytes(0x00, 0x28, 0x2A, 0x1E));  // S0, +15.0 (S10) instead of -15.0
+        jest.Patch<dword>(PatchTable("patch_buildlocker_07_bytes"), make_bytes(0x00, 0x28, 0x2A, 0x1E));  // S0, +15.0 (S10) instead of -15.0
 
         /* 0x1160 - Lower left */
         //      0x1120 21 38 22 1E                   FSUB            S1, S1, S2
         //      0x1128 00 28 29 1E                   FADD            S0, S0, S9
         //      0x1150 21 28 29 1E                   FADD            S1, S1, S9
-        jest.Patch<dword>(0x1128, make_bytes(0x00, 0x28, 0x2A, 0x1E));  // S0, +15.0 (S10) instead of -15.0
+        jest.Patch<dword>(PatchTable("patch_buildlocker_08_bytes"), make_bytes(0x00, 0x28, 0x2A, 0x1E));  // S0, +15.0 (S10) instead of -15.0
 
         /* 0x11AC - upper right */
 
         /* 0x1224 - center screen */
-        jest.Patch<Nop>(0x1224);
+        jest.Patch<Nop>(PatchTable("patch_buildlocker_09_nop"));
 
         /* 0x12F8 - primary, lower middle */
         //      0x11C0 0A 10 2C 1E                   FMOV            S10, #0.5 <- center X axis on screen
-        // jest.Patch<dword>(0x11C0, make_bytes(0x0A, 0x10, 0x2E, 0x1E));  // #1.0, aka shift right
+        // jest.Patch<dword>(PatchTable("patch_buildlocker_10_bytes"), make_bytes(0x0A, 0x10, 0x2E, 0x1E));  // #1.0, aka shift right
     }
 
     /* String swap and formatting for APP_DRAW_VARIABLE_RES_DEBUG_BIT */
     void PatchVarResLabel() {
         auto jest = patch::RandomAccessPatcher();
-        jest.Patch<Movz>(0x03CC20, W0, (8 + GLOBALSNO_FONT_EXOCETLIGHT));
+        jest.Patch<Movz>(PatchTable("patch_var_res_label_01_movz"), W0, (8 + GLOBALSNO_FONT_EXOCETLIGHT));
         // 3CC78    movz x8, #0x42c8, lsl #16   --> 100.0f
-        jest.Patch<Movz>(0x03CC78, X8, 0x4288, ShiftValue_16);  // X-axis: 68.0f
+        jest.Patch<Movz>(PatchTable("patch_var_res_label_02_movz"), X8, 0x4288, ShiftValue_16);  // X-axis: 68.0f
         // 3CC7C    movk x8, #0x4316, lsl #48   --> 150.0f
-        jest.Patch<Movk>(0x03CC7C, X8, 0x4080, ShiftValue_48);  // Y-axis: 4.0f
+        jest.Patch<Movk>(PatchTable("patch_var_res_label_03_movk"), X8, 0x4080, ShiftValue_48);  // Y-axis: 4.0f
 
-        // MakeAdrlPatch(0x03CC68, reinterpret_cast<uintptr_t>(&c_szVariableResString), X1);
+        // MakeAdrlPatch(PatchTable("patch_var_res_label_04_adrl"), reinterpret_cast<uintptr_t>(&c_szVariableResString), X1);
         // AppDrawFlagSet(APP_DRAW_VARIABLE_RES_DEBUG_BIT, 1);     // Must be run each frame in another hook
     }
 
     /* String swap and formatting for APP_DRAW_FPS_BIT */
     void PatchReleaseFPSLabel() {
         auto jest = patch::RandomAccessPatcher();
-        jest.Patch<Movz>(0x3F654, W0, (8 + GLOBALSNO_FONT_EXOCETLIGHT));
-        auto szReleaseFPSFormat = reinterpret_cast<std::array<char, 10> *>(jest.RwFromAddr(0xE46144));
-        auto nReleaseFPSPosX    = reinterpret_cast<float *>(jest.RoFromAddr(0x1098658));
-        auto nReleaseFPSPosY    = reinterpret_cast<float *>(jest.RoFromAddr(0x109865C));
+        jest.Patch<Movz>(PatchTable("patch_release_fps_label_01_movz"), W0, (8 + GLOBALSNO_FONT_EXOCETLIGHT));
+        auto szReleaseFPSFormat = reinterpret_cast<std::array<char, 10> *>(jest.RwFromAddr(PatchTable("data_release_fps_format_rw")));
+        auto nReleaseFPSPosX    = reinterpret_cast<float *>(jest.RoFromAddr(PatchTable("data_release_fps_pos_x_ro")));
+        auto nReleaseFPSPosY    = reinterpret_cast<float *>(jest.RoFromAddr(PatchTable("data_release_fps_pos_y_ro")));
         *szReleaseFPSFormat     = std::to_array("FPS: %.0f");  // :.ascii "%3.1f FPS"
         *nReleaseFPSPosX        = -77.7;                       // nReleaseFPSPosX:.float -180.0
         *nReleaseFPSPosY        = 500.0;                       // nReleaseFPSPosY:.float 290.0
 
         /* Skip the frame timer check/color setter (avoid flashing text colors) */
-        jest.Patch<Nop>(0x03F69C);
-        MakeAdrlPatch(0x03F6A0, reinterpret_cast<uintptr_t>(&crgbaWhite), X8);
+        jest.Patch<Nop>(PatchTable("patch_release_fps_label_02_nop"));
+        MakeAdrlPatch(PatchTable("patch_release_fps_label_03_adrl"), reinterpret_cast<uintptr_t>(&crgbaWhite), X8);
 
         /* Skip rendering all extra FPS data labels */
-        jest.Patch<Nop>(0x03F840);
-        jest.Patch<Nop>(0x03F8E4);
-        jest.Patch<Nop>(0x03F9A8);
-        jest.Patch<Nop>(0x03FA68);
-        jest.Patch<Nop>(0x03FB80);
-        jest.Patch<Nop>(0x03FC7C);
-        jest.Patch<Nop>(0x03FD78);
+        jest.Patch<Nop>(PatchTable("patch_release_fps_label_04_nop"));
+        jest.Patch<Nop>(PatchTable("patch_release_fps_label_05_nop"));
+        jest.Patch<Nop>(PatchTable("patch_release_fps_label_06_nop"));
+        jest.Patch<Nop>(PatchTable("patch_release_fps_label_07_nop"));
+        jest.Patch<Nop>(PatchTable("patch_release_fps_label_08_nop"));
+        jest.Patch<Nop>(PatchTable("patch_release_fps_label_09_nop"));
+        jest.Patch<Nop>(PatchTable("patch_release_fps_label_10_nop"));
 
         // AppDrawFlagSet(APP_DRAW_FPS_BIT, 1);  // Must be run each frame in another hook
     }
@@ -118,18 +122,18 @@ namespace d3 {
     void PatchDDMLabels() {
         auto jest = patch::RandomAccessPatcher();
         /* String swap and formatting for DDM_FPS_QA */
-        jest.Patch<Movz>(0x03E530, W0, (8 + GLOBALSNO_FONT_SCRIPT));
-        MakeAdrlPatch(0x03E568, reinterpret_cast<uintptr_t>(&c_szHackVerWatermark), X1);
-        MakeAdrlPatch(0x03E580, reinterpret_cast<uintptr_t>(&c_rgbaText), X3);
-        MakeAdrlPatch(0x03E58C, reinterpret_cast<uintptr_t>(&c_rgbaDropShadow), X4);
-        jest.Patch<Movz>(0x03E594, W7, 0x13);  // RENDERLAYER_UI_OVERLAY
+        jest.Patch<Movz>(PatchTable("patch_ddm_labels_01_movz"), W0, (8 + GLOBALSNO_FONT_SCRIPT));
+        MakeAdrlPatch(PatchTable("patch_ddm_labels_02_adrl"), reinterpret_cast<uintptr_t>(&c_szHackVerWatermark), X1);
+        MakeAdrlPatch(PatchTable("patch_ddm_labels_03_adrl"), reinterpret_cast<uintptr_t>(&c_rgbaText), X3);
+        MakeAdrlPatch(PatchTable("patch_ddm_labels_04_adrl"), reinterpret_cast<uintptr_t>(&c_rgbaDropShadow), X4);
+        jest.Patch<Movz>(PatchTable("patch_ddm_labels_05_movz"), W7, 0x13);  // RENDERLAYER_UI_OVERLAY
 
         /* String swap and formatting for DDM_FPS_SIMPLE */
-        jest.Patch<Movz>(0x03FE78, W0, (8 + GLOBALSNO_FONT_SCRIPT));
-        MakeAdrlPatch(0x03FE3C, reinterpret_cast<uintptr_t>(&c_szHackVerWatermark), X23);
-        MakeAdrlPatch(0x03FF18, reinterpret_cast<uintptr_t>(&c_rgbaText), X3);
-        MakeAdrlPatch(0x03FF28, reinterpret_cast<uintptr_t>(&c_rgbaDropShadow), X4);
-        jest.Patch<Movz>(0x03FF20, W7, 0x13);  // RENDERLAYER_UI_OVERLAY
+        jest.Patch<Movz>(PatchTable("patch_ddm_labels_06_movz"), W0, (8 + GLOBALSNO_FONT_SCRIPT));
+        MakeAdrlPatch(PatchTable("patch_ddm_labels_07_adrl"), reinterpret_cast<uintptr_t>(&c_szHackVerWatermark), X23);
+        MakeAdrlPatch(PatchTable("patch_ddm_labels_08_adrl"), reinterpret_cast<uintptr_t>(&c_rgbaText), X3);
+        MakeAdrlPatch(PatchTable("patch_ddm_labels_09_adrl"), reinterpret_cast<uintptr_t>(&c_rgbaDropShadow), X4);
+        jest.Patch<Movz>(PatchTable("patch_ddm_labels_10_movz"), W7, 0x13);  // RENDERLAYER_UI_OVERLAY
     }
 
     void PatchResolutionTargets() {
@@ -144,54 +148,39 @@ namespace d3 {
         // Display mode pair (full). GFXNX64NVN::Init (0x0E7850).
         // 0x0E7858: MOV X8, #1600
         // 0x0E7860: MOVK X8, #900, LSL#32
-        jest.Patch<Movz>(0x0E7858, X8, out_w);
-        jest.Patch<Movk>(0x0E7860, X8, out_h, ShiftValue_32);
+        jest.Patch<Movz>(PatchTable("patch_resolution_targets_01_movz"), X8, out_w);
+        jest.Patch<Movk>(PatchTable("patch_resolution_targets_02_movk"), X8, out_h, ShiftValue_32);
 
         // Fallback/base scale mode (same block).
         // 0x0E785C: MOV X9, #1280
         // 0x0E7864: MOVK X9, #720, LSL#32
-        jest.Patch<Movz>(0x0E785C, X9, out_w);
-        jest.Patch<Movk>(0x0E7864, X9, out_h, ShiftValue_32);
+        jest.Patch<Movz>(PatchTable("patch_resolution_targets_03_movz"), X9, out_w);
+        jest.Patch<Movk>(PatchTable("patch_resolution_targets_04_movk"), X9, out_h, ShiftValue_32);
 
         if (global_config.resolution_hack.min_res_scale >= 100.0f) {
             /* VariableResRWindowData->flMinPercent = 0.70f - 0x03CBBC: MOVK X9, #0x3F33, LSL#48 (CGameVariableResInitializeForRWindow) */
-            jest.Patch<Movk>(0x03CBBC, X9, 0x3F80, ShiftValue_48);  // 100% (1.0f) minimum resolution scale
+            jest.Patch<Movk>(PatchTable("patch_resolution_targets_05_movk"), X9, 0x3F80, ShiftValue_48);  // 100% (1.0f) minimum resolution scale
         }
 
         /* VariableResRWindowData->flMaxPercent = 1.00f - 0x03CBCC: MOV W8, #0x3F800000 */
-        // jest.Patch<Movz>(0x03CBCC, W8, 0x3FA0, ShiftValue_16);  // 125% (1.25f) maximum resolution scale (>1.0f breaks rendering)
+        // jest.Patch<Movz>(PatchTable("patch_resolution_targets_06_movz"), W8, 0x3FA0, ShiftValue_16);  // 125% (1.25f) maximum resolution scale (>1.0f breaks rendering)
 
         /* VariableResRWindowData->flPercentIncr = 0.05f - 0x03CBD4: MOVK X9, #0x3D4C, LSL#48 */
-        jest.Patch<Movk>(0x03CBD4, X9, 0x3CF5, ShiftValue_48);  // 3% (0.03f) resolution adjust percentage
+        jest.Patch<Movk>(PatchTable("patch_resolution_targets_07_movk"), X9, 0x3CF5, ShiftValue_48);  // 3% (0.03f) resolution adjust percentage
 
         /* FontDefinition::GetPointSizeData (0x276A60/0x276A6C). */
         /* 0x276A60: MOV W9, #8   | 0x276A6C: MOV W8, #0x10 */
-        jest.Patch<Movz>(0x276A60, W9, 32);
-        jest.Patch<Movz>(0x276A6C, W8, 32);
+        jest.Patch<Movz>(PatchTable("patch_resolution_targets_08_movz"), W9, 32);
+        jest.Patch<Movz>(PatchTable("patch_resolution_targets_09_movz"), W8, 32);
 
         // ShellInitialize (0x6678B8): BL nn::oe::GetOperationMode
         // ShellEventLoop (0x667AE8): BL nn::oe::GetOperationMode
-        jest.Patch<Movz>(0x6678B8, W0, 0);  // 0 = "Docked"
-        jest.Patch<Movz>(0x667AE8, W0, 0);  // 0 = "Docked"
+        jest.Patch<Movz>(PatchTable("patch_resolution_targets_10_movz"), W0, 0);  // 0 = "Docked"
+        jest.Patch<Movz>(PatchTable("patch_resolution_targets_11_movz"), W0, 0);  // 0 = "Docked"
         // ShellInitialize (0x6678C8): BL nn::oe::GetPerformanceMode
         // ShellEventLoop (0x667B04): BL nn::oe::GetPerformanceMode
-        jest.Patch<Movz>(0x6678C8, W0, 1);  // 1 = "Boost"
-        jest.Patch<Movz>(0x667B04, W0, 1);  // 1 = "Boost"
-
-        /* UIC conversion constants (experiment; adjusts scaling but does not fix the 2048x1152 clip). */
-        /* Dead-end notes: UI conversion constants were explored, but they only change scaling and do not fix clipping. */
-        // dword_EB0E68:.long 0x44340000 (720.0f)  -- SetUICConversionConstansts: height / 720.0
-        // jest.Patch<uint32_t>(0xEB0E68, 0x44100000);  // 576.0f
-        // jest.Patch<uint32_t>(0xEB0E68, 0x443B8000);  // 750.0f
-        // dword_EB09E0:.long 0x44700000 (960.0f)  -- SetUICConversionConstansts: width / 960.0
-        // jest.Patch<uint32_t>(0xEB09E0, 0x44400000);  // 768.0f
-        // jest.Patch<uint32_t>(0xEB09E0, 0x447A0000);  // 1000.0f
-
-        /* Suboptimal Performance Boosters, Crashes */
-        // jest.Patch<Movz>(0xC71DD8, W0, 1);
-        // jest.Patch<Ret>(0xC71DDC);
-        // jest.Patch<Movz>(0xC71DE8, W0, 1);
-        // jest.Patch<Ret>(0xC71DEC);
+        jest.Patch<Movz>(PatchTable("patch_resolution_targets_12_movz"), W0, 1);  // 1 = "Boost"
+        jest.Patch<Movz>(PatchTable("patch_resolution_targets_13_movz"), W0, 1);  // 1 = "Boost"
     }
 
     void PatchDynamicSeasonal() {
@@ -202,67 +191,22 @@ namespace d3 {
             XVarUint32_Set(&s_varSeasonState, 1, 3u);
 
             auto jest = patch::RandomAccessPatcher();
-            jest.Patch<Movz>(0x72ED98, W3, global_config.seasons.number);  // Season.Num
-            jest.Patch<Movz>(0x72EDD0, W3, 1);                             // Season.State
-            jest.Patch<Movz>(0x351CBC, W1, 1);                             // always true for UIHeroCreate::Console::bSeasonConfirmedAvailable() (skip B.ne and always confirm)
-            jest.Patch<Movz>(0x5FF0C, W0, 1);                              // always true for Console::Online::IsSeasonsInitialized()
+            jest.Patch<Movz>(PatchTable("patch_dynamic_seasonal_01_movz"), W3, global_config.seasons.number);  // Season.Num
+            jest.Patch<Movz>(PatchTable("patch_dynamic_seasonal_02_movz"), W3, 1);                             // Season.State
+            jest.Patch<Movz>(PatchTable("patch_dynamic_seasonal_03_movz"), W1, 1);                             // always true for UIHeroCreate::Console::bSeasonConfirmedAvailable() (skip B.ne and always confirm)
+            jest.Patch<Movz>(PatchTable("patch_dynamic_seasonal_04_movz"), W0, 1);                             // always true for Console::Online::IsSeasonsInitialized()
 
             // Update season_created uses at runtime (UIOnlineActions::SetGameParamsForHero).
-            // jest.Patch<Movz>(0x1BD140, W21, global_config.seasons.number);  // season_created = ...
+            // jest.Patch<Movz>(PatchTable("patch_dynamic_seasonal_05_movz"), W21, global_config.seasons.number);  // season_created = ...
             // Ignore mismatched hero season in UIHeroSelect (skip Rebirth/season prompt for old seasons).
-            // jest.Patch<Nop>(0x358A7C);  // B.ne loc_358C74
+            // jest.Patch<Nop>(PatchTable("patch_dynamic_seasonal_06_nop"));  // B.ne loc_358C74
             // Hide "Create Seasonal Hero" main menu option (item 9) when forcing season number.
             // ItemShouldBeVisible(case 9) calls IsSeasonsInitialized; forcing W0=0 makes it return false.
-            // jest.Patch<Movz>(0x35C0C4, W0, 0);
+            // jest.Patch<Movz>(PatchTable("patch_dynamic_seasonal_07_movz"), W0, 0);
         } else {
             XVarBool_Set(&s_varSeasonsOverrideEnabled, false, 3u);
             return;
         }
-    }
-
-    void PatchForcedSeasonal() {
-        // auto jest = patch::RandomAccessPatcher();
-
-        // /* Confirmed Required */
-        // jest.Patch<Movz>(0x351CBC, W1, 1);  // always true for UIHeroCreate::Console::bSeasonConfirmedAvailable() (skip B.ne and always confirm)
-        // jest.Patch<Movz>(0x5FF0C, W0, 1);   // always true for Console::Online::IsSeasonsInitialized()
-
-        /* Optional */
-        // jest.Patch<Nop>(0x1BD09C);         // if ( OnlineService::GetSeasonNum() != season_created ) in Console::UIOnlineActions::SetGameParamsForHero()
-        // jest.Patch<Ret>(0xBF6D50);         // stub bdEnvironmentString() to force net offline
-        // jest.Patch<Ret>(0x65270);             // stub Console::Online::LobbyServiceInternal::OnSeasonsFileRetrieved() to override server data
-        // jest.Patch<Movz>(0x57260, W0, 0);  // online_play_allowed for  Console::GamerProfile::GetOnlinePlayPrivilege(
-        // jest.Patch<Ret>(0x57264);          // ^ ret
-
-        /* Unintended Effects */
-        // jest.Patch<Movz>(0x72EEC0, W3, 1);    // always s_varSeasonsOverrideEnabled
-        // jest.Patch<Movz>(0x185F9C, W0, 0);    // always STORAGE_SUCCESS
-        // Leave season num/state dynamic; PatchDynamicSeasonal applies after config loads.
-        // jest.Patch<Movz>(0x72ED98, W3, global_config.seasons.number);  // Season.Num
-        // jest.Patch<Movz>(0x72EDD0, W3, 1);    // Season.State
-        // jest.Patch<Nop>(0x1BD388);            // skip actual SeasonNum check in Console::UIOnlineActions::IsActiveSeason
-        // jest.Patch<Movz>(0x1BF5F0, W0, 0);    // error_none for Console::UIOnlineActions::ValidateHeroForPartyMember
-        // jest.Patch<Ret>(0x1BF5F4);            // ^ ret
-        // jest.Patch<Movz>(0x1BD360, W0, 1);    // always true for Console::UIOnlineActions::IsActiveSeason
-        // jest.Patch<Ret>(0x1BD364);            // ^ ret
-    }
-
-    void PatchForcedEvents() {
-        // auto jest = patch::RandomAccessPatcher();
-        // jest.Patch<Ret>(0x641F0);          // stub Console::Online::LobbyServiceInternal::OnConfigFileRetrieved() to override server data
-        // jest.Patch<Branch>(0x64228, 0x24);  //0x28 branch in OnConfigFileRetrieved
-        // jest.Patch<Nop>(0x64254);  // stub Console::Online::LobbyServiceInternal::OnConfigFileRetrieved() ?
-        // jest.Patch<Nop>(0x4A6148); // Community_Event_Buff
-        // jest.Patch<Nop>(0x4A614C); // ^
-        // jest.Patch<Branch>(0x4A6158, 0x1C);
-
-        // jest.Patch<Ret>(0xB2340);  // stub Console::Online::TaskManager::Process (interferes with rift hooking)
-        // jest.Patch<dword>(0xF07FB8, make_bytes(0x01, 0x02, 0x03, 0x04));
-
-        // // try for challenge rift (crashes if also hooked)
-        // // jest.Patch<dword>(0x66B10, make_bytes(0xFE, 0xDE, 0xFF, 0xE7));  // Console::Online::StorageGetPublisherFile
-
-        // jest.Patch<Movz>(0x185F9C, W0, 0);  // always STORAGE_SUCCESS
     }
 
     void PatchDynamicEvents() {
@@ -272,25 +216,25 @@ namespace d3 {
         constexpr s64 kBuffStartFallback = 1;
         constexpr s64 kBuffEndFallback   = 0x7FFFFFFFFFFFFFFFLL;
 
-        auto *buff_start = *reinterpret_cast<s64 **>(GameOffsetFromTable("event_buff_start_ptr"));
-        auto *buff_end   = *reinterpret_cast<s64 **>(GameOffsetFromTable("event_buff_end_ptr"));
+        auto *buff_start = *reinterpret_cast<s64 **>(GameOffsetFromTable("event_buff_start"));
+        auto *buff_end   = *reinterpret_cast<s64 **>(GameOffsetFromTable("event_buff_end"));
         if (buff_start && buff_end && (!*buff_start || !*buff_end || *buff_end <= *buff_start)) {
             *buff_start = kBuffStartFallback;
             *buff_end   = kBuffEndFallback;
         }
 
-        if (auto *egg_flag = *reinterpret_cast<u32 **>(GameOffsetFromTable("event_egg_flag_ptr")))
+        if (auto *egg_flag = *reinterpret_cast<u32 **>(GameOffsetFromTable("event_egg_flag")))
             *egg_flag = global_config.events.EasterEggWorldEnabled ? 1u : 0u;
 
-        if (auto *igr = *reinterpret_cast<uintptr_t **>(GameOffsetFromTable("event_igr_ptr")))
+        if (auto *igr = *reinterpret_cast<uintptr_t **>(GameOffsetFromTable("event_igr")))
             XVarBool_Set(igr, global_config.events.IgrEnabled, 3u);
-        if (auto *ann = *reinterpret_cast<uintptr_t **>(GameOffsetFromTable("event_ann_ptr")))
+        if (auto *ann = *reinterpret_cast<uintptr_t **>(GameOffsetFromTable("event_ann")))
             XVarBool_Set(ann, global_config.events.AnniversaryEnabled, 3u);
-        if (auto *egg_xvar = *reinterpret_cast<uintptr_t **>(GameOffsetFromTable("event_egg_xvar_ptr")))
+        if (auto *egg_xvar = *reinterpret_cast<uintptr_t **>(GameOffsetFromTable("event_egg_xvar")))
             XVarBool_Set(egg_xvar, global_config.events.EasterEggWorldEnabled, 3u);
-        if (auto *event_enabled = *reinterpret_cast<uintptr_t **>(GameOffsetFromTable("event_enabled_ptr")))
+        if (auto *event_enabled = *reinterpret_cast<uintptr_t **>(GameOffsetFromTable("event_enabled")))
             XVarBool_Set(event_enabled, true, 3u);
-        if (auto *event_season_only = *reinterpret_cast<uintptr_t **>(GameOffsetFromTable("event_season_only_ptr")))
+        if (auto *event_season_only = *reinterpret_cast<uintptr_t **>(GameOffsetFromTable("event_season_only")))
             XVarBool_Set(event_season_only, false, 3u);
 
         auto set_bool = [](uintptr_t *var, bool value) {
@@ -317,26 +261,6 @@ namespace d3 {
         set_bool(&s_varDarkAlchemy, global_config.events.DarkAlchemy);
         set_bool(&s_varNestingPortals, global_config.events.NestingPortals);
         set_bool(&s_varParagonCap, false);  // ParagonCap off by default
-
-        // if (global_config.events.DoubleRiftKeystones)    jest.Patch<Movz>(0x4A7BD8, W3, 1);
-        // if (global_config.events.DoubleBloodShards)      jest.Patch<Movz>(0x4A7C04, W3, 1);
-        // if (global_config.events.DoubleTreasureGoblins)  jest.Patch<Movz>(0x4A7C30, W3, 1);
-        // if (global_config.events.DoubleBountyBags)       jest.Patch<Movz>(0x4A7C5C, W3, 1);
-        // if (global_config.events.RoyalGrandeur)          jest.Patch<Movz>(0x4A7C88, W3, 1);
-        // if (global_config.events.LegacyOfNightmares)     jest.Patch<Movz>(0x4A7CB4, W3, 1);
-        // if (global_config.events.TriunesWill)            jest.Patch<Movz>(0x4A7CE0, W3, 1);
-        // if (global_config.events.Pandemonium)            jest.Patch<Movz>(0x4A7D0C, W3, 1);
-        // if (global_config.events.KanaiPowers)            jest.Patch<Movz>(0x4A7D38, W3, 1);
-        // if (global_config.events.TrialsOfTempests)       jest.Patch<Movz>(0x4A7D64, W3, 1);
-        // if (global_config.events.ShadowClones)           jest.Patch<Movz>(0x4A7D90, W3, 1);
-        // if (global_config.events.FourthKanaisCubeSlot)   jest.Patch<Movz>(0x4A7DBC, W3, 1);
-        // if (global_config.events.EtherealItems)          jest.Patch<Movz>(0x4A7DE8, W3, 1);
-        // if (global_config.events.SoulShards)             jest.Patch<Movz>(0x4A7E14, W3, 1);
-        // if (global_config.events.SwarmRifts)             jest.Patch<Movz>(0x4A7E40, W3, 1);
-        // if (global_config.events.SanctifiedItems)        jest.Patch<Movz>(0x4A7E6C, W3, 1);
-        // if (global_config.events.DarkAlchemy)            jest.Patch<Movz>(0x4A7E98, W3, 1);
-        // if (global_config.events.NestingPortals)         jest.Patch<Movz>(0x4A7EF4, W3, 1);
-        // jest.Patch<Movz>(0x4A7EC4, W3, 0);  // ParagonCap
     }
 
     void PortCheatCodes() {
@@ -344,41 +268,41 @@ namespace d3 {
             return;
         auto jest = patch::RandomAccessPatcher();
         /* Restore debug display of allocation errors */
-        jest.Patch<Movz>(0x00A2AD04, W8, 0);
-        // jest.Patch<MovRegister>(0x00A37C70, X0, SP);
-        jest.Patch<dword>(0x00A37C70, make_bytes(0xE0, 0x03, 0x00, 0x91));
+        jest.Patch<Movz>(PatchTable("patch_cheat_alloc_errors_01_movz"), W8, 0);
+        // jest.Patch<MovRegister>(PatchTable("patch_cheat_alloc_errors_02_bytes"), X0, SP);
+        jest.Patch<dword>(PatchTable("patch_cheat_alloc_errors_02_bytes"), make_bytes(0xE0, 0x03, 0x00, 0x91));
 
         /* Drop any item (Staff of Herding, etc) */
         if (global_config.rare_cheats.active && global_config.rare_cheats.drop_anything)
-            jest.Patch<Movn>(0x00504C78, W0, 0);
+            jest.Patch<Movn>(PatchTable("patch_cheat_drop_anything_01_movn"), W0, 0);
         // 04000000 00504C78 12800000
 
         /* 100% Legendary probability (Kadala/Kanai) */
         if (global_config.rare_cheats.active && global_config.rare_cheats.guaranteed_legendaries) {
-            jest.Patch<Nop>(0x0088F82C);  // unlikely? shot in the dark
-            jest.Patch<Nop>(0x0088F834);
-            jest.Patch<Branch>(0x0088F83C, 0x18C);
-            jest.Patch<Nop>(0x0088F9C4);
-            jest.Patch<Branch>(0x0088F9E0, 0x350);
+            jest.Patch<Nop>(PatchTable("patch_cheat_guaranteed_legendaries_01_nop"));  // unlikely? shot in the dark
+            jest.Patch<Nop>(PatchTable("patch_cheat_guaranteed_legendaries_02_nop"));
+            jest.Patch<Branch>(PatchTable("patch_cheat_guaranteed_legendaries_03_branch"), 0x18C);
+            jest.Patch<Nop>(PatchTable("patch_cheat_guaranteed_legendaries_04_nop"));
+            jest.Patch<Branch>(PatchTable("patch_cheat_guaranteed_legendaries_05_branch"), 0x350);
         }
-        // jest.Patch<dword>(0x0088F9C4, make_bytes(0xD4, 0x00, 0x00, 0x14));
+        // jest.Patch<dword>(PatchTable("patch_cheat_guaranteed_legendaries_04_nop"), make_bytes(0xD4, 0x00, 0x00, 0x14));
         // 04000000 0088F9E0 140000D4
 
         /* Instant town portal & Book of Cain */
         if (global_config.rare_cheats.active && global_config.rare_cheats.instant_portal)
-            jest.Patch<Movz>(0x009E3250, W24, 0);
+            jest.Patch<Movz>(PatchTable("patch_cheat_instant_portal_01_movz"), W24, 0);
         // 04000000 009E3250 52800018
 
         /* Show testing art cosmetics */
-        // jest.Patch<CmnImmediate>(0x004FFFE4, W2, 0);
+        // jest.Patch<CmnImmediate>(PatchTable("patch_cheat_testing_cosmetics_01_cmn_imm"), W2, 0);
         // 04000000 004FFFE4 3100081F
 
         /* ►Primal ancient probability 100% */
-        // jest.Patch<Branch>(0x088DDFC, 0x360);
-        // jest.Patch<Movz>(0x0088DE58, W8, 2);
-        // jest.Patch<dword>(0x0088DF10, make_bytes(0x40, 0x21, 0x2A, 0x1E));
-        // jest.Patch<dword>(0x0088DFFC, make_bytes(0x00, 0x20, 0x20, 0x1E));  // covered by W8, 2
-        // jest.Patch<dword>(0x0088DFE0, make_bytes(0x1F, 0x20, 0x03, 0xD5));
+        // jest.Patch<Branch>(PatchTable("patch_cheat_primal_01_branch"), 0x360);
+        // jest.Patch<Movz>(PatchTable("patch_cheat_primal_02_movz"), W8, 2);
+        // jest.Patch<dword>(PatchTable("patch_cheat_primal_03_bytes"), make_bytes(0x40, 0x21, 0x2A, 0x1E));
+        // jest.Patch<dword>(PatchTable("patch_cheat_primal_04_bytes"), make_bytes(0x00, 0x20, 0x20, 0x1E));  // covered by W8, 2
+        // jest.Patch<dword>(PatchTable("patch_cheat_primal_05_bytes"), make_bytes(0x1F, 0x20, 0x03, 0xD5));
         /*
         04000000 0088DF10 1E2A2140
         04000000 0088DFFC 1E202000
@@ -387,10 +311,10 @@ namespace d3 {
 
         /* ►No cooldown */
         if (global_config.rare_cheats.active && global_config.rare_cheats.no_cooldowns) {
-            jest.Patch<dword>(0x007396D0, make_bytes(0xE0, 0x03, 0x27, 0x1E));
-            jest.Patch<dword>(0x007F8960, make_bytes(0xE0, 0x03, 0x00, 0x2A));
-            jest.Patch<dword>(0x009BC53C, make_bytes(0xE8, 0x03, 0x27, 0x1E));
-            jest.Patch<dword>(0x009BC828, make_bytes(0xE8, 0x03, 0x27, 0x1E));
+            jest.Patch<dword>(PatchTable("patch_cheat_no_cooldowns_01_bytes"), make_bytes(0xE0, 0x03, 0x27, 0x1E));
+            jest.Patch<dword>(PatchTable("patch_cheat_no_cooldowns_02_bytes"), make_bytes(0xE0, 0x03, 0x00, 0x2A));
+            jest.Patch<dword>(PatchTable("patch_cheat_no_cooldowns_03_bytes"), make_bytes(0xE8, 0x03, 0x27, 0x1E));
+            jest.Patch<dword>(PatchTable("patch_cheat_no_cooldowns_04_bytes"), make_bytes(0xE8, 0x03, 0x27, 0x1E));
         }
         /*
         04000000 007396D0 1E2703E0
@@ -401,25 +325,25 @@ namespace d3 {
 
         /* ►Instantly identify items */
         if (global_config.rare_cheats.active && global_config.rare_cheats.instant_craft_actions)
-            jest.Patch<Nop>(0x0020636C);
+            jest.Patch<Nop>(PatchTable("patch_cheat_instant_identify_01_nop"));
         // 04000000 0020636C D503201F
 
         /* ►Instantly craft items */
         if (global_config.rare_cheats.active && global_config.rare_cheats.instant_craft_actions)
-            jest.Patch<AddImmediate>(0x0040F9B0, W8, W8, 5);
+            jest.Patch<AddImmediate>(PatchTable("patch_cheat_instant_craft_01_add_imm"), W8, W8, 5);
         // 04000000 0040F9B0 11001508
 
         /* ►Instantly enchant items */
         if (global_config.rare_cheats.active && global_config.rare_cheats.instant_craft_actions)
-            jest.Patch<AddImmediate>(0x001DCFA4, W8, W8, 1);
+            jest.Patch<AddImmediate>(PatchTable("patch_cheat_instant_enchant_01_add_imm"), W8, W8, 1);
         // 04000000 001DCFA4 11000508
 
         /* ►Instantly craft Kanai's Cube items */
         if (global_config.rare_cheats.active && global_config.rare_cheats.instant_craft_actions) {
-            jest.Patch<Movz>(0x00236D20, W8, 0);
-            jest.Patch<Movz>(0x00236D24, W9, 0);
-            jest.Patch<Movz>(0x00236D28, W10, 0);
-            jest.Patch<Movz>(0x00236D30, W8, 0);
+            jest.Patch<Movz>(PatchTable("patch_cheat_cube_instant_craft_01_movz"), W8, 0);
+            jest.Patch<Movz>(PatchTable("patch_cheat_cube_instant_craft_02_movz"), W9, 0);
+            jest.Patch<Movz>(PatchTable("patch_cheat_cube_instant_craft_03_movz"), W10, 0);
+            jest.Patch<Movz>(PatchTable("patch_cheat_cube_instant_craft_04_movz"), W8, 0);
         }
         /*
         04000000 00236D20 52800008
@@ -429,19 +353,19 @@ namespace d3 {
         */
 
         /* ►Kanai's Cube does not consume materials */
-        jest.Patch<Ret>(0x008874D0);
+        jest.Patch<Ret>(PatchTable("patch_cheat_cube_no_consume_01_ret"));
         // 04000000 008874D0 D65F03C0
 
         /* ►Greater Rift Lv. 150 after clearing once */
-        // jest.Patch<dword>(0x004873E4, make_bytes(0xF5, 0x03, 0x00, 0x2A));
+        // jest.Patch<dword>(PatchTable("patch_cheat_gr150_01_bytes"), make_bytes(0xF5, 0x03, 0x00, 0x2A));
         // 04000000 004873E4 2A0003F5
 
         /* ►Legendary Gem Upgrade 100% */
-        jest.Patch<dword>(0x006A255C, make_bytes(0x08, 0x10, 0x2E, 0x1E));
+        jest.Patch<dword>(PatchTable("patch_cheat_gem_upgrade_01_bytes"), make_bytes(0x08, 0x10, 0x2E, 0x1E));
         // 04000000 006A255C 1E2E1008*/
 
         /* ►Legendary Gem Upgrade Speed */
-        jest.Patch<dword>(0x00349B98, make_bytes(0x02, 0x10, 0x2E, 0x1E));
+        jest.Patch<dword>(PatchTable("patch_cheat_gem_speed_01_bytes"), make_bytes(0x02, 0x10, 0x2E, 0x1E));
         // 04000000 00349B98 1E2E1002
 
         /* ►Legendary Gem Lv. 150 after upgrading once */
@@ -450,13 +374,13 @@ namespace d3 {
         movz w0, #0x96
         sub w23, w0, w22
         */
-        // jest.Patch<Movk>(0x00C72F7C, W22, W0);  // MOV LIKE THIS?
-        jest.Patch<dword>(0x00C72F7C, make_bytes(0xF6, 0x03, 0x00, 0x2A));
-        jest.Patch<Movz>(0x00C72F80, W0, 0x96);
-        // jest.Patch<Sub>(0x00C72F84, W23, W0, W22);
-        jest.Patch<dword>(0x00C72F84, make_bytes(0x17, 0x00, 0x16, 0x4B));
-        jest.Patch<Ret>(0x00C72F88);
-        jest.Patch<dword>(0x007DF958, make_bytes(0x89, 0x4D, 0x12, 0x94));
+        // jest.Patch<Movk>(PatchTable("patch_cheat_gem_lvl150_01_bytes"), W22, W0);  // MOV LIKE THIS?
+        jest.Patch<dword>(PatchTable("patch_cheat_gem_lvl150_01_bytes"), make_bytes(0xF6, 0x03, 0x00, 0x2A));
+        jest.Patch<Movz>(PatchTable("patch_cheat_gem_lvl150_02_movz"), W0, 0x96);
+        // jest.Patch<Sub>(PatchTable("patch_cheat_gem_lvl150_03_bytes"), W23, W0, W22);
+        jest.Patch<dword>(PatchTable("patch_cheat_gem_lvl150_03_bytes"), make_bytes(0x17, 0x00, 0x16, 0x4B));
+        jest.Patch<Ret>(PatchTable("patch_cheat_gem_lvl150_04_ret"));
+        jest.Patch<dword>(PatchTable("patch_cheat_gem_lvl150_05_bytes"), make_bytes(0x89, 0x4D, 0x12, 0x94));
         /*
         04000000 00C72F7C 2A0003F6
         04000000 00C72F80 528012C0
@@ -466,18 +390,18 @@ namespace d3 {
         */
 
         // [►Equip Multiple Legendary Item]
-        // jest.Patch<Branch>(0x004FB9E4, 0x5C);
+        // jest.Patch<Branch>(PatchTable("patch_cheat_multi_legendary_01_branch"), 0x5C);
         // 04000000 004FB9E4 14000017
 
         // [►Socket Any Gem To Any Slot]
         if (global_config.rare_cheats.active && global_config.rare_cheats.any_gem_any_slot) {
-            jest.Patch<Movz>(0x004F9F1C, W25, 5);
-            jest.Patch<Branch>(0x004F9F24, 0xA0);
+            jest.Patch<Movz>(PatchTable("patch_cheat_any_gem_any_slot_01_movz"), W25, 5);
+            jest.Patch<Branch>(PatchTable("patch_cheat_any_gem_any_slot_02_branch"), 0xA0);
         }
 
         // [►Auto Pickup]
         if (global_config.rare_cheats.active && global_config.rare_cheats.auto_pickup)
-            jest.Patch<Nop>(0x004F98DC);
+            jest.Patch<Nop>(PatchTable("patch_cheat_auto_pickup_01_nop"));
         // 04000000 004F98DC D503201F
     }
 
@@ -492,66 +416,82 @@ namespace d3 {
         XVarBool_Set(&s_varExperimentalScheduling, true, 3u);
         if (global_config.challenge_rifts.active)
             XVarBool_Set(&s_varChallengeEnabled, true, 3u);
-        jest.Patch<Movz>(0x56B10, W0, 1);  // always Console::GamerProfile::IsSignedInOnline
-        jest.Patch<Ret>(0x56B14);          // ^ ret
+        jest.Patch<Movz>(PatchTable("patch_signin_01_movz"), W0, 1);  // always Console::GamerProfile::IsSignedInOnline
+        jest.Patch<Ret>(PatchTable("patch_signin_02_ret"));           // ^ ret
 
         /* String swap for autosave screen */
-        MakeAdrlPatch(0x335B68, reinterpret_cast<uintptr_t>(&c_szHackVerAutosave), X0);
+        MakeAdrlPatch(PatchTable("patch_autosave_string_01_adrl"), reinterpret_cast<uintptr_t>(&c_szHackVerAutosave), X0);
 
         /* String swap for start screen */
-        MakeAdrlPatch(0x3656B8, reinterpret_cast<uintptr_t>(&c_szHackVerStart), X0);
+        MakeAdrlPatch(PatchTable("patch_start_string_01_adrl"), reinterpret_cast<uintptr_t>(&c_szHackVerStart), X0);
 
         /* Enable local logging */
-        jest.Patch<Movz>(0x5F0, W0, 1);
+        jest.Patch<Movz>(PatchTable("patch_local_logging_01_movz"), W0, 1);
 
         // 0x00A2C614 - E5 0A 00 12
         // AND     W5, W23, #7
         // jest.Patch<exl::patch::inst::
 
         /* Pretend we are NOT in a mounted ROM */
-        // jest.Patch<Movz>(0x84C, W1, 0);
+        // jest.Patch<Movz>(PatchTable("patch_rom_mount_01_movz"), W1, 0);
 
         /* No timed wait for autosave warning */
-        // jest.Patch<Nop>(0x335C18);
+        // jest.Patch<Nop>(PatchTable("patch_autosave_wait_01_nop"));
 
         /* Inside ItemSetIsBeingManipulated(): BeingManipulated Attrib = 0 */
-        // jest.Patch<Branch>(0x0BF070, 0x20);  // CBZ W1, loc_BF090
+        // jest.Patch<Branch>(PatchTable("patch_item_manipulated_01_branch"), 0x20);  // CBZ W1, loc_BF090
 
         /* Don't try to find a slot to equip newly duped item */
-        jest.Patch<Nop>(0x802944);  // BL ACDInventoryWhereCanThisGo()
+        jest.Patch<Nop>(PatchTable("patch_dupe_noequip_01_nop"));  // BL ACDInventoryWhereCanThisGo()
 
         /* Stub functions that interfere with item duping */
-        jest.Patch<Ret>(0x03E180); /* void GameSoftPause(BOOL bPause) */
-        jest.Patch<Ret>(0x481160); /* void ActorCommonData::SetAssignedHeroID(ActorCommonData *this, const Player *ptPlayer) */
-        jest.Patch<Ret>(0x483D00); /* void ActorCommonData::SetAssignedHeroID(ActorCommonData *this, OnlineService::HeroId idHero) */
-        jest.Patch<Ret>(0x7B71D0); /* void SGameSoftPause(BOOL bPause) */
+        jest.Patch<Ret>(PatchTable("patch_dupe_stub_01_ret")); /* void GameSoftPause(BOOL bPause) */
+        jest.Patch<Ret>(PatchTable("patch_dupe_stub_02_ret")); /* void ActorCommonData::SetAssignedHeroID(ActorCommonData *this, const Player *ptPlayer) */
+        jest.Patch<Ret>(PatchTable("patch_dupe_stub_03_ret")); /* void ActorCommonData::SetAssignedHeroID(ActorCommonData *this, OnlineService::HeroId idHero) */
+        jest.Patch<Ret>(PatchTable("patch_dupe_stub_04_ret")); /* void SGameSoftPause(BOOL bPause) */
 
         /* Stub logging to RingBuffer */
-        jest.Patch<Ret>(0xA2C6B0); /* void FileOutputStream::LogToRingBuffer(int, char const*, char const*) */
+        jest.Patch<Ret>(PatchTable("patch_log_ringbuffer_01_ret")); /* void FileOutputStream::LogToRingBuffer(int, char const*, char const*) */
 
         /* Stub net message tracing */
-        jest.Patch<Ret>(0x962B10); /* void __fastcall sTraceMessage(const void *pMessage) */
+        jest.Patch<Ret>(PatchTable("patch_trace_message_01_ret")); /* void __fastcall sTraceMessage(const void *pMessage) */
 
         /* Fix path for stat tracing */
-        MakeAdrlPatch(0x7B1C50, reinterpret_cast<uintptr_t>(&c_szTraceStat), X0);
+        MakeAdrlPatch(PatchTable("patch_trace_stat_path_01_adrl"), reinterpret_cast<uintptr_t>(&c_szTraceStat), X0);
 
         if (!global_config.seasons.allow_online) {
             // Hide "Connect to Diablo Servers" menu entry (main menu item 12).
-            jest.Patch<Branch>(0x35C1A0, -0x90);  // force false path in ItemShouldBeVisible
-            // Hide Diablo Network status hint (connected/disconnected) above season text.
-            jest.Patch<Movz>(0x3627EC, W1, 0);  // off_1151298 visibility = 0 (connected path)
-            jest.Patch<Movz>(0x362800, W1, 0);  // off_1151290 visibility = 0 (disconnected path)
+            // jest.Patch<Branch>(PatchTable("patch_hideonline_01_branch"), -0x90);  // force false path in ItemShouldBeVisible
+
+            /* Pause + Main menu: hide "Connect to Diablo Servers" list entry. */
+            // 0x061620: STR X19, [SP,#-0x10+var_10]!
+            // 0x061624: STP X29, X30, [SP,#0x10+var_s0]
+            jest.Patch<Movz>(PatchTable("patch_hideonline_02_movz"), W0, 0);  // return false
+            jest.Patch<Ret>(PatchTable("patch_hideonline_03_ret"));
+
+            /* Main menu: hide Diablo Network status label in UIMainMenu::Console::OnUpdate. */
+            jest.Patch<Movz>(PatchTable("patch_hideonline_04_movz"), W1, 0);  // off_1151298 visibility = 0 (connected path)
+            jest.Patch<Movz>(PatchTable("patch_hideonline_05_movz"), W1, 0);  // off_1151290 visibility = 0 (disconnected path)
             // Hide the status text itself by calling SetVisible(0) on the text control instead of SetText.
-            jest.Patch<dword>(0x362840, make_bytes(0x08, 0x29, 0x40, 0xF9));  // LDR X8, [X8,#0x50]
-            jest.Patch<Movz>(0x362844, W1, 0);                                // W1 = 0 (invisible)
+            jest.Patch<dword>(PatchTable("patch_hideonline_06_bytes"), make_bytes(0x08, 0x29, 0x40, 0xF9));  // LDR X8, [X8,#0x50]
+            jest.Patch<Movz>(PatchTable("patch_hideonline_07_movz"), W1, 0);
+
+            /* Pause menu: hide Diablo Network status label in UIPause::Console::sOnWarningAccepted. */
+            // 0x221324: MOV W1, #1
+            // 0x221338: MOV W1, #1
+            jest.Patch<Movz>(PatchTable("patch_hideonline_08_movz"), W1, 0);  // force SetVisible(0) for connected path
+            jest.Patch<Movz>(PatchTable("patch_hideonline_09_movz"), W1, 0);  // force SetVisible(0) for disconnected path
+            // Hide the status text itself by calling SetVisible(0) on the text control instead of SetText.
+            jest.Patch<dword>(PatchTable("patch_hideonline_10_bytes"), make_bytes(0x08, 0x29, 0x40, 0xF9));  // LDR X8, [X8,#0x50]
+            jest.Patch<Movz>(PatchTable("patch_hideonline_11_movz"), W1, 0);                                 // W1 = 0 (invisible)
         }
 
         /* ItemCanDrop bypass */
-        // jest.Patch<dword>(0x369384, make_bytes(0x10, 0x00, 0x00, 0x14));
+        // jest.Patch<dword>(PatchTable("patch_itemcandrop_01_bytes"), make_bytes(0x10, 0x00, 0x00, 0x14));
 
         /* Increase the damage for ACTOR_EASYKILL_BIT */
-        jest.Patch<Movz>(0x97F55C, W9, 0x7bc7);
-        jest.Patch<Movk>(0x97F560, W9, 0x5d94, ShiftValue_16);
+        jest.Patch<Movz>(PatchTable("patch_easykill_01_movz"), W9, 0x7bc7);
+        jest.Patch<Movk>(PatchTable("patch_easykill_02_movk"), W9, 0x5d94, ShiftValue_16);
         // 5863 5FA9 = 1,000 T
         // 5d94 7bc7 = 1,337,420T
         // 60e8 0dae = 133,769,696T

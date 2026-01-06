@@ -6,37 +6,36 @@
 struct CRefString;
 namespace mod = exl::util::modules;
 
-#define CRS_PTR(offset, name, ...)                                 \
+#define CRS_PTR(name, ...)                                         \
     namespace crefstring_ptrs {                                    \
-        using APPEND(name, _t)                      = __VA_ARGS__; \
-        static constexpr size_t APPEND(name, _addr) = offset;      \
+        using APPEND(name, _t) = __VA_ARGS__;                      \
     }
 
-#define SETUP_CRS_PTR(name)                              \
-    crefstring_ptrs::APPEND(name, _t) CRefString::name = \
-        reinterpret_cast<crefstring_ptrs::APPEND(name, _t)>(GameOffset(crefstring_ptrs::APPEND(name, _addr)))
+#define SETUP_CRS_PTR(name)                               \
+    crefstring_ptrs::APPEND(name, _t) CRefString::name =  \
+        reinterpret_cast<crefstring_ptrs::APPEND(name, _t)>(GameOffsetFromTable("sym_" #name))
 
-CRS_PTR(0xA48690, CRefString_ctor_default,          void (*)(CRefString * const ));
-CRS_PTR(0xA486B0, CRefString_ctor_int,              void (*)(CRefString *, int));
-CRS_PTR(0xA486D0, CRefString_ctor_cref,             void (*)(CRefString *, const CRefString *szString));
-CRS_PTR(0xA48700, CRefString_ctor_lpcstr,           void (*)(CRefString *, const char* szString));
+CRS_PTR(CRefString_ctor_default,          void (*)(CRefString * const ));
+CRS_PTR(CRefString_ctor_int,              void (*)(CRefString *, int));
+CRS_PTR(CRefString_ctor_cref,             void (*)(CRefString *, const CRefString *szString));
+CRS_PTR(CRefString_ctor_lpcstr,           void (*)(CRefString *, const char* szString));
 
-CRS_PTR(0xA48790, CRefString_CommonCtorBody,        void (*)(CRefString *, const char*, int));
-CRS_PTR(0xA488B0, CRefString_ReAllocate,            void (*)(CRefString *, unsigned long, int));
-CRS_PTR(0xA48AB0, CRefString_Free,                  void (*)(CRefString *));
-CRS_PTR(0xA48C80, CRefString_Allocate,              void (*)(CRefString *, unsigned long));
+CRS_PTR(CRefString_CommonCtorBody,        void (*)(CRefString *, const char*, int));
+CRS_PTR(CRefString_ReAllocate,            void (*)(CRefString *, unsigned long, int));
+CRS_PTR(CRefString_Free,                  void (*)(CRefString *));
+CRS_PTR(CRefString_Allocate,              void (*)(CRefString *, unsigned long));
 
-CRS_PTR(0xA48E10, CRefString_dtor,                  void (*)(CRefString *));
+CRS_PTR(CRefString_dtor,                  void (*)(CRefString *));
 
 // CRS_PTR(0xA48E70, CRefString_op_char_const_ptr,     const char* (*)(CRefString*));
 // CRS_PTR(0xA48E80, CRefString_str,                   const char* (*)(CRefString*));
 // CRS_PTR(0xA48EA0, CRefString_Format,                void (*)(CRefString*, const char*, ...));  // Note: Variadic functions may need special handling
 
-CRS_PTR(0xA490A0, CRefString_op_eq_cref,            bool (*)(CRefString *, const CRefString&));
-CRS_PTR(0xA49100, CRefString_op_eq_cref_assign,     void (*)(CRefString *, const CRefString* szString));
-CRS_PTR(0xA491D0, CRefString_op_eq_lpcstr,          CRefString* (*)(CRefString *, const char*));
-CRS_PTR(0xA492C0, CRefString_op_add_eq_lpcstr,      CRefString* (*)(CRefString *, const char*));
-CRS_PTR(0xA49370, CRefString_Append,                void (*)(CRefString*, const char*));
+CRS_PTR(CRefString_op_eq_cref,            bool (*)(CRefString *, const CRefString&));
+CRS_PTR(CRefString_op_eq_cref_assign,     void (*)(CRefString *, const CRefString* szString));
+CRS_PTR(CRefString_op_eq_lpcstr,          CRefString* (*)(CRefString *, const char*));
+CRS_PTR(CRefString_op_add_eq_lpcstr,      CRefString* (*)(CRefString *, const char*));
+CRS_PTR(CRefString_Append,                void (*)(CRefString*, const char*));
 
 #undef CRS_PTR
 

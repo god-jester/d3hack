@@ -11,6 +11,21 @@ namespace exl::reloc {
     template<VersionType Version, impl::LookupEntry... Entries>
     using UserTableType = VersionedTable<Version, Entries...>;
 
+    // Versioned offset lookup tables
+    //
+    // Key naming:
+    // - Hooks:   "hook_<name>"
+    // - Symbols: "sym_<name>" (see `source/program/symbols/`)
+    // - Globals/Pointers: descriptive keys like "app_globals"
+    //
+    // Adding a new supported game build:
+    // 1) Add a new `util::UserVersion` enum value in `source/program/version.hpp`.
+    // 2) Update `DetermineUserVersion()` to return it.
+    // 3) Add a new `UserTableType<VersionType::YOUR_VERSION, ...>` table here.
+    // 4) Keep `DEFAULT` pinned to the current baseline (2.7.6.90885) and only override
+    //    entries that change for the new version.
+    //
+    // NOTE: Resolution hack offsets/logic are intentionally excluded from this table.
     using UserTableSet = TableSet<VersionType,
         /* DEFAULT is bound to D3CLIENT_VER via DetermineUserVersion(). */
         UserTableType<VersionType::DEFAULT,
@@ -24,6 +39,7 @@ namespace exl::reloc {
 
             /* Utility hooks (main module). */
             { util::ModuleIndex::Main, 0x758000, "hook_cmd_line_parse" },
+            { util::ModuleIndex::Main, 0x03CC74, "hook_var_res_label" },
             { util::ModuleIndex::Main, 0x0C8000, "hook_move_speed" },
             { util::ModuleIndex::Main, 0x6CC600, "hook_attack_speed" },
             { util::ModuleIndex::Main, 0x0BB5E8, "hook_floating_dmg" },
@@ -65,45 +81,164 @@ namespace exl::reloc {
             { util::ModuleIndex::Main, 0x114AD50, "season_seasons_request_flag_ptr" },
             { util::ModuleIndex::Main, 0x114AD68, "season_blacklist_request_flag_ptr" },
 
-            /* Patch/event flags (main module). */
-            { util::ModuleIndex::Main, 0x114ACB8, "event_buff_start_ptr" },
-            { util::ModuleIndex::Main, 0x114ACC0, "event_buff_end_ptr" },
-            { util::ModuleIndex::Main, 0x114AE38, "event_egg_flag_ptr" },
-            { util::ModuleIndex::Main, 0x1154BF0, "event_igr_ptr" },
-            { util::ModuleIndex::Main, 0x1154C00, "event_ann_ptr" },
-            { util::ModuleIndex::Main, 0x1152CC8, "event_egg_xvar_ptr" },
-            { util::ModuleIndex::Main, 0x114ACD8, "event_enabled_ptr" },
-            { util::ModuleIndex::Main, 0x114ACE8, "event_season_only_ptr" },
-            { util::ModuleIndex::Main, 0x18FFFC8, "event_double_keystones" },
-            { util::ModuleIndex::Main, 0x1900080, "event_double_blood_shards" },
-            { util::ModuleIndex::Main, 0x1900138, "event_double_goblins" },
-            { util::ModuleIndex::Main, 0x19001F0, "event_double_bounty_bags" },
-            { util::ModuleIndex::Main, 0x19002A8, "event_royal_grandeur" },
-            { util::ModuleIndex::Main, 0x1900360, "event_legacy_of_nightmares" },
-            { util::ModuleIndex::Main, 0x1900418, "event_triunes_will" },
-            { util::ModuleIndex::Main, 0x19004D0, "event_pandemonium" },
-            { util::ModuleIndex::Main, 0x1900588, "event_kanai_powers" },
-            { util::ModuleIndex::Main, 0x1900640, "event_trials_of_tempests" },
-            { util::ModuleIndex::Main, 0x19006F8, "event_shadow_clones" },
-            { util::ModuleIndex::Main, 0x19007B0, "event_fourth_cube_slot" },
-            { util::ModuleIndex::Main, 0x1900868, "event_ethereal_items" },
-            { util::ModuleIndex::Main, 0x1900920, "event_soul_shards" },
-            { util::ModuleIndex::Main, 0x19009D8, "event_swarm_rifts" },
-            { util::ModuleIndex::Main, 0x1900A90, "event_sanctified_items" },
-            { util::ModuleIndex::Main, 0x1900B48, "event_dark_alchemy" },
-            { util::ModuleIndex::Main, 0x18FF848, "event_nesting_portals" },
-            { util::ModuleIndex::Main, 0x1900C00, "event_paragon_cap" },
+            /* Symbols (main module). */
+            { util::ModuleIndex::Main, 0x4C4B20, "sym_GameActiveGameCommonDataIsServer" },
+            { util::ModuleIndex::Main, 0x4C4BA0, "sym_GameServerCodeLeave_Tracked" },
+            { util::ModuleIndex::Main, 0x4C4DF0, "sym__GameServerCodeEnter" },
+            { util::ModuleIndex::Main, 0x4C7CF0, "sym_GameIsStartUp" },
+            { util::ModuleIndex::Main, 0x4C7D80, "sym_ServerIsLocal" },
+            { util::ModuleIndex::Main, 0x7B2890, "sym_SGameGlobalsGet" },
+            { util::ModuleIndex::Main, 0x4C78D0, "sym_GameGetParts" },
+            { util::ModuleIndex::Main, 0x9621D0, "sym_ServerGetOnlyGameConnection" },
+            { util::ModuleIndex::Main, 0x7B87D0, "sym_AppServerGetOnlyGame" },
+            { util::ModuleIndex::Main, 0xC07700, "sym_bdLogSubscriber_publish" },
+            { util::ModuleIndex::Main, 0x758E40, "sym_CmdLineGetParams" },
+            { util::ModuleIndex::Main, 0x4C49D0, "sym_AppDrawFlagSet" },
+            { util::ModuleIndex::Main, 0xA27D30, "sym_XVarString_Set" },
+            { util::ModuleIndex::Main, 0xA2C820, "sym_FileReadIntoMemory" },
+            { util::ModuleIndex::Main, 0xA2CA50, "sym_FileReferenceInit" },
+            { util::ModuleIndex::Main, 0xA2D030, "sym_FileCreate" },
+            { util::ModuleIndex::Main, 0xA2D0F0, "sym_FileExists" },
+            { util::ModuleIndex::Main, 0xA2D100, "sym_FileOpen" },
+            { util::ModuleIndex::Main, 0xA2D1D0, "sym_FileClose" },
+            { util::ModuleIndex::Main, 0xA2D270, "sym_FileWrite" },
+            { util::ModuleIndex::Main, 0x0F2BB0, "sym_sReadFile" },
+            { util::ModuleIndex::Main, 0xA2BF20, "sym_TraceInternal_Log" },
+            { util::ModuleIndex::Main, 0x0093D0, "sym_GetLocalStorage" },
+            { util::ModuleIndex::Main, 0x719010, "sym_GetGameMessageTypeAndSize" },
+            { util::ModuleIndex::Main, 0x1E0DF0, "sym_DisplaySeasonEndingMessage" },
+            { util::ModuleIndex::Main, 0x1E0F60, "sym_DisplayLongMessageForPlayer" },
+            { util::ModuleIndex::Main, 0x933EF0, "sym_DisplayGameMessageForAllPlayers" },
+            { util::ModuleIndex::Main, 0x29B0E0, "sym_GfxWindowChangeDisplayMode" },
+            { util::ModuleIndex::Main, 0x29CBB0, "sym_ImageTextureFrame_ctor" },
+            { util::ModuleIndex::Main, 0x34C8D0, "sym_FormatTruncatedNumber" },
+            { util::ModuleIndex::Main, 0xA26F60, "sym_XVarBool_ToString" },
+            { util::ModuleIndex::Main, 0xA27360, "sym_XVarUint32_ToString" },
+            { util::ModuleIndex::Main, 0xA26EC0, "sym_XVarBool_Set" },
+            { util::ModuleIndex::Main, 0xA272C0, "sym_XVarUint32_Set" },
+            { util::ModuleIndex::Main, 0xA27A50, "sym_XVarFloat_Set" },
+            { util::ModuleIndex::Main, 0x065270, "sym_OnSeasonsFileRetrieved" },
+            { util::ModuleIndex::Main, 0x066B10, "sym_StorageGetPublisherFile" },
+            { util::ModuleIndex::Main, 0x185F70, "sym_sOnGetChallengeRiftData" },
+            { util::ModuleIndex::Main, 0xBB2B50, "sym_ParsePartialFromString" },
+            { util::ModuleIndex::Main, 0x564C00, "sym_ChallengeData_ctor" },
+            { util::ModuleIndex::Main, 0x62AAE0, "sym_WeeklyChallengeData_ctor" },
+            { util::ModuleIndex::Main, 0x4C8B10, "sym_GameRandRangeInt" },
+            { util::ModuleIndex::Main, 0xB20, "sym_rawfree" },
+            { util::ModuleIndex::Main, 0xA36D20, "sym_SigmaMemoryNew" },
+            { util::ModuleIndex::Main, 0xA36E70, "sym_SigmaMemoryFree" },
+            { util::ModuleIndex::Main, 0xA37020, "sym_SigmaMemoryMove" },
+            { util::ModuleIndex::Main, 0xA37080, "sym_op_delete_1" },
+            { util::ModuleIndex::Main, 0xA370B0, "sym_op_delete_2" },
+            { util::ModuleIndex::Main, 0x066690, "sym_blz_basic_string" },
+            { util::ModuleIndex::Main, 0x066690, "sym_blz_string_ctor" },
+            { util::ModuleIndex::Main, 0x03C390, "sym_blz_make_stringf" },
+            { util::ModuleIndex::Main, 0x03C390, "sym_blz_make_stringfb" },
+            { util::ModuleIndex::Main, 0x505780, "sym_sGetItemTypeString" },
+            { util::ModuleIndex::Main, 0x69B230, "sym_AttribParamToString" },
+            { util::ModuleIndex::Main, 0x69FBE0, "sym_FastAttribToString" },
+            { util::ModuleIndex::Main, 0x69B0D0, "sym_AttribStringToParam" },
+            { util::ModuleIndex::Main, 0x6CA3F0, "sym_GBIDToStringAll" },
+            { util::ModuleIndex::Main, 0x6CBC70, "sym_GBIDToString" },
+            { util::ModuleIndex::Main, 0x6F1480, "sym_StringListFetchLPCSTR" },
+            { util::ModuleIndex::Main, 0x483D70, "sym_ClearAssignedHero" },
+            { util::ModuleIndex::Main, 0x489210, "sym_ACDInventoryItemAllowedInSlot" },
+            { util::ModuleIndex::Main, 0x48E910, "sym_ACDAddToInventory" },
+            { util::ModuleIndex::Main, 0x490F20, "sym_SACDInventoryPickupOrSpillOntoGround" },
+            { util::ModuleIndex::Main, 0x4F44F0, "sym_ItemHasLabel" },
+            { util::ModuleIndex::Main, 0x4FC120, "sym_SetBindingLevel" },
+            { util::ModuleIndex::Main, 0x4FC2E0, "sym_SetRecipient" },
+            { util::ModuleIndex::Main, 0x4FF320, "sym_PopulateGenerator" },
+            { util::ModuleIndex::Main, 0x4FFF00, "sym_CItemGenerate" },
+            { util::ModuleIndex::Main, 0x60CBC0, "sym_ItemsGenerator_ctor" },
+            { util::ModuleIndex::Main, 0x60D250, "sym_ItemsGenerator_dtor" },
+            { util::ModuleIndex::Main, 0x7A33A0, "sym_FlippyFindLandingLocation" },
+            { util::ModuleIndex::Main, 0x7A4A00, "sym_FlippyDropCreateOnActor" },
+            { util::ModuleIndex::Main, 0x7DE1E0, "sym_SItemGenerate" },
+            { util::ModuleIndex::Main, 0x802700, "sym_AddItemToInventory" },
+            { util::ModuleIndex::Main, 0x890A10, "sym_LootQuickCreateItem" },
+            { util::ModuleIndex::Main, 0x4B1690, "sym_GetCosmeticItemType" },
+            { util::ModuleIndex::Main, 0x504BC0, "sym_ItemIsCosmeticItem" },
+            { util::ModuleIndex::Main, 0x6A3D80, "sym_SetCraftLevel" },
+            { util::ModuleIndex::Main, 0x6A4A20, "sym_Crafting_GetTransmogSlot" },
+            { util::ModuleIndex::Main, 0x7A1D80, "sym_ExperienceSetLevel" },
+            { util::ModuleIndex::Main, 0x7A1B00, "sym_ExperienceDropLootForAll" },
+            { util::ModuleIndex::Main, 0x7C2C50, "sym_SCosmeticItems_LearnCosmeticItem" },
+            { util::ModuleIndex::Main, 0x7C2F50, "sym_SCosmeticItems_LearnPet" },
+            { util::ModuleIndex::Main, 0x7E02B0, "sym_SItemPlayerExtractLegendaryPower" },
+            { util::ModuleIndex::Main, 0x87FE40, "sym_SItemCrafting_TryUnlockTransmog" },
+            { util::ModuleIndex::Main, 0x880B40, "sym_SItemCrafting_TryUnlockSecondaryTmogs" },
+            { util::ModuleIndex::Main, 0x884930, "sym_SCrafterIncrementLevel" },
+            { util::ModuleIndex::Main, 0x884A50, "sym_SItemCrafting_LearnRecipe" },
+            { util::ModuleIndex::Main, 0x886D70, "sym_sCrafterOnLevelUp" },
+            { util::ModuleIndex::Main, 0x88DDE0, "sym_LootRollForAncientLegendary" },
+            { util::ModuleIndex::Main, 0x4E5E50, "sym_GlobalSNOGet" },
+            { util::ModuleIndex::Main, 0x6CB780, "sym_GBEnumerate" },
+            { util::ModuleIndex::Main, 0x6CBCA0, "sym_GBGetHandlePool" },
+            { util::ModuleIndex::Main, 0x74A510, "sym_SNOToString" },
+            { util::ModuleIndex::Main, 0x933ED0, "sym_PlayerIsPrimary" },
+            { util::ModuleIndex::Main, 0x93DAF0, "sym_GetPrimaryPlayer" },
+            { util::ModuleIndex::Main, 0x0B8740, "sym_LocalPlayerGet" },
+            { util::ModuleIndex::Main, 0x51FC40, "sym_PlayerGetByACD" },
+            { util::ModuleIndex::Main, 0x51CFF0, "sym_PlayerGetHeroDisplayName" },
+            { util::ModuleIndex::Main, 0x51F7C0, "sym_PlayerGetFirstAll" },
+            { util::ModuleIndex::Main, 0x51F870, "sym_PlayerGetNextAll" },
+            { util::ModuleIndex::Main, 0x5202C0, "sym_PlayerGetFirstInGame" },
+            { util::ModuleIndex::Main, 0x5211F0, "sym_PlayerGetByPlayerIndex" },
+            { util::ModuleIndex::Main, 0x5279E0, "sym_GetPrimaryPlayerForGameConnection" },
+            { util::ModuleIndex::Main, 0x7A6330, "sym_PlayerList_ctor" },
+            { util::ModuleIndex::Main, 0x7A6520, "sym_PlayerListGetElementPool" },
+            { util::ModuleIndex::Main, 0x7A6BF0, "sym_PlayerListGetSingle" },
+            { util::ModuleIndex::Main, 0x7A6850, "sym_PlayerListGetAllInGame" },
+            { util::ModuleIndex::Main, 0x7FD3F0, "sym_SPlayerIsLocal" },
+            { util::ModuleIndex::Main, 0x46FAB0, "sym_ACD_AttributesGetInt" },
+            { util::ModuleIndex::Main, 0x46FAC0, "sym_ACD_AttributesGetFloat" },
+            { util::ModuleIndex::Main, 0x46FB90, "sym_ACD_AttributesSetInt" },
+            { util::ModuleIndex::Main, 0x46FB10, "sym_ACD_AttributesSetFloat" },
+            { util::ModuleIndex::Main, 0x47FF40, "sym_ACD_ModifyCurrencyAmount" },
+            { util::ModuleIndex::Main, 0x4801C0, "sym_ACD_SetCurrencyAmount" },
+            { util::ModuleIndex::Main, 0x669BB0, "sym_ACDTryToGet" },
+            { util::ModuleIndex::Main, 0x69F4E0, "sym_FastAttribGetValueInt" },
+            { util::ModuleIndex::Main, 0x69F580, "sym_FastAttribGetValueFloat" },
+            { util::ModuleIndex::Main, 0x69AF10, "sym_KeyGetDataType" },
+            { util::ModuleIndex::Main, 0x6A0150, "sym_KeyGetParamType" },
+            { util::ModuleIndex::Main, 0x71DA90, "sym_MessageSendToClient" },
+            { util::ModuleIndex::Main, 0x86DF70, "sym_ActorGet" },
+            { util::ModuleIndex::Main, 0x86F840, "sym_ActorFlagSet" },
+            { util::ModuleIndex::Main, 0xA48690, "sym_CRefString_ctor_default" },
+            { util::ModuleIndex::Main, 0xA486B0, "sym_CRefString_ctor_int" },
+            { util::ModuleIndex::Main, 0xA486D0, "sym_CRefString_ctor_cref" },
+            { util::ModuleIndex::Main, 0xA48700, "sym_CRefString_ctor_lpcstr" },
+            { util::ModuleIndex::Main, 0xA48790, "sym_CRefString_CommonCtorBody" },
+            { util::ModuleIndex::Main, 0xA488B0, "sym_CRefString_ReAllocate" },
+            { util::ModuleIndex::Main, 0xA48AB0, "sym_CRefString_Free" },
+            { util::ModuleIndex::Main, 0xA48C80, "sym_CRefString_Allocate" },
+            { util::ModuleIndex::Main, 0xA48E10, "sym_CRefString_dtor" },
+            { util::ModuleIndex::Main, 0xA490A0, "sym_CRefString_op_eq_cref" },
+            { util::ModuleIndex::Main, 0xA49100, "sym_CRefString_op_eq_cref_assign" },
+            { util::ModuleIndex::Main, 0xA491D0, "sym_CRefString_op_eq_lpcstr" },
+            { util::ModuleIndex::Main, 0xA492C0, "sym_CRefString_op_add_eq_lpcstr" },
+            { util::ModuleIndex::Main, 0xA49370, "sym_CRefString_Append" },
 
-            /* XVar pointers (main module). */
-            { util::ModuleIndex::Main, 0x115A408, "xvar_local_logging_enable_ptr" },
-            { util::ModuleIndex::Main, 0x1158FB0, "xvar_online_service_ptr" },
-            { util::ModuleIndex::Main, 0x1158FD0, "xvar_free_to_play_ptr" },
-            { util::ModuleIndex::Main, 0x11590D8, "xvar_seasons_override_enabled_ptr" },
-            { util::ModuleIndex::Main, 0x11590E0, "xvar_challenge_enabled_ptr" },
-            { util::ModuleIndex::Main, 0x114AC60, "xvar_season_num_ptr" },
-            { util::ModuleIndex::Main, 0x114AC68, "xvar_season_state_ptr" },
-            { util::ModuleIndex::Main, 0x11551D0, "xvar_max_paragon_level_ptr" },
-            { util::ModuleIndex::Main, 0x11597C8, "xvar_experimental_scheduling_ptr" }
+            // Patch-only offsets/patch-sites (main module).
+            // See `source/program/offsets_patch_only.inl` (includes resolution hack entries).
+            #include "offsets_patch_only.inl"
+
+            /* Unused/debug offsets (main module). */
+            { util::ModuleIndex::Main, 0x7EAC18, "hook_lobby_store_player_pointers_007eac18" },  // unused
+            { util::ModuleIndex::Main, 0xB7DCC, "hook_lobby_new_player_msg_000b7dcc" },  // unused
+            { util::ModuleIndex::Main, 0x7B18B8, "hook_lobby_sgame_get_007b18b8" },  // unused
+            { util::ModuleIndex::Main, 0x488EC0, "hook_lobby_return_true_00488ec0" },  // unused
+            { util::ModuleIndex::Main, 0x488BA0, "hook_lobby_return_true_00488ba0" },  // unused
+            { util::ModuleIndex::Main, 0x504EE0, "hook_lobby_return_true_00504ee0" },  // unused
+            { util::ModuleIndex::Main, 0xA2AC70, "hook_print_error" },  // unused
+            { util::ModuleIndex::Main, 0xA2AE14, "hook_print_error_string" },  // unused
+            { util::ModuleIndex::Main, 0x4B104C, "hook_debug_count_cosmetics_004b104c" },  // unused
+            { util::ModuleIndex::Main, 0xBFD8A0, "hook_debug_parse_file_00bfd8a0" },  // unused
+            { util::ModuleIndex::Main, 0xC592D4, "hook_debug_curl_data_00c592d4" },  // unused
+            { util::ModuleIndex::Main, 0x3A73A8, "hook_debug_font_snoop_003a73a8" },  // unused
+            { util::ModuleIndex::Main, 0x69B9E0, "hook_debug_store_attrib_defs_0069b9e0" },  // unused
+            { util::ModuleIndex::Main, 0x6B5384, "hook_debug_print_saved_attribs_006b5384" }  // unused
         >
     >;
 }
