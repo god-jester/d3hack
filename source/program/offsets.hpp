@@ -14,8 +14,7 @@ namespace exl::reloc {
     // Versioned offset lookup tables
     //
     // Key naming:
-    // - Hooks:   "hook_<name>"
-    // - Symbols: "sym_<name>" (see `source/program/symbols/`)
+    // - Hooks/Symbols: "sym_<name>" (see `source/program/symbols/`)
     // - Globals/Pointers: descriptive keys like "app_globals"
     //
     // Adding a new supported game build:
@@ -30,46 +29,49 @@ namespace exl::reloc {
         /* DEFAULT is bound to D3CLIENT_VER via DetermineUserVersion(). */
         UserTableType<VersionType::DEFAULT,
             /* Early hooks (main module). */
-            { util::ModuleIndex::Main, 0x000480, "hook_main_init" },
-            { util::ModuleIndex::Main, 0x298BD0, "hook_gfx_init" },
-            { util::ModuleIndex::Main, 0x4CABA0, "hook_game_common_data_init" },
-            { util::ModuleIndex::Main, 0x667830, "hook_shell_initialize" },
-            { util::ModuleIndex::Main, 0x7B08A0, "hook_sgame_initialize" },
-            { util::ModuleIndex::Main, 0x8127A0, "hook_sinitialize_world" },
+            { util::ModuleIndex::Main, 0x000480, "sym_main_init" },
+            { util::ModuleIndex::Main, 0x298BD0, "sym_gfx_init" },
+            { util::ModuleIndex::Main, 0x4CABA0, "sym_game_common_data_init" },
+            { util::ModuleIndex::Main, 0x667830, "sym_shell_initialize" },
+            { util::ModuleIndex::Main, 0x7B08A0, "sym_sgame_initialize" },
+            { util::ModuleIndex::Main, 0x8127A0, "sym_sinitialize_world" },
 
             /* Utility hooks (main module). */
-            { util::ModuleIndex::Main, 0x758000, "hook_cmd_line_parse" },
-            { util::ModuleIndex::Main, 0x03CC74, "hook_var_res_label" },
-            { util::ModuleIndex::Main, 0x0C8000, "hook_move_speed" },
-            { util::ModuleIndex::Main, 0x6CC600, "hook_attack_speed" },
-            { util::ModuleIndex::Main, 0x0BB5E8, "hook_floating_dmg" },
-            { util::ModuleIndex::Main, 0x03FEE8, "hook_font_string_get_rendered_size" },
-            { util::ModuleIndex::Main, 0x03FF50, "hook_font_string_draw_03ff50" },
-            { util::ModuleIndex::Main, 0x03E5B0, "hook_font_string_draw_03e5b0" },
-            { util::ModuleIndex::Main, 0x0010C8, "hook_font_string_draw_0010c8" },
+            { util::ModuleIndex::Main, 0x758000, "sym_cmd_line_parse" },
+            { util::ModuleIndex::Main, 0x03CC74, "sym_var_res_label" },
+            { util::ModuleIndex::Main, 0x0C8000, "sym_move_speed" },
+            { util::ModuleIndex::Main, 0x6CC600, "sym_attack_speed" },
+            { util::ModuleIndex::Main, 0x0BB5E8, "sym_floating_dmg" },
+            { util::ModuleIndex::Main, 0x03FEE8, "sym_font_string_get_rendered_size" },
+            { util::ModuleIndex::Main, 0x03FF50, "sym_font_string_draw_03ff50" },
+            { util::ModuleIndex::Main, 0x03E5B0, "sym_font_string_draw_03e5b0" },
+            { util::ModuleIndex::Main, 0x0010C8, "sym_font_string_draw_0010c8" },
 
             /* Season/event hooks (main module). */
-            { util::ModuleIndex::Main, 0x0641F0, "hook_config_file_retrieved" },
-            { util::ModuleIndex::Main, 0x065270, "hook_seasons_file_retrieved" },
-            { util::ModuleIndex::Main, 0x0657F0, "hook_blacklist_file_retrieved" },
+            { util::ModuleIndex::Main, 0x0641F0, "sym_OnConfigFileRetrieved" },
+            { util::ModuleIndex::Main, 0x065270, "sym_OnSeasonsFileRetrieved" },
+            { util::ModuleIndex::Main, 0x0657F0, "sym_OnBlacklistFileRetrieved" },
 
             /* Lobby hooks (main module). */
-            { util::ModuleIndex::Main, 0x8950B0, "hook_specifiers_from_modifier" },
-            { util::ModuleIndex::Main, 0x896808, "hook_eval_mod" },
-            { util::ModuleIndex::Main, 0x495BC0, "hook_dupe_dropped_item" },
-            { util::ModuleIndex::Main, 0x0BF630, "hook_request_drop_item" },
+            { util::ModuleIndex::Main, 0x060810, "sym_lobby_service_idle_internal" },
+            { util::ModuleIndex::Main, 0x06065C, "sym_lobby_service_create" },
+            { util::ModuleIndex::Main, 0x8950B0, "sym_specifiers_from_modifier" },
+            { util::ModuleIndex::Main, 0x896808, "sym_eval_mod" },
+            { util::ModuleIndex::Main, 0x495BC0, "sym_dupe_dropped_item" },
+            { util::ModuleIndex::Main, 0x0BF630, "sym_request_drop_item" },
 
             /* Debugging hooks (main module). */
-            { util::ModuleIndex::Main, 0x185AA0, "hook_print_challenge_rift_failed" },
-            { util::ModuleIndex::Main, 0x185F70, "hook_challenge_rift_callback" },
-            { util::ModuleIndex::Main, 0x06A2A8, "hook_pubfile_data_hex" },
-            { util::ModuleIndex::Main, 0xA2AC60, "hook_print_error_display" },
-            { util::ModuleIndex::Main, 0xA2AE74, "hook_print_error_string_final" },
+            { util::ModuleIndex::Main, 0x185AA0, "sym_print_challenge_rift_failed" },
+            { util::ModuleIndex::Main, 0x185F70, "sym_challenge_rift_callback" },
+            { util::ModuleIndex::Main, 0x06A2A8, "sym_pubfile_data_hex" },
+            { util::ModuleIndex::Main, 0xA2AC60, "sym_print_error_display" },
+            { util::ModuleIndex::Main, 0xA2AE74, "sym_print_error_string_final" },
 
             /* Globals (main module). */
             { util::ModuleIndex::Main, 0x17DE610, "main_rwindow" },
             { util::ModuleIndex::Main, 0x1830F68, "gfx_internal_data_ptr" },
             { util::ModuleIndex::Main, 0x1905610, "app_globals" },
+            { util::ModuleIndex::Main, 0x114AC90, "lobby_services_ptr" },
             { util::ModuleIndex::Main, 0x191CA70, "sigma_thread_data" },
             { util::ModuleIndex::Main, 0x191EAD8, "attrib_defs" },
             { util::ModuleIndex::Main, 0x1154B68, "item_invalid" },
@@ -87,6 +89,7 @@ namespace exl::reloc {
             { util::ModuleIndex::Main, 0x4C4DF0, "sym__GameServerCodeEnter" },
             { util::ModuleIndex::Main, 0x4C7CF0, "sym_GameIsStartUp" },
             { util::ModuleIndex::Main, 0x4C7D80, "sym_ServerIsLocal" },
+            { util::ModuleIndex::Main, 0x056790, "sym_GetPrimaryProfileUserIndex" },
             { util::ModuleIndex::Main, 0x7B2890, "sym_SGameGlobalsGet" },
             { util::ModuleIndex::Main, 0x4C78D0, "sym_GameGetParts" },
             { util::ModuleIndex::Main, 0x9621D0, "sym_ServerGetOnlyGameConnection" },
@@ -117,7 +120,6 @@ namespace exl::reloc {
             { util::ModuleIndex::Main, 0xA26EC0, "sym_XVarBool_Set" },
             { util::ModuleIndex::Main, 0xA272C0, "sym_XVarUint32_Set" },
             { util::ModuleIndex::Main, 0xA27A50, "sym_XVarFloat_Set" },
-            { util::ModuleIndex::Main, 0x065270, "sym_OnSeasonsFileRetrieved" },
             { util::ModuleIndex::Main, 0x066B10, "sym_StorageGetPublisherFile" },
             { util::ModuleIndex::Main, 0x185F70, "sym_sOnGetChallengeRiftData" },
             { util::ModuleIndex::Main, 0xBB2B50, "sym_ParsePartialFromString" },

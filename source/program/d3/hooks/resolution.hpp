@@ -176,7 +176,8 @@ namespace d3 {
         }
 
         inline bool ShouldDetachSwapchainDepth(SNO snoDepth) {
-            return snoDepth == kSwapchainDetachDepthSno;
+            // return snoDepth == kSwapchainDetachDepthSno;
+            return true; // being too picky can make clipping inconsistent
         }
 
         struct SwapchainDepthGateState {
@@ -335,7 +336,7 @@ namespace d3 {
                         ++s_num_entries;
                     }
 
-                    if (count_ptr && *count_ptr < 32) {
+                    if (count_ptr && *count_ptr < 2) {
                         PRINT(
                             "Swapchain depth detach (sno match): depth=%d out=%ux%u int=%ux%u",
                             snoDepth,
@@ -597,7 +598,7 @@ namespace d3 {
                     // if (depth != -1) {
                     //     if (global_config.debug.active) {
                     //         static uint32 s_detach_logged = 0;
-                    //         if (s_detach_logged < 32) {
+                    //         if (s_detach_logged < 2) {
                     //             PRINT(
                     //                 "Swapchain depth detach (ui clip): depth=%d out=%ux%u int=%ux%u",
                     //                 depth,
@@ -612,7 +613,7 @@ namespace d3 {
                     //     GfxSetDepthTargetSwapchainFix::Orig(-1);
                     // }
 
-                    if (s_logged < 96) {
+                    if (s_logged < 2) {
                         PRINT(
                             "UI clip cascaded: self=%p rect=[%.1f %.1f %.1f %.1f] clip=[%.1f %.1f %.1f %.1f]"
                             " stored=[%.1f %.1f %.1f %.1f] out=%ux%u int=%ux%u",
@@ -806,7 +807,7 @@ namespace d3 {
                                 ++s_num_entries;
                             }
 
-                            if (count_ptr && *count_ptr < 32) {
+                            if (count_ptr && *count_ptr < 2) {
                                 PRINT(
                                     "Swapchain depth detach (vp sno): depth=%d vp=%ux%u out=%ux%u int=%ux%u",
                                     current_depth,
@@ -849,27 +850,25 @@ namespace d3 {
         if (!global_config.resolution_hack.active)
             return;
 
-        const uint32 out_w = global_config.resolution_hack.OutputWidthPx();
-        const uint32 out_h = global_config.resolution_hack.OutputHeightPx();
-        const bool   needs_internal_clamp = (out_w > kInternalClampDim) || (out_h > kInternalClampDim);
-        // 1080p output stays <= 2048, so the 1152p+ clip path never triggers; no hooks needed.
-        if (!needs_internal_clamp)
-            return;
-
-        if (global_config.resolution_hack.clamp_textures_2048)
-            PostFXInitClampDims::InstallAtOffset(0x12F218);
-
         DisplayListDrawRenderLayerSwapchainGate::InstallAtOffset(0x157294);
+        CGameVariableResInitializeForRWindowHook::InstallAtOffset(0x03CB90);
+        // GfxSetRenderAndDepthTargetSwapchainFix::InstallAtOffset(0x29C670);
+        // GfxSetDepthTargetSwapchainFix::InstallAtOffset(0x29C4E0);
+        GfxViewportSetSwapchainDepthGate::InstallAtOffset(0x0F0280);
 
-        if (global_config.debug.active) {
+        if (global_config.debug.active && false) {
             SetStateBlockStatesSwapchainLog::InstallAtOffset(0x2A6E10);
             UIWindowGetCascadedClippingRectHook::InstallAtOffset(0x3B2E70);
             UIWindowIsClippedHook::InstallAtOffset(0x3B3A00);
             UITreeFolderDrawHook::InstallAtOffset(0x3B07A0);
         }
 
-        GfxSetRenderAndDepthTargetSwapchainFix::InstallAtOffset(0x29C670);
-        GfxSetDepthTargetSwapchainFix::InstallAtOffset(0x29C4E0);
-        GfxViewportSetSwapchainDepthGate::InstallAtOffset(0x0F0280);
+        const uint32 out_w                = global_config.resolution_hack.OutputWidthPx();
+        const uint32 out_h                = global_config.resolution_hack.OutputHeightPx();
+        const bool   needs_internal_clamp = (out_w > kInternalClampDim) || (out_h > kInternalClampDim);
+        // 1080p output stays <= 2048, so the 1152p+ clip path never triggers; no hooks needed.
+        if (needs_internal_clamp && (global_config.resolution_hack.clamp_textures_2048 || !global_config.initialized)) {
+            PostFXInitClampDims::InstallAtOffset(0x12F218);
+        }
     }
 }  // namespace d3

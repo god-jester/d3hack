@@ -18,6 +18,7 @@ struct PatchConfig {
         u32   target_resolution   = 1080;   // boosted docked resolution
         float min_res_scale       = 85.0f;  // boosted; default is 70%
         bool  clamp_textures_2048 = false;
+        bool  exp_scheduler       = false;
 
         static constexpr float kAspectRatio = 16.0f / 9.0f;
 
@@ -32,9 +33,10 @@ struct PatchConfig {
     };
 
     struct {
-        bool active = true;
-        bool allow_online = false;
-        u32  number = 30;
+        bool active         = true;
+        bool allow_online   = false;
+        u32  current_season = 30;
+        bool spoof_ptr      = false;
     } seasons;
 
     struct {

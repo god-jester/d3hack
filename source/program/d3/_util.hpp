@@ -53,13 +53,15 @@ namespace d3 {
     GameCommonData          *g_ptGCData;
     GfxInternalData         *g_ptGfxData;
     RWindow                 *g_ptMainRWindow;
+    void                    *g_ptLobbyServiceInternal;
     GameConnectionID         gs_idGameConnection;
+    constinit bool           g_request_seasons_load = false;
 
     auto &s_varLocalLoggingEnable     = **reinterpret_cast<uintptr_t **const>(GameOffsetFromTable("xvar_local_logging_enable_ptr"));
     auto &s_varOnlineServicePTR       = **reinterpret_cast<uintptr_t **const>(GameOffsetFromTable("xvar_online_service_ptr"));
     auto &s_varFreeToPlay             = **reinterpret_cast<uintptr_t **const>(GameOffsetFromTable("xvar_free_to_play_ptr"));
     auto &s_varSeasonsOverrideEnabled = **reinterpret_cast<uintptr_t **const>(GameOffsetFromTable("xvar_seasons_override_enabled_ptr"));
-    auto &s_varChallengeEnabled       = **reinterpret_cast<uintptr_t **const>(GameOffsetFromTable("xvar_challenge_enabled_ptr"));
+    auto &s_varChallengeRiftEnabled   = **reinterpret_cast<uintptr_t **const>(GameOffsetFromTable("xvar_challengerift_enabled_ptr"));
     auto &s_varSeasonNum              = **reinterpret_cast<uintptr_t **const>(GameOffsetFromTable("xvar_season_num_ptr"));
     auto &s_varSeasonState            = **reinterpret_cast<uintptr_t **const>(GameOffsetFromTable("xvar_season_state_ptr"));
     auto &s_varMaxParagonLevel        = **reinterpret_cast<uintptr_t **const>(GameOffsetFromTable("xvar_max_paragon_level_ptr"));

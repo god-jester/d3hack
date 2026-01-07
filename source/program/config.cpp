@@ -152,7 +152,7 @@ namespace {
         bool SoulShards = false;
         bool SwarmRifts = false;
         bool SanctifiedItems = false;
-        bool DarkAlchemy = false;
+        bool DarkAlchemy = true;
         bool NestingPortals = false;
     };
 
@@ -317,7 +317,7 @@ namespace {
         if (!config.seasons.active)
             return;
         SeasonEventFlags map{};
-        if (!BuildSeasonEventMap(config.seasons.number, map))
+        if (!BuildSeasonEventMap(config.seasons.current_season, map))
             return;
         auto current = CaptureSeasonEventFlags(config);
         auto merged = config.events.SeasonMapMode == PatchConfig::SeasonEventMapMode::OverlayConfig
@@ -404,7 +404,7 @@ void PatchConfig::ApplyTable(const toml::table& table) {
     if (const auto* section = FindTable(table, "seasons")) {
         seasons.active = ReadBool(*section, {"SectionEnabled", "Enabled", "Active"}, seasons.active);
         seasons.allow_online = ReadBool(*section, {"AllowOnlinePlay", "AllowOnline"}, seasons.allow_online);
-        seasons.number = ReadU32(*section, {"SeasonNumber", "Number", "Season"}, seasons.number, 1, 200);
+        seasons.current_season = ReadU32(*section, {"SeasonNumber", "Number", "Season"}, seasons.current_season, 1, 200);
     }
 
     if (const auto* section = FindTable(table, "challenge_rifts")) {

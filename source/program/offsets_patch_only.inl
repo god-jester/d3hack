@@ -35,7 +35,7 @@
     {util::ModuleIndex::Main, 0x1158FB0, "xvar_online_service_ptr"},
     {util::ModuleIndex::Main, 0x1158FD0, "xvar_free_to_play_ptr"},
     {util::ModuleIndex::Main, 0x11590D8, "xvar_seasons_override_enabled_ptr"},
-    {util::ModuleIndex::Main, 0x11590E0, "xvar_challenge_enabled_ptr"},
+    {util::ModuleIndex::Main, 0x1158FD8, "xvar_challengerift_enabled_ptr"},
     {util::ModuleIndex::Main, 0x114AC60, "xvar_season_num_ptr"},
     {util::ModuleIndex::Main, 0x114AC68, "xvar_season_state_ptr"},
     {util::ModuleIndex::Main, 0x11551D0, "xvar_max_paragon_level_ptr"},
@@ -149,7 +149,7 @@
 
     {util::ModuleIndex::Main, 0x004FFFE4, "patch_cheat_testing_cosmetics_01_cmn_imm"},      // unused | CMN_IMM | W2
 
-    {util::ModuleIndex::Main, 0x0088DDFC, "patch_cheat_primal_01_branch"},                   // unused | BRANCH | 0x360
+    {util::ModuleIndex::Main, 0x0088DDFC, "patch_cheat_primal_01_branch"},                  // unused | BRANCH | 0x360
     {util::ModuleIndex::Main, 0x0088DE58, "patch_cheat_primal_02_movz"},                    // unused | MOVZ | W8
     {util::ModuleIndex::Main, 0x0088DF10, "patch_cheat_primal_03_bytes"},                   // unused | patch: 40 21 2A 1E
     {util::ModuleIndex::Main, 0x0088DFFC, "patch_cheat_primal_04_bytes"},                   // unused | patch: 00 20 20 1E | covered by W8, 2
@@ -223,6 +223,9 @@
     {util::ModuleIndex::Main, 0x221338, "patch_hideonline_09_movz"},          // MOVZ | W1 | Pause menu status label | disconnected path
     {util::ModuleIndex::Main, 0x221378, "patch_hideonline_10_bytes"},         // patch: 08 29 40 F9 | LDR X8, [X8,#0x50]
     {util::ModuleIndex::Main, 0x22137C, "patch_hideonline_11_movz"},          // MOVZ | W1 | W1 = 0 (invisible)
+
+    {util::ModuleIndex::Main, 0x5281B0, "patch_handicap_unlock_01_movz"},     // MOVZ | W0 | PlayerCanPlayHandicap(): return true (unlock all difficulties)
+    {util::ModuleIndex::Main, 0x5281B4, "patch_handicap_unlock_02_ret"},      // RET
 
     {util::ModuleIndex::Main, 0x369384, "patch_itemcandrop_01_bytes"},        // unused | patch: 10 00 00 14
 

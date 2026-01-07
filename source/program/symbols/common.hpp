@@ -7,6 +7,7 @@
 
 #include "symbols/base.hpp"
 #include "symbols/player_actor.hpp"
+#include "symbols/hooks.hpp"
 #include "symbols/game.hpp"
 #include "symbols/items.hpp"
 #include "symbols/constructors.hpp"

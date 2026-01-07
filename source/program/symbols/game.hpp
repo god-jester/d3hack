@@ -3,6 +3,7 @@ FUNC_PTR(GameServerCodeLeave_Tracked,          SGameID (*)(BOOL bReturnToClient)
 FUNC_PTR(_GameServerCodeEnter,                    BOOL (*)());
 FUNC_PTR(GameIsStartUp,                           BOOL (*)());
 FUNC_PTR(ServerIsLocal,                           BOOL (*)());
+FUNC_PTR(GetPrimaryProfileUserIndex,             int32 (*)());
 FUNC_PTR(SGameGlobalsGet,                SGameGlobals* (*)());
 FUNC_PTR(GameGetParts,                       GameParts (*)());
 FUNC_PTR(ServerGetOnlyGameConnection, GameConnectionID (*)());
@@ -33,7 +34,9 @@ FUNC_PTR(XVarUint32_ToString,              blz::string (*)(uintptr_t * /* XVarUi
 FUNC_PTR(XVarBool_Set,                            bool (*)(uintptr_t * /* XVarBool *this */, bool bNewVal, uint32 uDirtyFlagsIfNecessary));
 FUNC_PTR(XVarUint32_Set,                          bool (*)(uintptr_t * /* XVarUint32 *this */, uint32 uNewVal, uint32 uDirtyFlagsIfNecessary));
 FUNC_PTR(XVarFloat_Set,                           bool (*)(uintptr_t * /* XVarFloat *this */, float fNewVal, uint32 uDirtyFlagsIfNecessary));
-FUNC_PTR(OnSeasonsFileRetrieved,                  void (*)(void *, int32 eResult, std::shared_ptr<std::string> *pszFileData));
+FUNC_PTR(OnSeasonsFileRetrieved,                  void (*)(Console::Online::LobbyServiceInternal *, int32 eResult, blz::shared_ptr<blz::string> *pszFileData));
+FUNC_PTR(OnConfigFileRetrieved,                   void (*)(Console::Online::LobbyServiceInternal *, int32 eResult, blz::shared_ptr<blz::string> *pszFileData));
+FUNC_PTR(OnBlacklistFileRetrieved,                void (*)(Console::Online::LobbyServiceInternal *, int32 eResult, blz::shared_ptr<blz::string> *pszFileData));
 FUNC_PTR(StorageGetPublisherFile,                 void (*)(int32 nUserIndex, const char *szFilename, Console::Online::StorageGetFileCallback pfnCallback));
 // FUNC_PTR(OnChalRiftFileReceived, void (*)(Console::Online::StorageResult, D3::ChallengeRifts::ChallengeData const&, D3::Leaderboard::WeeklyChallengeData const&));  // 0x185F70
 // FUNC_PTR(sOnGetChallengeRiftData, void (*)(int, Console::Online::StorageResult, D3::ChallengeRifts::ChallengeData /* const */ &, D3::Leaderboard::WeeklyChallengeData /* const */ &));  // 0x185F70

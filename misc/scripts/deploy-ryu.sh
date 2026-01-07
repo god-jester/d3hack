@@ -24,4 +24,4 @@ mkdir -p "${MODS_PATH}/exefs";
 cp ${OUT}/* "${MODS_PATH}/exefs"
 
 # Indicate completion so VSCode doesn't make us guess
-echo "Deployed to Ryujinx."
+echo "Deployed to Ryujinx: "; date

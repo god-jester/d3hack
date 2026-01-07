@@ -253,9 +253,7 @@ namespace d3 {
             // PRINT_EXPR("uint-post: %s", XVarUint32_ToString(&s_varSeasonState).m_elements)
             // XVarBool_Set(&s_varOnlineServicePTR, true, 3u);
             // XVarBool_Set(&s_varLocalLoggingEnable, true, 3u);
-            // XVarBool_Set(&s_varFreeToPlay, true, 3u);
-            // XVarBool_Set(&s_varSeasonsOverrideEnabled, true, 3u);
-            // XVarBool_Set(&s_varChallengeEnabled, true, 3u);
+            // XVarBool_Set(&s_varChallengeRiftEnabled, true, 3u);
             // XVarBool_Set(&s_varExperimentalScheduling, true, 3u);
             // sg_tAppGlobals->eDebugDisplayMode = DDM_CONVERSATIONS // DDM_SOUND_STATUS // DDM_FPS_SIMPLE; // DDM_FPS_QA // DDM_FPS_PROGRAMMER
             // sg_tAppGlobals.eDebugDisplayMode = DDM_LOOT_REST_BONUS;
@@ -352,7 +350,7 @@ namespace d3 {
         }
 
         CmdLineParse::
-            InstallAtSymbol("hook_cmd_line_parse");
+            InstallAtFuncPtr(cmd_line_parse);
         HostArgC::
             InstallAtFuncPtr(nn::os::GetHostArgc);
         HostArgV::
@@ -360,7 +358,7 @@ namespace d3 {
 
         if (global_config.overlays.active && global_config.overlays.var_res_label) {
             VarResHook::
-                InstallAtSymbol("hook_var_res_label");
+                InstallAtSymbol("sym_var_res_label");
         }
         if (global_config.loot_modifiers.active) {
             ForceAncient::
@@ -368,25 +366,25 @@ namespace d3 {
         }
         if (global_config.rare_cheats.active && global_config.rare_cheats.move_speed != 1.0) {
             MoveSpeed::
-                InstallAtSymbol("hook_move_speed");
+                InstallAtFuncPtr(move_speed);
         }
         if (global_config.rare_cheats.active && global_config.rare_cheats.attack_speed != 1.0) {
             AttackSpeed::
-                InstallAtSymbol("hook_attack_speed");
+                InstallAtFuncPtr(attack_speed);
         }
         if (global_config.rare_cheats.active && global_config.rare_cheats.floating_damage_color) {
             FloatingDmgHook::
-                InstallAtSymbol("hook_floating_dmg");
+                InstallAtSymbol("sym_floating_dmg");
         }
         if (global_config.rare_cheats.active && global_config.rare_cheats.font_hooks) {
             FontStringGetRenderedSizeHook::
-                InstallAtSymbol("hook_font_string_get_rendered_size");
+                InstallAtSymbol("sym_font_string_get_rendered_size");
             FontStringDrawHook::
-                InstallAtSymbol("hook_font_string_draw_03ff50");
+                InstallAtSymbol("sym_font_string_draw_03ff50");
             FontStringDrawHook::
-                InstallAtSymbol("hook_font_string_draw_03e5b0");
+                InstallAtSymbol("sym_font_string_draw_03e5b0");
             FontStringDrawHook::
-                InstallAtSymbol("hook_font_string_draw_0010c8");
+                InstallAtSymbol("sym_font_string_draw_0010c8");
         }
     }
 

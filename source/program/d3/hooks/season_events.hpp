@@ -150,7 +150,7 @@ namespace d3 {
                 return;
             static blz::string s_fallback;
             EnsureSharedPtrData(pszFileData, s_fallback);
-            auto swap = BuildSeasonSwapString(global_config.seasons.number);
+            auto swap = BuildSeasonSwapString(global_config.seasons.current_season);
             ReplaceBlzString(*pszFileData->m_pointer, swap);
         }
 
@@ -169,7 +169,7 @@ namespace d3 {
     }  // namespace
 
     HOOK_DEFINE_TRAMPOLINE(ConfigFileRetrieved) {
-        static void Callback(void *self, int32 eResult, blz::shared_ptr<blz::string> *pszFileData) {
+        static void Callback(Console::Online::LobbyServiceInternal *self, int32 eResult, blz::shared_ptr<blz::string> *pszFileData) {
             if (!IsLocalConfigReady()) {
                 ClearConfigRequestFlag();
                 return;
@@ -184,7 +184,7 @@ namespace d3 {
     };
 
     HOOK_DEFINE_TRAMPOLINE(SeasonsFileRetrieved) {
-        static void Callback(void *self, int32 eResult, blz::shared_ptr<blz::string> *pszFileData) {
+        static void Callback(Console::Online::LobbyServiceInternal *self, int32 eResult, blz::shared_ptr<blz::string> *pszFileData) {
             if (!IsLocalConfigReady()) {
                 ClearSeasonsRequestFlag();
                 return;
@@ -199,7 +199,7 @@ namespace d3 {
     };
 
     HOOK_DEFINE_TRAMPOLINE(BlacklistFileRetrieved) {
-        static void Callback(void *self, int32 eResult, blz::shared_ptr<blz::string> *pszFileData) {
+        static void Callback(Console::Online::LobbyServiceInternal *self, int32 eResult, blz::shared_ptr<blz::string> *pszFileData) {
             if (!IsLocalConfigReady()) {
                 ClearBlacklistRequestFlag();
                 return;
@@ -225,10 +225,10 @@ namespace d3 {
 
     void SetupSeasonEventHooks() {
         ConfigFileRetrieved::
-            InstallAtSymbol("hook_config_file_retrieved");
+            InstallAtFuncPtr(OnConfigFileRetrieved);
         SeasonsFileRetrieved::
-            InstallAtSymbol("hook_seasons_file_retrieved");
+            InstallAtFuncPtr(OnSeasonsFileRetrieved);
         BlacklistFileRetrieved::
-            InstallAtSymbol("hook_blacklist_file_retrieved");
+            InstallAtFuncPtr(OnBlacklistFileRetrieved);
     }
 }  // namespace d3

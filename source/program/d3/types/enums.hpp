@@ -10,6 +10,8 @@ struct Diablo3NDBAppGlobals;
 struct UIChatEditGlobals;
 struct CRefString;
 struct TypeDescriptorField;
+struct bdLobbyService;
+struct bdAuthSwitch;
 
 using Blizzard_File_Stream   = uintptr_t;
 using ItemAffixFastAttribMap = uintptr_t;
@@ -58,6 +60,7 @@ using Act                    = int32;
 
 using bdUInt                 = int32;
 using bdUInt32               = int32;
+using bdTitleID              = int32;
 using bdUInt64               = uint64_t;
 using bdNChar8               = char;
 using bdUByte8               = unsigned char;

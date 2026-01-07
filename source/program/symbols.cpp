@@ -1,5 +1,35 @@
 #include "symbols/base.hpp"
 
+// hooks.hpp - Hook sites
+#include "symbols/hooks.hpp"
+SETUP_FUNC_PTR(main_init);
+SETUP_FUNC_PTR(gfx_init);
+SETUP_FUNC_PTR(game_common_data_init);
+SETUP_FUNC_PTR(shell_initialize);
+SETUP_FUNC_PTR(sgame_initialize);
+SETUP_FUNC_PTR(sinitialize_world);
+SETUP_FUNC_PTR(cmd_line_parse);
+SETUP_FUNC_PTR(var_res_label);
+SETUP_FUNC_PTR(move_speed);
+SETUP_FUNC_PTR(attack_speed);
+SETUP_FUNC_PTR(floating_dmg);
+SETUP_FUNC_PTR(font_string_get_rendered_size);
+SETUP_FUNC_PTR(font_string_draw_03ff50);
+SETUP_FUNC_PTR(font_string_draw_03e5b0);
+SETUP_FUNC_PTR(font_string_draw_0010c8);
+// Season/event hooks are defined via game.hpp below (OnConfigFileRetrieved, OnSeasonsFileRetrieved, OnBlacklistFileRetrieved)
+SETUP_FUNC_PTR(lobby_service_create);
+SETUP_FUNC_PTR(lobby_service_idle_internal);
+SETUP_FUNC_PTR(specifiers_from_modifier);
+SETUP_FUNC_PTR(eval_mod);
+SETUP_FUNC_PTR(dupe_dropped_item);
+SETUP_FUNC_PTR(request_drop_item);
+SETUP_FUNC_PTR(print_challenge_rift_failed);
+SETUP_FUNC_PTR(challenge_rift_callback);
+SETUP_FUNC_PTR(pubfile_data_hex);
+SETUP_FUNC_PTR(print_error_display);
+SETUP_FUNC_PTR(print_error_string_final);
+
 // game.hpp
 #include "symbols/game.hpp"
 SETUP_FUNC_PTR(GameActiveGameCommonDataIsServer);
@@ -7,6 +37,7 @@ SETUP_FUNC_PTR(GameServerCodeLeave_Tracked);
 SETUP_FUNC_PTR(_GameServerCodeEnter);
 SETUP_FUNC_PTR(GameIsStartUp);
 SETUP_FUNC_PTR(ServerIsLocal);
+SETUP_FUNC_PTR(GetPrimaryProfileUserIndex);
 SETUP_FUNC_PTR(SGameGlobalsGet);
 SETUP_FUNC_PTR(GameGetParts);
 SETUP_FUNC_PTR(ServerGetOnlyGameConnection);
@@ -38,6 +69,8 @@ SETUP_FUNC_PTR(XVarBool_Set);
 SETUP_FUNC_PTR(XVarUint32_Set);
 SETUP_FUNC_PTR(XVarFloat_Set);
 SETUP_FUNC_PTR(OnSeasonsFileRetrieved);
+SETUP_FUNC_PTR(OnConfigFileRetrieved);
+SETUP_FUNC_PTR(OnBlacklistFileRetrieved);
 SETUP_FUNC_PTR(StorageGetPublisherFile);
 SETUP_FUNC_PTR(sOnGetChallengeRiftData);
 SETUP_FUNC_PTR(ParsePartialFromString);

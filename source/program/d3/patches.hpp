@@ -185,27 +185,21 @@ namespace d3 {
 
     void PatchDynamicSeasonal() {
         if (global_config.seasons.active) {
-            PRINT("Setting active Season to %d", global_config.seasons.number)
-            XVarBool_Set(&s_varSeasonsOverrideEnabled, true, 3u);
-            XVarUint32_Set(&s_varSeasonNum, global_config.seasons.number, 3u);
+            PRINT("Setting active Season to %d", global_config.seasons.current_season)
+            XVarUint32_Set(&s_varSeasonNum, global_config.seasons.current_season, 3u);
             XVarUint32_Set(&s_varSeasonState, 1, 3u);
 
             auto jest = patch::RandomAccessPatcher();
-            jest.Patch<Movz>(PatchTable("patch_dynamic_seasonal_01_movz"), W3, global_config.seasons.number);  // Season.Num
-            jest.Patch<Movz>(PatchTable("patch_dynamic_seasonal_02_movz"), W3, 1);                             // Season.State
-            jest.Patch<Movz>(PatchTable("patch_dynamic_seasonal_03_movz"), W1, 1);                             // always true for UIHeroCreate::Console::bSeasonConfirmedAvailable() (skip B.ne and always confirm)
-            jest.Patch<Movz>(PatchTable("patch_dynamic_seasonal_04_movz"), W0, 1);                             // always true for Console::Online::IsSeasonsInitialized()
+            jest.Patch<Movz>(PatchTable("patch_dynamic_seasonal_03_movz"), W1, 1);  // always true for UIHeroCreate::Console::bSeasonConfirmedAvailable() (skip B.ne and always confirm)
+            jest.Patch<Movz>(PatchTable("patch_dynamic_seasonal_04_movz"), W0, 1);  // always true for Console::Online::IsSeasonsInitialized()
 
             // Update season_created uses at runtime (UIOnlineActions::SetGameParamsForHero).
-            // jest.Patch<Movz>(PatchTable("patch_dynamic_seasonal_05_movz"), W21, global_config.seasons.number);  // season_created = ...
+            // jest.Patch<Movz>(PatchTable("patch_dynamic_seasonal_05_movz"), W21, global_config.seasons.current_season);  // season_created = ...
             // Ignore mismatched hero season in UIHeroSelect (skip Rebirth/season prompt for old seasons).
             // jest.Patch<Nop>(PatchTable("patch_dynamic_seasonal_06_nop"));  // B.ne loc_358C74
-            // Hide "Create Seasonal Hero" main menu option (item 9) when forcing season number.
+            // Hide "Create Seasonal Hero" main menu option (item 9) when forcing season current_season.
             // ItemShouldBeVisible(case 9) calls IsSeasonsInitialized; forcing W0=0 makes it return false.
             // jest.Patch<Movz>(PatchTable("patch_dynamic_seasonal_07_movz"), W0, 0);
-        } else {
-            XVarBool_Set(&s_varSeasonsOverrideEnabled, false, 3u);
-            return;
         }
     }
 
@@ -390,7 +384,7 @@ namespace d3 {
         */
 
         // [►Equip Multiple Legendary Item]
-        // jest.Patch<Branch>(PatchTable("patch_cheat_multi_legendary_01_branch"), 0x5C);
+        jest.Patch<Branch>(PatchTable("patch_cheat_multi_legendary_01_branch"), 0x5C);
         // 04000000 004FB9E4 14000017
 
         // [►Socket Any Gem To Any Slot]
@@ -410,12 +404,10 @@ namespace d3 {
 
         PortCheatCodes();
 
-        // XVarBool_Set(&s_varOnlineServicePTR, true, 3u);
         XVarBool_Set(&s_varLocalLoggingEnable, true, 3u);
-        XVarBool_Set(&s_varFreeToPlay, true, 3u);
-        XVarBool_Set(&s_varExperimentalScheduling, true, 3u);
-        if (global_config.challenge_rifts.active)
-            XVarBool_Set(&s_varChallengeEnabled, true, 3u);
+        // XVarBool_Set(&s_varChallengeRiftEnabled, global_config.challenge_rifts.active, 3u);
+        XVarBool_Set(&s_varOnlineServicePTR, global_config.seasons.spoof_ptr, 3u);
+        XVarBool_Set(&s_varExperimentalScheduling, global_config.resolution_hack.exp_scheduler, 3u);
         jest.Patch<Movz>(PatchTable("patch_signin_01_movz"), W0, 1);  // always Console::GamerProfile::IsSignedInOnline
         jest.Patch<Ret>(PatchTable("patch_signin_02_ret"));           // ^ ret
 
@@ -485,6 +477,12 @@ namespace d3 {
             jest.Patch<dword>(PatchTable("patch_hideonline_10_bytes"), make_bytes(0x08, 0x29, 0x40, 0xF9));  // LDR X8, [X8,#0x50]
             jest.Patch<Movz>(PatchTable("patch_hideonline_11_movz"), W1, 0);                                 // W1 = 0 (invisible)
         }
+
+        /* Unlock all difficulties */
+        // 0x5281B0: SXTW X8, W2
+        // 0x5281B4: TBZ W3, #0, loc_5281D8
+        jest.Patch<Movz>(PatchTable("patch_handicap_unlock_01_movz"), W0, 1);  // return true
+        jest.Patch<Ret>(PatchTable("patch_handicap_unlock_02_ret"));
 
         /* ItemCanDrop bypass */
         // jest.Patch<dword>(PatchTable("patch_itemcandrop_01_bytes"), make_bytes(0x10, 0x00, 0x00, 0x14));

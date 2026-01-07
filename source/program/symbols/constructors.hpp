@@ -8,37 +8,46 @@ namespace blz {
 
     template<class CharT, class TraitsT, class AllocatorT>
     blz::basic_string<CharT, TraitsT, AllocatorT>::basic_string() {
-        AllocatorT alloc {};
-        blz_basic_string(this, "\0", alloc);
+        m_storage[0]           = 0;
+        m_elements             = m_storage;
+        m_size                 = 0;
+        m_capacity             = (sizeof(m_storage) / sizeof(m_storage[0])) - 1;
+        m_capacity_is_embedded = 1;
     }
 
     template<class CharT, class TraitsT, class AllocatorT>
-    blz::basic_string<CharT, TraitsT, AllocatorT>::basic_string(char *str, u32 dwSize) {
-        AllocatorT alloc {};
-        CharT     *lpBuf = static_cast<CharT *>(alloca(dwSize));
-        memset(lpBuf, 0x6A, dwSize);
-        blz_basic_string(this, lpBuf, alloc);
-        if (m_size == dwSize)
-            m_elements = str;
-        else
-            m_size = 0LL, m_storage[0] = 0LL, m_elements = m_storage;
-    }
+    blz::basic_string<CharT, TraitsT, AllocatorT>::basic_string(const char *str, u32 dwSize) {
+        m_storage[0]           = 0;
+        m_elements             = m_storage;
+        m_size                 = 0;
+        m_capacity             = (sizeof(m_storage) / sizeof(m_storage[0])) - 1;
+        m_capacity_is_embedded = 1;
 
-    // template<class CharT, class TraitsT, class AllocatorT>
-    // blz::basic_string<CharT, TraitsT, AllocatorT>::basic_string(char *str, u32 dwSize, AllocatorT alloc) {
-    //     auto *lpBuf = static_cast<CharT *>(alloca(dwSize));
-    //     memset(lpBuf, 0x6A, dwSize);
-    //     blz_basic_string(this, lpBuf, alloc);
-    //     if (m_size == dwSize)
-    //         m_elements = str;
-    //     else
-    //         m_size = 0LL, m_storage[0] = 0LL, m_elements = m_storage;
-    // }
+        if (!str || !dwSize)
+            return;
+
+        const auto len = static_cast<size_t>(dwSize);
+        auto      *buf = static_cast<char *>(SigmaMemoryNew(len + 1, 0, nullptr, true));
+        if (!buf)
+            return;
+
+        SigmaMemoryMove(buf, const_cast<char *>(str), len);
+        buf[len]               = '\0';
+        m_elements             = buf;
+        m_size                 = len;
+        m_capacity             = len;
+        m_capacity_is_embedded = 0;
+    }
 
     template<class CharT, class TraitsT, class AllocatorT>
     blz::basic_string<CharT, TraitsT, AllocatorT>::~basic_string() {
-        if (*&this->m_elements != nullptr)
-            SigmaMemoryFree(this->m_elements, 0LL);
+        if (!m_elements)
+            return;
+
+        const CharT *storage_start = &m_storage[0];
+        const CharT *storage_end   = storage_start + (sizeof(m_storage) / sizeof(m_storage[0]));
+        if (m_elements < storage_start || m_elements >= storage_end)
+            SigmaMemoryFree(m_elements, nullptr);
     }
 
 }  // namespace blz

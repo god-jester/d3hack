@@ -26,7 +26,7 @@ RiftRangeEnd = 28
 SectionEnabled = true
 # Season map modes: "MapOnly" | "OverlayConfig" | "Disabled"
 # - MapOnly: apply the season's mapped theme (Seasons 14-37 only), ignore flags below.
-# - OverlayConfig: apply map, then OR with any event flags below.
+# - OverlayConfig: apply map, plus add any event flags below.
 # - Disabled: ignore the map and use flags below as-is.
 SeasonMapMode = "OverlayConfig"
 IgrEnabled = false
@@ -48,7 +48,8 @@ EtherealItems = false
 SoulShards = false
 SwarmRifts = false
 SanctifiedItems = false
-DarkAlchemy = false
+# Altar of Rites
+DarkAlchemy = true
 NestingPortals = false
 
 [rare_cheats]

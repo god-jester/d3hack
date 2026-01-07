@@ -88,55 +88,8 @@ namespace d3 {
         static auto Callback(uint32 hInstance, uint32 hWndParent) -> BOOL {
             auto ret        = Orig(hInstance, hWndParent);
             g_ptMainRWindow = reinterpret_cast<RWindow *const>(GameOffsetFromTable("main_rwindow"));
-
-            // char *pBuf = static_cast<char *>(alloca(0xFF));
-            // for (u32 nDamage = 0x5dde0b6b; nDamage < 0x62e8d4a6; nDamage += 0x1) {
-            //     nDamage           = 0x5e065fd7;
-            //     auto  nD3Rounded  = diablo_rounding(nDamage);
-            //     auto  flDamage    = COERCE_FLOAT(nDamage);
-            //     float flTruncated = to_float(nDamage) / 1.0e12f;
-            //     snprintf(pBuf, 0xFF, "%.0fT", (float)nD3Rounded);
-            //     // PRINT("%x | %x | %.0F, %0.3F", nDamage, nD3Rounded, flDamage, COERCE_FLOAT(n_flDamage))
-            //     if (
-            //         nDamage == 0x5e065fd7 ||
-            //         findtrunc("98765432", 0) || findtrunc("654321T", 0) ||
-            //         findtrunc("420666T", 0) || findtrunc("666420T", 0) || findtrunc("6666666", 0) || findtrunc("00000000T", 0) ||
-            //         findtruncp("4206660", 0, 10) || findtruncp("1234567", 0, 10) ||
-            //         findtruncp("1337666", 0, 11) || findtruncp("133700", 0, 11)
-            //     ) {
-            //         // 0x60d629d3 = 123456784T || 123,456,784T
-            //         // 0x6285da24 = 1234567808T || 1,234,567,808T
-            //         // 0x6290f535 = 1337000064T || 1,337,000,064T
-            //         // 0x629100e2 = 1337420800T || 1,337,420,800T
-            //         // 0x62910879 = 1337694208T || 1,337,694,208T
-            //         // 0x62910886 = 1337696000T || 1,337,696,000T
-            //         // svcOutputDebugString(pBuf, nLength);
-            //         // PRINT("%x | %s", nDamage, FormatTruncatedNumber(flDamage, 1, 1).m_pszString)
-            //         PRINT("0x%x = %.0fT (%.0fT) || %s\n", nDamage, (float)nD3Rounded, flTruncated, FormatTruncatedNumber(flDamage, 1, 1).m_pszString)
-            //         break;
-            //     }
-            // }
-
             PRINT_LINE("ShellInitialized");
-
-            // PRINT_EXPR("local logging: %d", *((BOOL *)(GameOffset(0x1A482C8) + 0xB0)));
-            // auto sLocalLogging = *reinterpret_cast<uintptr_t *>(GameOffset(0x115A408));
-            // auto sLocalLogging = FollowPtr<uintptr_t, 0>(GameOffset(0x115A408));
-            // XVarBool_Set(sLocalLogging, true, 3);
-            // XVarBool_Set(FollowPtr<uintptr_t, 0>(GameOffset(0x115A408)), true, 3);
-            // XVarBool_Set(&s_varFreeToPlay, true, 3u);
-            // XVarBool_Set(&s_varSeasonsOverrideEnabled, true, 3u);
-            // XVarBool_Set(&s_varChallengeEnabled, true, 3u);
-            // XVarBool_Set(&s_varExperimentalScheduling, true, 3u);
-            // PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varLocalLoggingEnable).m_elements)
-            // PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varOnlineServicePTR).m_elements)
-            // PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varFreeToPlay).m_elements)
-            // PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varSeasonsOverrideEnabled).m_elements)
-            // PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varChallengeEnabled).m_elements)
-            // PRINT_EXPR("bool: %s", XVarBool_ToString(&s_varExperimentalScheduling).m_elements)
-            // blz::shared_ptr<blz::basic_string<char,blz::char_traits<char>,blz::allocator<char> > > *pszFileData
-            // auto pszFileData = std::make_shared<std::string>(c_szSeasonSwap);
-            // OnSeasonsFileRetrieved(nullptr, 0, &pszFileData);
+            g_request_seasons_load = true;
 
             // EXL_ABORT(420);
             return ret;
@@ -169,8 +122,6 @@ namespace d3 {
             // Require our SD to be mounted before running nnMain()
             R_ABORT_UNLESS(nn::fs::MountSdCardForDebug("sd"));
             LoadPatchConfig();
-
-            CGameVariableResInitializeForRWindowHook::InstallAtOffset(0x03CB90);
 
             // Apply patches based on config
             if (!g_config_hooks_installed) {
@@ -210,12 +161,12 @@ namespace d3 {
         /* Setup hooking environment. */
         exl::hook::Initialize();
 
-        MainInit::InstallAtSymbol("hook_main_init");
-        GfxInit::InstallAtSymbol("hook_gfx_init");
-        ShellInitialize::InstallAtSymbol("hook_shell_initialize");
-        GameCommonDataInit::InstallAtSymbol("hook_game_common_data_init");
-        SGameInitialize::InstallAtSymbol("hook_sgame_initialize");
-        sInitializeWorld::InstallAtSymbol("hook_sinitialize_world");
+        MainInit::InstallAtFuncPtr(main_init);
+        GfxInit::InstallAtFuncPtr(gfx_init);
+        ShellInitialize::InstallAtFuncPtr(shell_initialize);
+        GameCommonDataInit::InstallAtFuncPtr(game_common_data_init);
+        SGameInitialize::InstallAtFuncPtr(sgame_initialize);
+        sInitializeWorld::InstallAtFuncPtr(sinitialize_world);
         // StubCopyright::InstallAtFuncPtr(nn::oe::SetCopyrightVisibility);
     }
 

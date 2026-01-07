@@ -860,27 +860,27 @@ namespace d3 {
             // StorageGetPubFile::
             //     InstallAtFuncPtr(StorageGetPublisherFile);
             Print_ChallengeRiftFailed::
-                InstallAtSymbol("hook_print_challenge_rift_failed");
+                InstallAtSymbol("sym_print_challenge_rift_failed");
             ChallengeRiftCallback::
-                InstallAtSymbol("hook_challenge_rift_callback");
+                InstallAtFuncPtr(challenge_rift_callback);
             ParsePartialFromStringHook::
                 InstallAtFuncPtr(ParsePartialFromString);
         }
 
         if (!global_config.defaults_only && global_config.debug.active && global_config.debug.enable_pubfile_dump) {
             PubFileDataHex::
-                InstallAtSymbol("hook_pubfile_data_hex");  // Use to dump online files
+                InstallAtSymbol("sym_pubfile_data_hex");  // Use to dump online files
         }
 
         if (global_config.debug.active && global_config.debug.enable_error_traces) {
             Print_ErrorDisplay::
-                InstallAtSymbol("hook_print_error_display");
+                InstallAtSymbol("sym_print_error_display");
             // Print_Error::
             //     InstallAtOffset(0xA2AC70);
             // Print_ErrorString::
             //     InstallAtOffset(0xA2AE14);
             Print_ErrorStringFinal::
-                InstallAtSymbol("hook_print_error_string_final");
+                InstallAtSymbol("sym_print_error_string_final");
         }
         if (global_config.debug.active) {
             // GfxWindowChangeDisplayModeHook::
