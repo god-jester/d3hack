@@ -167,6 +167,10 @@ namespace d3 {
         GameCommonDataInit::InstallAtFuncPtr(game_common_data_init);
         SGameInitialize::InstallAtFuncPtr(sgame_initialize);
         sInitializeWorld::InstallAtFuncPtr(sinitialize_world);
+        // PostFXInitClampDims::InstallAtOffset(0x12F218);
+        // GfxSetRenderAndDepthTargetSwapchainFix::InstallAtOffset(0x29C670);
+        // GfxSetDepthTargetSwapchainFix::InstallAtOffset(0x29C4E0);
+        // LobbyServiceIdleInternal::InstallAtFuncPtr(lobby_service_idle_internal);
         // StubCopyright::InstallAtFuncPtr(nn::oe::SetCopyrightVisibility);
     }
 

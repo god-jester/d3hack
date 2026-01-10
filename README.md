@@ -11,12 +11,12 @@ New: [1080p+ Output & Resolution Hack breakdown](#1080p-output--resolution-hack)
 
 ---
 
-## Highlights (Jan 2026)
+## Highlights (Current)
 
-- **Publisher file overrides**: intercepts Config/Seasons/Blacklist retrieval and injects local data in-place (reliable offline behavior).
+- **Seasons + events via XVars**: season number/state and event flags are applied with native XVar setters after config load.
+- **Optional publisher file overrides**: Config/Seasons/Blacklist retrieval hooks can replace online files for offline play or testing, but they are not required for the primary toggles.
 - **Season event map**: one switch to auto-enable the correct seasonal theme flags for **Seasons 14–37**.
 - **Challenge Rifts offline fix**: SD card protobufs now parse at full size (previous `blz::string` ctor issue resolved).
-- **Dynamic seasonal patching**: season number/state and UI gating are set at runtime after config load.
 - **Safer offline UX**: hides “Connect to Diablo Servers” and network hints when `AllowOnlinePlay = false`.
 
 ---
@@ -42,10 +42,10 @@ d3hack-nx is an exlaunch-based module that hooks D3 at runtime. It modifies game
 
 | Category | Highlights & Technical Notes |
 |----------|------------------------------|
-| **Offline Seasons** | Force seasons on locally, set season number/state via XVars, and hide network prompts. |
+| **Offline Seasons** | Set season number/state via XVar updates + seasonal UI patches; optional seasons file override for offline parity. |
 | **Season Theme Map** | `SeasonMapMode` can apply the official theme flags for Seasons 14–37, optionally OR’d with your custom flags. |
 | **Challenge Rifts** | Hooks the challenge rift callback and injects protobuf blobs from SD (`rift_data`). |
-| **Community Events** | Toggle 20+ flags (Ethereals, Soul Shards, Fourth Cube Slot, etc.) with runtime XVar updates. |
+| **Community Events** | Toggle 20+ flags (Ethereals, Soul Shards, Fourth Cube Slot, etc.) via runtime XVar updates; optional config file override to mirror community buff files. |
 | **Loot Research** | Control Ancient/Primal drops, GR tier logic, and item level forcing for drop-table experiments. |
 | **QoL Cheats** | Instant portal/crafts, movement speed multiplier, no cooldowns, equip-any-slot, and more. |
 | **Visuals & Performance** | FPS/DDM overlays and resolution targets for 1080p or specific dynamic-res bounds. |
@@ -155,12 +155,14 @@ Outputs land in `deploy/` as `subsdk9` and `main.npdm`.
 
 ## Feature Map (Code Pointers)
 
-- **Season overrides**: `source/program/d3/hooks/debug.hpp` (Config/Seasons/Blacklist retrieval hooks)
-- **Dynamic seasonal patching**: `source/program/d3/patches.hpp` (`PatchDynamicSeasonal`)
-- **Season theme map**: `source/program/config.cpp` (`BuildSeasonEventMap`)
-- **Challenge rifts**: `source/program/d3/_util.hpp` + `source/program/d3/hooks/debug.hpp`
-- **Config load**: `source/program/config.cpp` (`LoadPatchConfig`)
-- **Resolution hack (1080p/1440p)**: `source/program/d3/hooks/resolution.hpp` + `source/program/d3/patches.hpp` (`PatchResolutionTargets`)
+- **Config load + defaults**: [`source/program/config.cpp`](source/program/config.cpp) (`LoadPatchConfig`, `ApplySeasonEventMapIfNeeded`).
+- **Season/event XVar toggles**: [`source/program/d3/patches.hpp`](source/program/d3/patches.hpp) (`PatchDynamicSeasonal`, `PatchDynamicEvents`).
+- **Season/event publisher overrides**: [`source/program/d3/hooks/season_events.hpp`](source/program/d3/hooks/season_events.hpp) (`ConfigFileRetrieved`, `SeasonsFileRetrieved`, `BlacklistFileRetrieved`).
+- **Season theme map**: [`source/program/config.cpp`](source/program/config.cpp) (`BuildSeasonEventMap`).
+- **Challenge rifts**: [`source/program/d3/_util.hpp`](source/program/d3/_util.hpp) (`PopulateChallengeRiftData`) + [`source/program/d3/hooks/debug.hpp`](source/program/d3/hooks/debug.hpp) (`ChallengeRiftCallback`).
+- **Resolution hack (1080p/1440p)**: [`source/program/d3/hooks/resolution.hpp`](source/program/d3/hooks/resolution.hpp) + [`source/program/d3/patches.hpp`](source/program/d3/patches.hpp) (`PatchResolutionTargets`).
+- **Overlays + watermark text**: [`source/program/d3/patches.hpp`](source/program/d3/patches.hpp) (`PatchBuildlocker`, `PatchDDMLabels`, `PatchReleaseFPSLabel`).
+- **Hook gating + boot flow**: [`source/program/main.cpp`](source/program/main.cpp) (`MainInit`, `SetupSeasonEventHooks`).
 
 ---
 

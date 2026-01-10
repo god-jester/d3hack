@@ -261,18 +261,19 @@ namespace d3 {
         if (!global_config.rare_cheats.active)
             return;
         auto jest = patch::RandomAccessPatcher();
+        const auto &cheats = global_config.rare_cheats;
         /* Restore debug display of allocation errors */
         jest.Patch<Movz>(PatchTable("patch_cheat_alloc_errors_01_movz"), W8, 0);
         // jest.Patch<MovRegister>(PatchTable("patch_cheat_alloc_errors_02_bytes"), X0, SP);
         jest.Patch<dword>(PatchTable("patch_cheat_alloc_errors_02_bytes"), make_bytes(0xE0, 0x03, 0x00, 0x91));
 
         /* Drop any item (Staff of Herding, etc) */
-        if (global_config.rare_cheats.active && global_config.rare_cheats.drop_anything)
+        if (cheats.drop_anything)
             jest.Patch<Movn>(PatchTable("patch_cheat_drop_anything_01_movn"), W0, 0);
         // 04000000 00504C78 12800000
 
         /* 100% Legendary probability (Kadala/Kanai) */
-        if (global_config.rare_cheats.active && global_config.rare_cheats.guaranteed_legendaries) {
+        if (cheats.guaranteed_legendaries) {
             jest.Patch<Nop>(PatchTable("patch_cheat_guaranteed_legendaries_01_nop"));  // unlikely? shot in the dark
             jest.Patch<Nop>(PatchTable("patch_cheat_guaranteed_legendaries_02_nop"));
             jest.Patch<Branch>(PatchTable("patch_cheat_guaranteed_legendaries_03_branch"), 0x18C);
@@ -283,7 +284,7 @@ namespace d3 {
         // 04000000 0088F9E0 140000D4
 
         /* Instant town portal & Book of Cain */
-        if (global_config.rare_cheats.active && global_config.rare_cheats.instant_portal)
+        if (cheats.instant_portal)
             jest.Patch<Movz>(PatchTable("patch_cheat_instant_portal_01_movz"), W24, 0);
         // 04000000 009E3250 52800018
 
@@ -304,7 +305,7 @@ namespace d3 {
         */
 
         /* ►No cooldown */
-        if (global_config.rare_cheats.active && global_config.rare_cheats.no_cooldowns) {
+        if (cheats.no_cooldowns) {
             jest.Patch<dword>(PatchTable("patch_cheat_no_cooldowns_01_bytes"), make_bytes(0xE0, 0x03, 0x27, 0x1E));
             jest.Patch<dword>(PatchTable("patch_cheat_no_cooldowns_02_bytes"), make_bytes(0xE0, 0x03, 0x00, 0x2A));
             jest.Patch<dword>(PatchTable("patch_cheat_no_cooldowns_03_bytes"), make_bytes(0xE8, 0x03, 0x27, 0x1E));
@@ -318,22 +319,22 @@ namespace d3 {
         */
 
         /* ►Instantly identify items */
-        if (global_config.rare_cheats.active && global_config.rare_cheats.instant_craft_actions)
+        if (cheats.instant_craft_actions)
             jest.Patch<Nop>(PatchTable("patch_cheat_instant_identify_01_nop"));
         // 04000000 0020636C D503201F
 
         /* ►Instantly craft items */
-        if (global_config.rare_cheats.active && global_config.rare_cheats.instant_craft_actions)
+        if (cheats.instant_craft_actions)
             jest.Patch<AddImmediate>(PatchTable("patch_cheat_instant_craft_01_add_imm"), W8, W8, 5);
         // 04000000 0040F9B0 11001508
 
         /* ►Instantly enchant items */
-        if (global_config.rare_cheats.active && global_config.rare_cheats.instant_craft_actions)
+        if (cheats.instant_craft_actions)
             jest.Patch<AddImmediate>(PatchTable("patch_cheat_instant_enchant_01_add_imm"), W8, W8, 1);
         // 04000000 001DCFA4 11000508
 
         /* ►Instantly craft Kanai's Cube items */
-        if (global_config.rare_cheats.active && global_config.rare_cheats.instant_craft_actions) {
+        if (cheats.instant_craft_actions) {
             jest.Patch<Movz>(PatchTable("patch_cheat_cube_instant_craft_01_movz"), W8, 0);
             jest.Patch<Movz>(PatchTable("patch_cheat_cube_instant_craft_02_movz"), W9, 0);
             jest.Patch<Movz>(PatchTable("patch_cheat_cube_instant_craft_03_movz"), W10, 0);
@@ -347,7 +348,8 @@ namespace d3 {
         */
 
         /* ►Kanai's Cube does not consume materials */
-        jest.Patch<Ret>(PatchTable("patch_cheat_cube_no_consume_01_ret"));
+        if (cheats.cube_no_consume)
+            jest.Patch<Ret>(PatchTable("patch_cheat_cube_no_consume_01_ret"));
         // 04000000 008874D0 D65F03C0
 
         /* ►Greater Rift Lv. 150 after clearing once */
@@ -355,11 +357,13 @@ namespace d3 {
         // 04000000 004873E4 2A0003F5
 
         /* ►Legendary Gem Upgrade 100% */
-        jest.Patch<dword>(PatchTable("patch_cheat_gem_upgrade_01_bytes"), make_bytes(0x08, 0x10, 0x2E, 0x1E));
+        if (cheats.gem_upgrade_always)
+            jest.Patch<dword>(PatchTable("patch_cheat_gem_upgrade_01_bytes"), make_bytes(0x08, 0x10, 0x2E, 0x1E));
         // 04000000 006A255C 1E2E1008*/
 
         /* ►Legendary Gem Upgrade Speed */
-        jest.Patch<dword>(PatchTable("patch_cheat_gem_speed_01_bytes"), make_bytes(0x02, 0x10, 0x2E, 0x1E));
+        if (cheats.gem_upgrade_speed)
+            jest.Patch<dword>(PatchTable("patch_cheat_gem_speed_01_bytes"), make_bytes(0x02, 0x10, 0x2E, 0x1E));
         // 04000000 00349B98 1E2E1002
 
         /* ►Legendary Gem Lv. 150 after upgrading once */
@@ -369,12 +373,14 @@ namespace d3 {
         sub w23, w0, w22
         */
         // jest.Patch<Movk>(PatchTable("patch_cheat_gem_lvl150_01_bytes"), W22, W0);  // MOV LIKE THIS?
-        jest.Patch<dword>(PatchTable("patch_cheat_gem_lvl150_01_bytes"), make_bytes(0xF6, 0x03, 0x00, 0x2A));
-        jest.Patch<Movz>(PatchTable("patch_cheat_gem_lvl150_02_movz"), W0, 0x96);
-        // jest.Patch<Sub>(PatchTable("patch_cheat_gem_lvl150_03_bytes"), W23, W0, W22);
-        jest.Patch<dword>(PatchTable("patch_cheat_gem_lvl150_03_bytes"), make_bytes(0x17, 0x00, 0x16, 0x4B));
-        jest.Patch<Ret>(PatchTable("patch_cheat_gem_lvl150_04_ret"));
-        jest.Patch<dword>(PatchTable("patch_cheat_gem_lvl150_05_bytes"), make_bytes(0x89, 0x4D, 0x12, 0x94));
+        if (cheats.gem_upgrade_lvl150) {
+            jest.Patch<dword>(PatchTable("patch_cheat_gem_lvl150_01_bytes"), make_bytes(0xF6, 0x03, 0x00, 0x2A));
+            jest.Patch<Movz>(PatchTable("patch_cheat_gem_lvl150_02_movz"), W0, 0x96);
+            // jest.Patch<Sub>(PatchTable("patch_cheat_gem_lvl150_03_bytes"), W23, W0, W22);
+            jest.Patch<dword>(PatchTable("patch_cheat_gem_lvl150_03_bytes"), make_bytes(0x17, 0x00, 0x16, 0x4B));
+            jest.Patch<Ret>(PatchTable("patch_cheat_gem_lvl150_04_ret"));
+            jest.Patch<dword>(PatchTable("patch_cheat_gem_lvl150_05_bytes"), make_bytes(0x89, 0x4D, 0x12, 0x94));
+        }
         /*
         04000000 00C72F7C 2A0003F6
         04000000 00C72F80 528012C0
@@ -384,17 +390,18 @@ namespace d3 {
         */
 
         // [►Equip Multiple Legendary Item]
-        jest.Patch<Branch>(PatchTable("patch_cheat_multi_legendary_01_branch"), 0x5C);
+        if (cheats.equip_multi_legendary)
+            jest.Patch<Branch>(PatchTable("patch_cheat_multi_legendary_01_branch"), 0x5C);
         // 04000000 004FB9E4 14000017
 
         // [►Socket Any Gem To Any Slot]
-        if (global_config.rare_cheats.active && global_config.rare_cheats.any_gem_any_slot) {
+        if (cheats.any_gem_any_slot) {
             jest.Patch<Movz>(PatchTable("patch_cheat_any_gem_any_slot_01_movz"), W25, 5);
             jest.Patch<Branch>(PatchTable("patch_cheat_any_gem_any_slot_02_branch"), 0xA0);
         }
 
         // [►Auto Pickup]
-        if (global_config.rare_cheats.active && global_config.rare_cheats.auto_pickup)
+        if (cheats.auto_pickup)
             jest.Patch<Nop>(PatchTable("patch_cheat_auto_pickup_01_nop"));
         // 04000000 004F98DC D503201F
     }
@@ -433,14 +440,15 @@ namespace d3 {
         /* Inside ItemSetIsBeingManipulated(): BeingManipulated Attrib = 0 */
         // jest.Patch<Branch>(PatchTable("patch_item_manipulated_01_branch"), 0x20);  // CBZ W1, loc_BF090
 
-        /* Don't try to find a slot to equip newly duped item */
-        jest.Patch<Nop>(PatchTable("patch_dupe_noequip_01_nop"));  // BL ACDInventoryWhereCanThisGo()
-
-        /* Stub functions that interfere with item duping */
-        jest.Patch<Ret>(PatchTable("patch_dupe_stub_01_ret")); /* void GameSoftPause(BOOL bPause) */
-        jest.Patch<Ret>(PatchTable("patch_dupe_stub_02_ret")); /* void ActorCommonData::SetAssignedHeroID(ActorCommonData *this, const Player *ptPlayer) */
-        jest.Patch<Ret>(PatchTable("patch_dupe_stub_03_ret")); /* void ActorCommonData::SetAssignedHeroID(ActorCommonData *this, OnlineService::HeroId idHero) */
-        jest.Patch<Ret>(PatchTable("patch_dupe_stub_04_ret")); /* void SGameSoftPause(BOOL bPause) */
+        if (global_config.debug.enable_crashes) {
+            /* Don't try to find a slot to equip newly duped item */
+            jest.Patch<Nop>(PatchTable("patch_dupe_noequip_01_nop"));  // BL ACDInventoryWhereCanThisGo()
+            /* Stub functions that interfere with item duping */
+            jest.Patch<Ret>(PatchTable("patch_dupe_stub_01_ret")); /* void GameSoftPause(BOOL bPause) */
+            jest.Patch<Ret>(PatchTable("patch_dupe_stub_02_ret")); /* void ActorCommonData::SetAssignedHeroID(ActorCommonData *this, const Player *ptPlayer) */
+            jest.Patch<Ret>(PatchTable("patch_dupe_stub_03_ret")); /* void ActorCommonData::SetAssignedHeroID(ActorCommonData *this, OnlineService::HeroId idHero) */
+            jest.Patch<Ret>(PatchTable("patch_dupe_stub_04_ret")); /* void SGameSoftPause(BOOL bPause) */
+        }
 
         /* Stub logging to RingBuffer */
         jest.Patch<Ret>(PatchTable("patch_log_ringbuffer_01_ret")); /* void FileOutputStream::LogToRingBuffer(int, char const*, char const*) */
@@ -481,15 +489,19 @@ namespace d3 {
         /* Unlock all difficulties */
         // 0x5281B0: SXTW X8, W2
         // 0x5281B4: TBZ W3, #0, loc_5281D8
-        jest.Patch<Movz>(PatchTable("patch_handicap_unlock_01_movz"), W0, 1);  // return true
-        jest.Patch<Ret>(PatchTable("patch_handicap_unlock_02_ret"));
+        if (global_config.rare_cheats.active && global_config.rare_cheats.unlock_all_difficulties) {
+            jest.Patch<Movz>(PatchTable("patch_handicap_unlock_01_movz"), W0, 1);  // return true
+            jest.Patch<Ret>(PatchTable("patch_handicap_unlock_02_ret"));
+        }
 
         /* ItemCanDrop bypass */
         // jest.Patch<dword>(PatchTable("patch_itemcandrop_01_bytes"), make_bytes(0x10, 0x00, 0x00, 0x14));
 
         /* Increase the damage for ACTOR_EASYKILL_BIT */
-        jest.Patch<Movz>(PatchTable("patch_easykill_01_movz"), W9, 0x7bc7);
-        jest.Patch<Movk>(PatchTable("patch_easykill_02_movk"), W9, 0x5d94, ShiftValue_16);
+        if (global_config.rare_cheats.active && global_config.rare_cheats.easy_kill_damage) {
+            jest.Patch<Movz>(PatchTable("patch_easykill_01_movz"), W9, 0x7bc7);
+            jest.Patch<Movk>(PatchTable("patch_easykill_02_movk"), W9, 0x5d94, ShiftValue_16);
+        }
         // 5863 5FA9 = 1,000 T
         // 5d94 7bc7 = 1,337,420T
         // 60e8 0dae = 133,769,696T

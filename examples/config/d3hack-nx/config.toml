@@ -1,7 +1,10 @@
 # d3hack example configuration
+# Copy to: sd:/config/d3hack-nx/config.toml
 
 [resolution_hack]
+# Master toggle for the resolution patch set.
 SectionEnabled = true
+# Output target vertical resolution; can be numeric or aliases:
 # - 900 -> 1600x900  (aliases "900p" | "default" | "unchanged")
 # - 1080 -> 1920x1080 (aliases "1080p" | "FHD")
 # - 1440 -> 2560x1440 (aliases "1440p" | "2K" | "QHD")
@@ -10,79 +13,155 @@ OutputTarget = 1080
 MinResScale = 85
 # MUST be enabled for higher resolutions to avoid crashes above 1152p (2048x1152)!
 ClampTextures2048 = true
+# Use Blizzard's experimental scheduler; can improve performance.
+ExperimentalScheduler = false
 
 [seasons]
+# Enable season overrides (SeasonNumber + SeasonMapMode).
 SectionEnabled = true
+# Allow online play (true keeps "Connect to Diablo Servers" visible).
 AllowOnlinePlay = false
+# Force the season number when SectionEnabled is true.
 SeasonNumber = 37
+# Spoof OnlineService PTR flag (treat this build as PTR).
+SpoofPtr = false
 
 [challenge_rifts]
+# Enable offline challenge rift overrides.
 SectionEnabled = true
+# Randomize rifts within the range below.
 MakeRiftsRandom = true
+# Inclusive range of rift indexes to choose from.
 RiftRangeStart = 0
 RiftRangeEnd = 28
 
 [events]
+# Enable event flags + seasonal map overlays.
 SectionEnabled = true
 # Season map modes: "MapOnly" | "OverlayConfig" | "Disabled"
 # - MapOnly: apply the season's mapped theme (Seasons 14-37 only), ignore flags below.
 # - OverlayConfig: apply map, plus add any event flags below.
 # - Disabled: ignore the map and use flags below as-is.
 SeasonMapMode = "OverlayConfig"
+# In-Game Rewards (IGR) flag.
 IgrEnabled = false
+# Anniversary event (Holiday Gifts, etc.).
 AnniversaryEnabled = false
+# Easter egg / cow level world flag.
 EasterEggWorldEnabled = false
+# Double rift keystone drops.
 DoubleRiftKeystones = false
+# Double blood shard rewards.
 DoubleBloodShards = false
+# Season 14 - Season of Greed (double goblins).
 DoubleTreasureGoblins = false
+# Season 15 - Boon of the Horadrim (double bounty bags).
 DoubleBountyBags = false
+# Season 16 - Season of Grandeur (Ring of Royal Grandeur buff).
 RoyalGrandeur = false
+# Season 17 - Season of Nightmares (Legacy of Nightmares buff).
 LegacyOfNightmares = false
+# Season 18 - Season of the Triune (Triune circles).
 TriunesWill = false
+# Season 19 - Season of Eternal Conflict (Pandemonium killstreaks).
 Pandemonium = false
+# Season 20/31/37 - Season of the Forbidden Archives (unrestricted Kanai's Cube powers).
 KanaiPowers = false
+# Season 21 - Trials of the Tempests (elemental meteors).
 TrialsOfTempests = false
+# Season 22/33 - Shades of the Nephalem (Shrines/Pylons = Shadow Clones).
 ShadowClones = false
+# Season 22/33 - Shades of the Nephalem (4th Kanai's Cube slot).
 FourthKanaisCubeSlot = false
+# Season 24/32 - Ethereal Memory (Ethereal weapons).
 EtherealItems = false
+# Season 25/30/36 - The Lords of Hell (Soul Shards).
 SoulShards = false
+# Season 26 - The Fall of the Nephalem (Echoing Nightmares).
 SwarmRifts = false
+# Season 27/34 - Light's Calling (Sanctified items).
 SanctifiedItems = false
-# Altar of Rites
+# Season 28 - Rites of Sanctuary (Altar of Rites: Dark Alchemy).
 DarkAlchemy = true
+# Season 29 - Visions of Enmity (Nesting Portals / Diabolical Fissures).
 NestingPortals = false
 
 [rare_cheats]
+# Master toggle for gameplay-altering cheats/hacks.
 SectionEnabled = true
+# Movement speed multiplier (1.0 = normal).
 MovementSpeedMultiplier = 1.5
+# Attack speed multiplier (1.0 = normal).
+AttackSpeedMultiplier = 1.0
+# Enable colored floating damage numbers (debug hook).
+FloatingDamageColor = true
+# 100% legendary probability for Kadala/Kanai.
 GuaranteedLegendaryChance = false
+# Allow restricted drops (Staff of Herding, etc.).
 DropAnyItems = true
+# Instant town portal + Book of Cain.
 InstantPortalAndBookOfCain = true
+# Remove cooldowns for skills.
 NoCooldowns = true
+# Instant identify/craft/enchant + instant cube crafts.
 InstantCubeAndCraftsAndEnchants = true
+# Allow socketing any gem into any slot.
 SocketGemsToAnySlot = false
+# Auto-pickup loot.
 AutoPickup = false
+# Equip items in any slot (slot restrictions removed).
 EquipAnySlot = false
+# Unlock all difficulties without prerequisites.
+UnlockAllDifficulties = true
+# Boost damage for ACTOR_EASYKILL_BIT (debug/dev).
+EasyKillDamage = false
+# Kanai's Cube recipes don't consume materials.
+CubeNoConsumeMaterials = false
+# Legendary gem upgrades always succeed.
+LegendaryGemUpgradeAlways = false
+# Speed up legendary gem upgrade flow.
+LegendaryGemUpgradeSpeed = true
+# Set legendary gems to level 150 after a single upgrade.
+LegendaryGemLevel150 = false
+# Equip multiple legendary items that would normally be restricted.
+EquipMultipleLegendaries = true
 
 [overlays]
+# Overlay UI/watermarks.
 SectionEnabled = true
+# Show build locker watermark.
 BuildLockerWatermark = false
+# Show FPS label.
 FPSLabel = false
+# Show variable resolution label.
 VariableResLabel = true
 
 [loot_modifiers]
+# Loot drop overrides.
 SectionEnabled = true
+# Disable all ancient items.
 DisableAncientDrops = false
+# Disable primal ancient items.
 DisablePrimalAncientDrops = false
+# Disable torment-only drops.
 DisableTormentDrops = false
+# Skip torment gating checks (treat as max torment).
 DisableTormentCheck = true
+# Suppress Ramaladni's Gift generation.
 SuppressGiftGeneration = true
+# Force item level for drops (1-70).
 ForcedILevel = 70
+# Force run level for tiered loot tables.
 TieredLootRunLevel = 150
+# Force ancient rank (Normal | Ancient | Primal).
 AncientRank = "Primal"
 
 [debug]
+# Debug-only features.
 SectionEnabled = false
+# Dump pub files to SD for inspection.
 EnablePubFileDump = false
+# Enable error trace logging.
 EnableErrorTraces = true
+# Enable additional debug flags.
 EnableDebugFlags = false

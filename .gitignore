@@ -7,6 +7,10 @@ deploy/*
 *.nso
 *.npdm
 
-compile_commands.json
 .DS_Store
 .editorconfig
+*.code-workspace
+.*/
+*.zip
+compile_commands.json
+config.mk

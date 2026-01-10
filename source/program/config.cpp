@@ -405,6 +405,7 @@ void PatchConfig::ApplyTable(const toml::table& table) {
         seasons.active = ReadBool(*section, {"SectionEnabled", "Enabled", "Active"}, seasons.active);
         seasons.allow_online = ReadBool(*section, {"AllowOnlinePlay", "AllowOnline"}, seasons.allow_online);
         seasons.current_season = ReadU32(*section, {"SeasonNumber", "Number", "Season"}, seasons.current_season, 1, 200);
+        seasons.spoof_ptr      = ReadBool(*section, {"SpoofPtr", "SpoofPTR", "PtrSpoof"}, seasons.spoof_ptr);
     }
 
     if (const auto* section = FindTable(table, "challenge_rifts")) {
@@ -461,6 +462,11 @@ void PatchConfig::ApplyTable(const toml::table& table) {
             {"ClampTextures2048", "ClampTexturesTo2048", "ClampTextures", "ClampTex2048", "ClampTex"},
             resolution_hack.clamp_textures_2048
         );
+        resolution_hack.exp_scheduler = ReadBool(
+            *resolution_section,
+            {"ExperimentalScheduler", "ExpScheduler", "ExperimentalScheduling", "ExpScheduling"},
+            resolution_hack.exp_scheduler
+        );
     } else {
         resolution_hack.SetTargetRes(resolution_hack.target_resolution);
     }
@@ -468,6 +474,8 @@ void PatchConfig::ApplyTable(const toml::table& table) {
     if (const auto* section = FindTable(table, "rare_cheats")) {
         rare_cheats.active = ReadBool(*section, {"SectionEnabled", "Enabled", "Active"}, rare_cheats.active);
         rare_cheats.move_speed = ReadDouble(*section, {"MovementSpeedMultiplier", "MoveSpeedMultiplier"}, rare_cheats.move_speed, 0.1, 10.0);
+        rare_cheats.attack_speed            = ReadDouble(*section, {"AttackSpeedMultiplier", "AtkSpeedMultiplier", "AttackSpeed"}, rare_cheats.attack_speed, 0.1, 10.0);
+        rare_cheats.floating_damage_color   = ReadBool(*section, {"FloatingDamageColor", "FloatingDamageColors", "FloatingDamage"}, rare_cheats.floating_damage_color);
         rare_cheats.guaranteed_legendaries = ReadBool(*section, {"GuaranteedLegendaryChance"}, rare_cheats.guaranteed_legendaries);
         rare_cheats.drop_anything = ReadBool(*section, {"DropAnyItems"}, rare_cheats.drop_anything);
         rare_cheats.instant_portal = ReadBool(*section, {"InstantPortalAndBookOfCain"}, rare_cheats.instant_portal);
@@ -476,6 +484,13 @@ void PatchConfig::ApplyTable(const toml::table& table) {
         rare_cheats.any_gem_any_slot = ReadBool(*section, {"SocketGemsToAnySlot"}, rare_cheats.any_gem_any_slot);
         rare_cheats.auto_pickup = ReadBool(*section, {"AutoPickup"}, rare_cheats.auto_pickup);
         rare_cheats.equip_any_slot = ReadBool(*section, {"EquipAnySlot", "EquipAnyItem"}, rare_cheats.equip_any_slot);
+        rare_cheats.unlock_all_difficulties = ReadBool(*section, {"UnlockAllDifficulties", "UnlockDifficulties"}, rare_cheats.unlock_all_difficulties);
+        rare_cheats.easy_kill_damage        = ReadBool(*section, {"EasyKillDamage", "EasyKillBoost"}, rare_cheats.easy_kill_damage);
+        rare_cheats.cube_no_consume         = ReadBool(*section, {"CubeNoConsumeMaterials", "CubeNoConsume", "KanaiCubeNoConsume"}, rare_cheats.cube_no_consume);
+        rare_cheats.gem_upgrade_always      = ReadBool(*section, {"LegendaryGemUpgradeAlways", "GemUpgradeAlways", "LegendaryGemUpgradeChance"}, rare_cheats.gem_upgrade_always);
+        rare_cheats.gem_upgrade_speed       = ReadBool(*section, {"LegendaryGemUpgradeSpeed", "GemUpgradeSpeed", "GemUpgradeFast"}, rare_cheats.gem_upgrade_speed);
+        rare_cheats.gem_upgrade_lvl150      = ReadBool(*section, {"LegendaryGemLevel150", "GemUpgradeLevel150", "GemLevel150"}, rare_cheats.gem_upgrade_lvl150);
+        rare_cheats.equip_multi_legendary   = ReadBool(*section, {"EquipMultipleLegendaries", "EquipMultipleLegendaryItems", "EquipMultiLegendary"}, rare_cheats.equip_multi_legendary);
     }
 
     if (const auto* section = FindTable(table, "overlays")) {

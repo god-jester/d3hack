@@ -376,9 +376,9 @@ namespace d3 {
             FloatingDmgHook::
                 InstallAtSymbol("sym_floating_dmg");
         }
-        if (global_config.rare_cheats.active && global_config.rare_cheats.font_hooks) {
-            FontStringGetRenderedSizeHook::
-                InstallAtSymbol("sym_font_string_get_rendered_size");
+        FontStringGetRenderedSizeHook::
+            InstallAtSymbol("sym_font_string_get_rendered_size");
+        if (global_config.debug.active) {
             FontStringDrawHook::
                 InstallAtSymbol("sym_font_string_draw_03ff50");
             FontStringDrawHook::

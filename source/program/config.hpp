@@ -73,19 +73,25 @@ struct PatchConfig {
     } events;
 
     struct {
-        bool active = true;
-        double move_speed = 2.5;
-        double attack_speed = 1.0;
-        bool floating_damage_color = false;
-        bool font_hooks = false;
-        bool guaranteed_legendaries = false;
-        bool drop_anything = false;
-        bool instant_portal = true;
-        bool no_cooldowns = false;
-        bool instant_craft_actions = true;
-        bool any_gem_any_slot = false;
-        bool auto_pickup = false;
-        bool equip_any_slot = false;
+        bool   active                  = true;
+        double move_speed              = 2.5;
+        double attack_speed            = 1.0;
+        bool   floating_damage_color   = false;
+        bool   guaranteed_legendaries  = false;
+        bool   drop_anything           = false;
+        bool   instant_portal          = true;
+        bool   no_cooldowns            = false;
+        bool   instant_craft_actions   = true;
+        bool   any_gem_any_slot        = false;
+        bool   auto_pickup             = false;
+        bool   equip_any_slot          = false;
+        bool   unlock_all_difficulties = true;
+        bool   easy_kill_damage        = false;
+        bool   cube_no_consume         = false;
+        bool   gem_upgrade_always      = false;
+        bool   gem_upgrade_speed       = true;
+        bool   gem_upgrade_lvl150      = false;
+        bool   equip_multi_legendary   = true;
     } rare_cheats;
 
     ResolutionHackConfig resolution_hack {};
