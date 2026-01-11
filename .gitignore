@@ -10,6 +10,7 @@ deploy/*
 .DS_Store
 .editorconfig
 *.code-workspace
+.worktrees/
 .*/
 *.zip
 compile_commands.json

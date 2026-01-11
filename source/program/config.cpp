@@ -508,8 +508,8 @@ void PatchConfig::ApplyTable(const toml::table& table) {
         loot_modifiers.DisableTormentDrops = ReadBool(*section, {"DisableTormentDrops"}, loot_modifiers.DisableTormentDrops);
         loot_modifiers.DisableTormentCheck = ReadBool(*section, {"DisableTormentCheck"}, loot_modifiers.DisableTormentCheck);
         loot_modifiers.SuppressGiftGeneration = ReadBool(*section, {"SuppressGiftGeneration"}, loot_modifiers.SuppressGiftGeneration);
-        loot_modifiers.ForcedILevel = ReadU32(*section, {"ForcedILevel"}, loot_modifiers.ForcedILevel, 1, 70);
-        loot_modifiers.TieredLootRunLevel = ReadU32(*section, {"TieredLootRunLevel"}, loot_modifiers.TieredLootRunLevel, 1, 150);
+        loot_modifiers.ForcedILevel = ReadU32(*section, {"ForcedILevel"}, loot_modifiers.ForcedILevel, 0, 70);
+        loot_modifiers.TieredLootRunLevel = ReadU32(*section, {"TieredLootRunLevel"}, loot_modifiers.TieredLootRunLevel, 0, 150);
         loot_modifiers.AncientRank = ReadString(*section, {"AncientRank"}, loot_modifiers.AncientRank);
         loot_modifiers.AncientRankValue = AncientRankToValue(loot_modifiers.AncientRank, loot_modifiers.AncientRankValue);
         loot_modifiers.AncientRank = AncientRankCanonical(loot_modifiers.AncientRankValue, loot_modifiers.AncientRank);

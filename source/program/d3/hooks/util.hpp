@@ -111,8 +111,12 @@ namespace d3 {
     };
 
     void AugmentSpecifier(LootSpecifier *tSpecifier) {
-        tSpecifier->tLooteeParams.nForcedILevel              = global_config.loot_modifiers.ForcedILevel;
-        tSpecifier->tLooteeParams.nTieredLootRunLevel        = global_config.loot_modifiers.TieredLootRunLevel;
+        if (global_config.loot_modifiers.ForcedILevel > 0) {
+            tSpecifier->tLooteeParams.nForcedILevel = global_config.loot_modifiers.ForcedILevel;
+        }
+        if (global_config.loot_modifiers.TieredLootRunLevel > 0) {
+            tSpecifier->tLooteeParams.nTieredLootRunLevel = global_config.loot_modifiers.TieredLootRunLevel;
+        }
         tSpecifier->tLooteeParams.bDisableAncientDrops       = global_config.loot_modifiers.DisableAncientDrops;
         tSpecifier->tLooteeParams.bDisablePrimalAncientDrops = global_config.loot_modifiers.DisablePrimalAncientDrops;
         tSpecifier->tLooteeParams.bDisableTormentDrops       = global_config.loot_modifiers.DisableTormentDrops;
@@ -199,6 +203,7 @@ namespace d3 {
 
     HOOK_DEFINE_INLINE(FontStringDrawHook) {
         static void Callback(exl::hook::InlineCtx *ctx) {
+            return;
             ++g_draw_count;
 
             auto tProps = *reinterpret_cast<TextRenderProperties **>(&ctx->X[0]);
