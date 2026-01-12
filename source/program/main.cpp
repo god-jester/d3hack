@@ -165,6 +165,7 @@ namespace d3 {
     extern "C" void exl_main(void * /*x0*/, void * /*x1*/) {
         /* Setup hooking environment. */
         exl::hook::Initialize();
+        PRINT_LINE("Compiled at " __DATE__ " " __TIME__);
 
         MainInit::InstallAtFuncPtr(main_init);
         GfxInit::InstallAtFuncPtr(gfx_init);

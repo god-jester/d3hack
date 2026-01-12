@@ -853,7 +853,7 @@ namespace d3 {
         DisplayListDrawRenderLayerSwapchainGate::InstallAtOffset(0x157294);
         CGameVariableResInitializeForRWindowHook::InstallAtOffset(0x03CB90);
         // GfxSetRenderAndDepthTargetSwapchainFix::InstallAtOffset(0x29C670);
-        // GfxSetDepthTargetSwapchainFix::InstallAtOffset(0x29C4E0);
+        GfxSetDepthTargetSwapchainFix::InstallAtOffset(0x29C4E0);
         GfxViewportSetSwapchainDepthGate::InstallAtOffset(0x0F0280);
 
         if (global_config.debug.active && false) {
