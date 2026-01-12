@@ -28,6 +28,9 @@ MODULES		:=	$(shell find $(ROOT_SOURCE) -mindepth 1 -maxdepth 1 -type d)
 SOURCES		:=	$(foreach module,$(MODULES),$(shell find $(module) -type d))
 SOURCES		:= 	$(foreach source,$(SOURCES),$(source:$(TOPDIR)/%=%)/)
 
+# Exclude Dear ImGui example sources.
+SOURCES		:=	$(filter-out source/third_party/imgui/examples/%,$(SOURCES))
+
 DATA		:=	data
 INCLUDES	:=	include
 
@@ -43,7 +46,7 @@ CFLAGS	:=	-g -Wall -Werror -Og \
 			$(ARCH) \
 			$(DEFINES)
 
-CFLAGS	+=	$(INCLUDE) -D__SWITCH__ -D__RTLD_6XX__
+CFLAGS	+=	$(INCLUDE) -D__SWITCH__ -D__RTLD_6XX__ -I$(ROOT_SOURCE)/third_party/imgui
 
 CFLAGS	+= $(EXL_CFLAGS) -I"$(DEVKITPRO)/libnx/include" -I$(ROOT_SOURCE) $(addprefix -I,$(MODULES))
 
@@ -77,6 +80,29 @@ export DEPSDIR	:=	$(CURDIR)/$(BUILD)
 
 CFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
 CPPFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
+
+ifneq (,$(findstring source/third_party/imgui/examples/,$(SOURCES)))
+# Drop Dear ImGui example entrypoints.
+CPPFILES	:=	$(filter-out main.cpp,$(CPPFILES))
+endif
+
+# Drop unused Dear ImGui misc helpers.
+CPPFILES	:=	$(filter-out imgui_freetype.cpp imgui_stdlib.cpp binary_to_compressed_c.cpp,$(CPPFILES))
+
+# Exclude official Dear ImGui backends (we use custom NVN backend).
+CPPFILES	:=	$(filter-out imgui_impl_%.cpp,$(CPPFILES))
+
+# Re-add our custom NVN backend after filtering.
+CPPFILES	:=	$(filter-out imgui_impl_nvn.cpp,$(CPPFILES))
+CPPFILES	+=	imgui_impl_nvn.cpp
+
+# Exclude Dear ImGui example programs.
+CPPFILES	:=	$(filter-out example_%.cpp,$(CPPFILES))
+CPPFILES	:=	$(filter-out uSynergy.c,$(CPPFILES))
+
+# Ensure the project entrypoint is always compiled.
+CPPFILES	:=	$(filter-out main.cpp,$(CPPFILES))
+CPPFILES	+=	main.cpp
 SFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
 BINFILES	:=	$(foreach dir,$(DATA),$(notdir $(wildcard $(dir)/*.*)))
 

@@ -15,6 +15,7 @@
 #include "d3/hooks/debug.hpp"
 #include "d3/hooks/season_events.hpp"
 #include "d3/hooks/lobby.hpp"
+#include "program/gui2/imgui_overlay.hpp"
 #include "idadefs.h"
 
 #define to_float(v)         __coerce<float>(v)
@@ -91,7 +92,8 @@ namespace d3 {
             PRINT_LINE("ShellInitialized");
             g_request_seasons_load = true;
 
-            // EXL_ABORT(420);
+            // EXL_ABORT("Hello!");
+
             return ret;
         }
     };
@@ -146,6 +148,9 @@ namespace d3 {
             if (global_config.resolution_hack.active)
                 PatchResolutionTargets();
             PatchBase();
+
+            // GUI bringup (render-only): installs NVN hooks to draw a proof-of-life marker.
+            d3::imgui_overlay::Initialize();
 
             // Allow game loop to start
             Orig();
