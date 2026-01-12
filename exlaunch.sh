@@ -20,8 +20,14 @@ elif [ "$1" == "deploy-yuzu" ]; then
     MAKE_VERB="deploy-yuzu"
 elif [ "$1" == "make-npdm-json" ]; then
     MAKE_VERB="npdm-json"
+elif [ "$1" == "ryu-launch-log" ]; then
+    MAKE_VERB="ryu-launch-log"
+elif [ "$1" == "ryu-tail" ]; then
+    MAKE_VERB="ryu-tail"
+elif [ "$1" == "ryu-screenshot" ]; then
+    MAKE_VERB="ryu-screenshot"
 else
-    echo "Invalid arg. (build/clean/deploy-sd/deploy-ftp/deploy-ryu/deploy-yuzu)"
+    echo "Invalid arg. (build/clean/deploy-sd/deploy-ftp/deploy-ryu/deploy-yuzu/ryu-launch-log/ryu-tail/ryu-screenshot)"
     exit 1
 fi
 

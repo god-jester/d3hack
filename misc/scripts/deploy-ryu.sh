@@ -14,6 +14,9 @@ if [ -z "${RYU_PATH}" ]; then
     echo "RYU_PATH appears to not be set! Check your exlaunch.sh?"
 fi
 
+# Avoid path mismatches in Ryujinx (some code paths treat duplicate slashes as distinct).
+export RYU_PATH="${RYU_PATH%/}"
+
 # Setup the path to the game's mods folder.
 export MODS_PATH=${RYU_PATH}/mods/contents/${PROGRAM_ID}/${NAME}
 

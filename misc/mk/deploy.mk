@@ -1,4 +1,4 @@
-.PHONY: deploy-sd deploy-ftp deploy-ryu deploy-yuzu
+.PHONY: deploy-sd deploy-ftp deploy-ryu deploy-yuzu ryu-launch-log ryu-tail ryu-screenshot
 
 deploy-sd:
 	@$(SHELL) $(SCRIPTS_PATH)/deploy-sd.sh
@@ -11,3 +11,15 @@ deploy-ryu:
 
 deploy-yuzu:
 	@$(SHELL) $(SCRIPTS_PATH)/deploy-yuzu.sh
+
+ryu-launch-log:
+	@$(SHELL) $(SCRIPTS_PATH)/ryu-launch-log.sh
+
+ryu-tail:
+	@$(MAKE) clean
+	@$(MAKE) -j all
+	@$(MAKE) deploy-ryu
+	@$(MAKE) ryu-launch-log
+
+ryu-screenshot:
+	@$(SHELL) $(SCRIPTS_PATH)/ryu-screenshot.sh

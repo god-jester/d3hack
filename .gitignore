@@ -15,3 +15,8 @@ deploy/*
 *.zip
 compile_commands.json
 config.mk
+
+# Local-only convenience symlink to the Ryujinx log filter script.
+misc/scripts/ryu_filter_logs.py
+**/__pycache__/
+*.pyc
