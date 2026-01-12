@@ -4,10 +4,9 @@ set -euo pipefail
 # Trigger a Ryujinx screenshot hotkey via `ryu-post-key.sh`, then move/copy the resulting
 # PNG out of the Ryujinx screenshots directory into /tmp (or a user-provided path).
 #
-# This intentionally avoids any focus/AX/window-capture fallbacks: it's meant to stay lean
-# and rely on CGEventPostToPid being sufficient. In practice, Ryujinx hotkeys appear to
-# only trigger when the Ryujinx window is active; so we provide a minimal opt-out
-# focus-steal+restore fallback.
+# Ryujinx hotkeys appear to require the Ryujinx window to be active, so this script
+# intentionally steals focus briefly, triggers the hotkey, then restores the previous
+# frontmost app.
 
 if [[ "${OSTYPE:-}" != "darwin"* ]]; then
     echo "ryu-screenshot.sh currently supports macOS only."
@@ -30,6 +29,11 @@ HOTKEY="${HOTKEY:-F8}"
 OUT="${RYU_SCREENSHOT_OUT:-/tmp/ryu_$(date +%Y%m%d_%H%M%S).png}"
 KEEP_ORIGINAL="${RYU_SCREENSHOT_KEEP:-0}"
 TIMEOUT_S="${RYU_SCREENSHOT_TIMEOUT_S:-5}"
+DEBUG="${RYU_SCREENSHOT_DEBUG:-0}"
+RETRIES="${RYU_SCREENSHOT_RETRIES:-2}"
+FOCUS_DELAY_S="${RYU_SCREENSHOT_FOCUS_DELAY_S:-0.05}"
+FAST_TIMEOUT_S="${RYU_SCREENSHOT_FAST_TIMEOUT_S:-0.75}"
+FAST_FOCUS_DELAY_S="${RYU_SCREENSHOT_FAST_FOCUS_DELAY_S:-0.02}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 POST_KEY="${SCRIPT_DIR}/ryu-post-key.sh"
@@ -38,23 +42,154 @@ if [[ ! -x "$POST_KEY" ]]; then
     exit 1
 fi
 
+default_mod_name() {
+    if [[ -n "${NAME:-}" ]]; then
+        echo "$NAME"
+        return 0
+    fi
+
+    local top
+    top="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+    if [[ -n "$top" ]]; then
+        basename "$top"
+        return 0
+    fi
+
+    basename "$PWD"
+}
+
+default_pidfile() {
+    local state_dir="${RYU_STATE_DIR:-/tmp/d3hack_ryu}"
+    local name
+    name="$(default_mod_name)"
+    echo "${RYU_PIDFILE:-${state_dir}/ryu_${name}.pid}"
+}
+
+pid_from_pidfile() {
+    local pidfile="$1"
+    if [[ -z "$pidfile" || ! -f "$pidfile" ]]; then
+        return 1
+    fi
+    local pid
+    pid="$(head -n 1 "$pidfile" 2>/dev/null | tr -d ' \t\r\n' || true)"
+    if [[ "$pid" =~ ^[0-9]+$ ]]; then
+        echo "$pid"
+        return 0
+    fi
+    return 1
+}
+
+is_ryujinx_pid() {
+    local pid="$1"
+    if [[ -z "$pid" ]]; then
+        return 1
+    fi
+    ps -p "$pid" -o args= 2>/dev/null | grep -Eq 'Ryujinx(\.app/Contents/MacOS/Ryujinx)?([[:space:]]|$)'
+}
+
 ryu_pid() {
     local pid="${RYU_PID:-}"
-    if [[ -z "$pid" ]]; then
-        pid="$(pgrep -x Ryujinx || true)"
+    if [[ -n "$pid" ]]; then
+        if ! is_ryujinx_pid "$pid"; then
+            echo "RYU_PID is set but does not look like Ryujinx pid=$pid" >&2
+            return 1
+        fi
+        echo "$pid"
+        return 0
     fi
-    if [[ -z "$pid" ]]; then
-        pid="$(pgrep -f "Ryujinx.app/Contents/MacOS/Ryujinx" || true)"
+
+    local pidfile
+    pidfile="$(default_pidfile)"
+    if [[ -n "$pidfile" ]]; then
+        pid="$(pid_from_pidfile "$pidfile" || true)"
+        if [[ -n "$pid" ]]; then
+            if is_ryujinx_pid "$pid"; then
+                echo "$pid"
+                return 0
+            fi
+            echo "Warning: stale pidfile (no Ryujinx pid=$pid): $pidfile" >&2
+        fi
     fi
-    echo "$pid"
+
+    local pids=()
+    while IFS= read -r line; do
+        [[ -n "$line" ]] && pids+=("$line")
+    done < <(pgrep -x Ryujinx || true)
+    if (( ${#pids[@]} == 0 )); then
+        while IFS= read -r line; do
+            [[ -n "$line" ]] && pids+=("$line")
+        done < <(pgrep -f "Ryujinx.app/Contents/MacOS/Ryujinx" || true)
+    fi
+
+    if (( ${#pids[@]} == 0 )); then
+        return 0
+    fi
+
+    if (( ${#pids[@]} == 1 )); then
+        echo "${pids[0]}"
+        return 0
+    fi
+
+    echo "Multiple Ryujinx instances detected: ${pids[*]}" >&2
+    echo "Set RYU_PID=<pid>, or run ryu-launch-log to write a pidfile for this worktree (default: $pidfile)." >&2
+    return 1
 }
 
 frontmost_pid() {
-    local pid_bin="${RYU_QUARTZ_FRONT_PID_BIN:-/tmp/ryu_quartz_frontmost_pid}"
-    local pid_src="${RYU_QUARTZ_FRONT_PID_SRC:-/tmp/ryu_quartz_frontmost_pid.c}"
+    # Prefer Accessibility's "focused application" (reliable under Stage Manager),
+    # then fall back to CGWindowList heuristics.
+    local ax_bin="${RYU_AX_FRONT_PID_BIN:-/tmp/ryu_ax_frontmost_pid}"
+    local ax_src="${RYU_AX_FRONT_PID_SRC:-/tmp/ryu_ax_frontmost_pid.c}"
 
-    if [[ ! -x "$pid_bin" ]]; then
-        cat >"$pid_src" <<'C'
+    if [[ ! -x "$ax_bin" ]]; then
+        cat >"$ax_src" <<'C'
+#include <ApplicationServices/ApplicationServices.h>
+#include <CoreFoundation/CoreFoundation.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(void) {
+    if (!AXIsProcessTrusted()) return 3;
+
+    AXUIElementRef sys = AXUIElementCreateSystemWide();
+    if (!sys) return 4;
+
+    CFTypeRef app = NULL;
+    AXError err = AXUIElementCopyAttributeValue(sys, kAXFocusedApplicationAttribute, &app);
+    if (err != kAXErrorSuccess || !app) {
+        CFRelease(sys);
+        return 5;
+    }
+
+    pid_t pid = 0;
+    if (AXUIElementGetPid((AXUIElementRef)app, &pid) != kAXErrorSuccess || pid <= 0) {
+        CFRelease(app);
+        CFRelease(sys);
+        return 6;
+    }
+
+    printf("%d\n", pid);
+    CFRelease(app);
+    CFRelease(sys);
+    return 0;
+}
+C
+        clang -O2 -Wall -Wextra \
+            -framework ApplicationServices \
+            -o "$ax_bin" "$ax_src"
+    fi
+
+    local pid
+    pid="$("$ax_bin" 2>/dev/null || true)"
+    if [[ -n "$pid" ]]; then
+        echo "$pid"
+        return 0
+    fi
+
+    local cg_bin="${RYU_QUARTZ_FRONT_PID_BIN:-/tmp/ryu_quartz_frontmost_pid}"
+    local cg_src="${RYU_QUARTZ_FRONT_PID_SRC:-/tmp/ryu_quartz_frontmost_pid.c}"
+    if [[ ! -x "$cg_bin" ]]; then
+        cat >"$cg_src" <<'C'
 #include <ApplicationServices/ApplicationServices.h>
 #include <CoreFoundation/CoreFoundation.h>
 #include <stdio.h>
@@ -88,10 +223,10 @@ int main(void) {
 C
         clang -O2 -Wall -Wextra \
             -framework ApplicationServices \
-            -o "$pid_bin" "$pid_src"
+            -o "$cg_bin" "$cg_src"
     fi
 
-    "$pid_bin" 2>/dev/null || true
+    "$cg_bin" 2>/dev/null || true
 }
 
 ax_focus_pid() {
@@ -158,6 +293,24 @@ C
 wait_for_png_newer_than() {
     local marker="$1"
     local timeout="$2"
+    if [[ "$timeout" == *.* ]]; then
+        local end
+        end="$(python -c 'import sys,time; print(time.time()+float(sys.argv[1]))' "$timeout" 2>/dev/null || true)"
+        if [[ -z "$end" ]]; then
+            return 1
+        fi
+        while python -c 'import sys,time; sys.exit(0 if time.time() < float(sys.argv[1]) else 1)' "$end" >/dev/null 2>&1; do
+            local newest
+            newest="$(find "$SCREENSHOTS_DIR" -maxdepth 1 -type f -name '*.png' -newer "$marker" -print0 2>/dev/null | xargs -0 ls -t 2>/dev/null | head -n 1 || true)"
+            if [[ -n "$newest" ]]; then
+                echo "$newest"
+                return 0
+            fi
+            sleep 0.05
+        done
+        return 1
+    fi
+
     local deadline=$((SECONDS + timeout))
     while (( SECONDS < deadline )); do
         local newest
@@ -171,35 +324,99 @@ wait_for_png_newer_than() {
     return 1
 }
 
-MARKER="$(mktemp -t ryu_screenshot_marker.XXXXXX)"
-trap 'rm -f "$MARKER"' EXIT
-sleep 0.05
+latest_png() {
+    ls -t "$SCREENSHOTS_DIR"/*.png 2>/dev/null | head -n 1 || true
+}
 
-"$POST_KEY" "$HOTKEY" >/dev/null
-
-newest="$(wait_for_png_newer_than "$MARKER" "$TIMEOUT_S" || true)"
-if [[ -z "$newest" && "${RYU_SCREENSHOT_FOCUS:-1}" == "1" ]]; then
-    prev_pid="$(frontmost_pid)"
-    ax_focus_pid "$(ryu_pid)"
-    MARKER2="$(mktemp -t ryu_screenshot_marker.XXXXXX)"
-    trap 'rm -f "$MARKER" "$MARKER2"' EXIT
-    sleep 0.05
-    "$POST_KEY" "$HOTKEY" >/dev/null
-    newest="$(wait_for_png_newer_than "$MARKER2" "$TIMEOUT_S" || true)"
-    if [[ -n "$prev_pid" ]]; then
-        ax_focus_pid "$prev_pid"
+logd() {
+    if [[ "$DEBUG" == "1" ]]; then
+        echo "[ryu-screenshot] $*" >&2
     fi
+}
+
+unique_out_path() {
+    local base="$1"
+    if [[ ! -e "$base" ]]; then
+        echo "$base"
+        return 0
+    fi
+    local ext="${base##*.}"
+    local stem="${base%.*}"
+    local i=1
+    while [[ -e "${stem}_${i}.${ext}" ]]; do
+        i=$((i + 1))
+    done
+    echo "${stem}_${i}.${ext}"
+}
+
+if ! pid="$(ryu_pid)"; then
+    exit 1
+fi
+if [[ -z "$pid" ]]; then
+    echo "Ryujinx is not running (no PID found)."
+    exit 1
 fi
 
-if [[ -n "$newest" ]]; then
-    if [[ "$KEEP_ORIGINAL" == "1" ]]; then
-        cp -f "$newest" "$OUT"
+prev_pid="$(frontmost_pid)"
+logd "prev_pid=${prev_pid:-<empty>}"
+logd "ryu_pid=$pid"
+newest=""
+attempt=0
+while (( attempt <= RETRIES )); do
+    attempt=$((attempt + 1))
+    logd "attempt=$attempt hotkey=$HOTKEY"
+
+    ax_focus_pid "$pid"
+    if [[ "$attempt" == "1" ]]; then
+        sleep "$FAST_FOCUS_DELAY_S"
     else
-        mv -f "$newest" "$OUT"
+        sleep "$FOCUS_DELAY_S"
     fi
-    echo "$OUT"
+
+    MARKER="$(mktemp -t ryu_screenshot_marker.XXXXXX)"
+    trap 'rm -f "$MARKER"' EXIT
+    sleep 0.05
+
+    before="$(latest_png)"
+    logd "before=${before:-<none>}"
+
+    RYU_PID="$pid" "$POST_KEY" "$HOTKEY" >/dev/null || true
+
+    if [[ "${RYU_RESTORE_FOCUS:-1}" == "1" && -n "$prev_pid" ]]; then
+        sleep 0.05
+        ax_focus_pid "$prev_pid"
+        logd "restored focus to pid=$prev_pid"
+    fi
+
+    if [[ "$attempt" == "1" ]]; then
+        newest="$(wait_for_png_newer_than "$MARKER" "$FAST_TIMEOUT_S" || true)"
+    else
+        newest="$(wait_for_png_newer_than "$MARKER" "$TIMEOUT_S" || true)"
+    fi
+    if [[ -z "$newest" ]]; then
+        after="$(latest_png)"
+        logd "marker wait missed; after=${after:-<none>}"
+        if [[ -n "$after" && "$after" != "$before" ]]; then
+            newest="$after"
+        fi
+    fi
+
+    if [[ -n "$newest" ]]; then
+        break
+    fi
+done
+
+if [[ -n "$newest" ]]; then
+    out_path="$(unique_out_path "$OUT")"
+    if [[ "$KEEP_ORIGINAL" == "1" ]]; then
+        cp -f "$newest" "$out_path"
+    else
+        mv -f "$newest" "$out_path"
+    fi
+    echo "$out_path"
     exit 0
 fi
 
-echo "Timed out waiting for Ryujinx screenshot after hotkey '$HOTKEY' in: $SCREENSHOTS_DIR"
+echo "Timed out waiting for Ryujinx screenshot after hotkey '$HOTKEY' in: $SCREENSHOTS_DIR (attempts=$attempt)."
+echo "Hint: retry, or bump RYU_SCREENSHOT_RETRIES / RYU_SCREENSHOT_TIMEOUT_S / RYU_SCREENSHOT_FOCUS_DELAY_S, or set RYU_SCREENSHOT_KEY explicitly."
 exit 1

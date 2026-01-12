@@ -16,10 +16,9 @@ ryu-launch-log:
 	@$(SHELL) $(SCRIPTS_PATH)/ryu-launch-log.sh
 
 ryu-tail:
-	@$(MAKE) clean
-	@$(MAKE) -j all
-	@$(MAKE) deploy-ryu
-	@$(MAKE) ryu-launch-log
+	@$(MAKE) -j all >/dev/null && \
+		$(MAKE) deploy-ryu && \
+		$(MAKE) ryu-launch-log
 
 ryu-screenshot:
 	@$(SHELL) $(SCRIPTS_PATH)/ryu-screenshot.sh

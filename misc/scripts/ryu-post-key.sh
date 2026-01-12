@@ -21,12 +21,98 @@ fi
 
 KEY="${1:-z}"
 
-RYU_PID="${RYU_PID:-}"
-if [[ -z "$RYU_PID" ]]; then
-    RYU_PID="$(pgrep -x Ryujinx || true)"
-fi
-if [[ -z "$RYU_PID" ]]; then
-    RYU_PID="$(pgrep -f "Ryujinx.app/Contents/MacOS/Ryujinx" || true)"
+default_mod_name() {
+    if [[ -n "${NAME:-}" ]]; then
+        echo "$NAME"
+        return 0
+    fi
+
+    local top
+    top="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+    if [[ -n "$top" ]]; then
+        basename "$top"
+        return 0
+    fi
+
+    basename "$PWD"
+}
+
+default_pidfile() {
+    local state_dir="${RYU_STATE_DIR:-/tmp/d3hack_ryu}"
+    local name
+    name="$(default_mod_name)"
+    echo "${RYU_PIDFILE:-${state_dir}/ryu_${name}.pid}"
+}
+
+pid_from_pidfile() {
+    local pidfile="$1"
+    if [[ -z "$pidfile" || ! -f "$pidfile" ]]; then
+        return 1
+    fi
+    local pid
+    pid="$(head -n 1 "$pidfile" 2>/dev/null | tr -d ' \t\r\n' || true)"
+    if [[ "$pid" =~ ^[0-9]+$ ]]; then
+        echo "$pid"
+        return 0
+    fi
+    return 1
+}
+
+is_ryujinx_pid() {
+    local pid="$1"
+    if [[ -z "$pid" ]]; then
+        return 1
+    fi
+    ps -p "$pid" -o args= 2>/dev/null | grep -Eq 'Ryujinx(\.app/Contents/MacOS/Ryujinx)?([[:space:]]|$)'
+}
+
+resolve_ryu_pid() {
+    local pid="${RYU_PID:-}"
+    if [[ -n "$pid" ]]; then
+        if ! is_ryujinx_pid "$pid"; then
+            echo "RYU_PID is set but does not look like Ryujinx pid=$pid" >&2
+            return 1
+        fi
+        echo "$pid"
+        return 0
+    fi
+
+    local pidfile
+    pidfile="$(default_pidfile)"
+    pid="$(pid_from_pidfile "$pidfile" || true)"
+    if [[ -n "$pid" ]]; then
+        if is_ryujinx_pid "$pid"; then
+            echo "$pid"
+            return 0
+        fi
+        echo "Warning: stale pidfile (no Ryujinx pid=$pid): $pidfile" >&2
+    fi
+
+    local pids=()
+    while IFS= read -r line; do
+        [[ -n "$line" ]] && pids+=("$line")
+    done < <(pgrep -x Ryujinx || true)
+    if (( ${#pids[@]} == 0 )); then
+        while IFS= read -r line; do
+            [[ -n "$line" ]] && pids+=("$line")
+        done < <(pgrep -f "Ryujinx.app/Contents/MacOS/Ryujinx" || true)
+    fi
+
+    if (( ${#pids[@]} == 0 )); then
+        return 0
+    fi
+    if (( ${#pids[@]} == 1 )); then
+        echo "${pids[0]}"
+        return 0
+    fi
+
+    echo "Multiple Ryujinx instances detected: ${pids[*]}" >&2
+    echo "Set RYU_PID=<pid>, or run ryu-launch-log to write a pidfile for this worktree (default: $pidfile)." >&2
+    return 1
+}
+
+if ! RYU_PID="$(resolve_ryu_pid)"; then
+    exit 1
 fi
 if [[ -z "$RYU_PID" ]]; then
     echo "Ryujinx is not running (no PID found)."
