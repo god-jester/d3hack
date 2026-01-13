@@ -1,12 +1,14 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <vector>
 #include "imgui_backend/imgui_impl_nvn.hpp"
 #include "imgui_backend/imgui_hid_mappings.h"
 #include "imgui_backend/MemoryPoolMaker.h"
 
 
 #include "lib/diag/assert.hpp"
+#include "program/romfs_assets.hpp"
 #include "program/logging.hpp"
 #include "imgui_bin.h"
 
@@ -261,8 +263,28 @@ namespace ImguiNvnBackend {
     bool createShaders() {
         auto bd = getBackendData();
 
-        bd->imguiShaderBinary.size = imgui_bin_size;
-        bd->imguiShaderBinary.ptr = (u8*)&imgui_bin;
+        static std::vector<unsigned char> s_romfs_imgui_bin;
+        static bool s_romfs_tried = false;
+        static bool s_romfs_loaded = false;
+
+        if (!s_romfs_tried) {
+            s_romfs_tried = true;
+            s_romfs_loaded = d3::romfs::ReadFileToBytes("romfs:/d3gui/imgui.bin", s_romfs_imgui_bin, 4 * 1024 * 1024);
+
+            if (s_romfs_loaded) {
+                DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] Using romfs imgui.bin (%lu bytes)\n", static_cast<unsigned long>(s_romfs_imgui_bin.size()));
+            } else {
+                DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] romfs imgui.bin not found; using built-in imgui.bin\n");
+            }
+        }
+
+        if (s_romfs_loaded && !s_romfs_imgui_bin.empty()) {
+            bd->imguiShaderBinary.size = static_cast<ulong>(s_romfs_imgui_bin.size());
+            bd->imguiShaderBinary.ptr = reinterpret_cast<u8*>(s_romfs_imgui_bin.data());
+        } else {
+            bd->imguiShaderBinary.size = imgui_bin_size;
+            bd->imguiShaderBinary.ptr = (u8*)&imgui_bin;
+        }
 
         if (bd->imguiShaderBinary.size == 0) {
             DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] ERROR: imgui.bin is empty\n");

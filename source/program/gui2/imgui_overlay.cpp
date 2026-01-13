@@ -1,16 +1,16 @@
 #include "program/gui2/imgui_overlay.hpp"
 
 #include <algorithm>
-#include <cstdarg>
-#include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <cmath>
+#include <vector>
 
 #include "lib/hook/trampoline.hpp"
 #include "nn/hid.hpp"
-#include "program/config.hpp"
+#include "program/romfs_assets.hpp"
+#include "program/gui2/ui/overlay.hpp"
 #include "program/d3/setting.hpp"
-#include "program/runtime_apply.hpp"
 
 #include "imgui/imgui.h"
 #include "imgui_backend/imgui_impl_nvn.hpp"
@@ -38,7 +38,7 @@ using NvnWindowBuilderSetTexturesFn = PFNNVNWINDOWBUILDERSETTEXTURESPROC;
 using NvnWindowSetCropFn = PFNNVNWINDOWSETCROPPROC;
 
 constexpr bool kImGuiBringup_DrawText = true;
-constexpr bool kImGuiBringup_AlwaysSubmitProofOfLife = true;
+constexpr bool kImGuiBringup_AlwaysSubmitProofOfLife = false;
 
 NvnDeviceGetProcAddressFn g_orig_get_proc = nullptr;
 NvnQueuePresentTextureFn g_orig_present = nullptr;
@@ -58,10 +58,6 @@ NvnWindowSetCropFn g_orig_window_set_crop = nullptr;
 
 int g_crop_w = 0;
 int g_crop_h = 0;
-
-bool g_imgui_render_enabled = true;
-bool g_show_demo_window = false;
-bool g_show_metrics = false;
 
 void WindowBuilderSetTexturesHook(NVNwindowBuilder *builder, int num_textures, NVNtexture *const *textures) {
     if (textures != nullptr && num_textures > 0) {
@@ -89,17 +85,16 @@ bool g_imgui_ctx_initialized = false;
 bool g_backend_initialized = false;
 bool g_font_atlas_built = false;
 bool g_font_uploaded = false;
-bool g_overlay_visible = true;
 
 // NOTE: The backend expects NVN C++ wrapper types (nvn::Device/Queue/CommandBuffer).
 // We will wire those up once we hook stable NVN init entrypoints.
 bool g_hooks_installed = false;
 
 bool g_font_build_attempted = false;
+bool g_font_build_in_progress = false;
 
 float g_overlay_toggle_hold_s = 0.0f;
 bool g_overlay_toggle_armed = true;
-bool g_overlay_request_focus = false;
 bool g_block_gamepad_input_to_game = false;
 bool g_hid_passthrough_for_overlay = false;
 bool g_hid_hooks_installed = false;
@@ -191,14 +186,129 @@ static bool NpadButtonDown(u64 buttons, nn::hid::NpadButton button) {
     return (buttons & (1ULL << bit)) != 0;
 }
 
-static bool g_ui_config_initialized = false;
-static PatchConfig g_ui_config{};
-static bool g_ui_dirty = false;
-static char g_ui_status[256] = {};
-static float g_ui_status_ttl_s = 0.0f;
-static ImVec4 g_ui_status_color = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+static d3::gui2::ui::Overlay g_overlay{};
 static NpadCombinedState g_last_npad{};
 static bool g_last_npad_valid = false;
+
+static void PushImGuiGamepadInputs(float dt_s);
+static void UpdateImGuiStyleAndScale(ImVec2 viewport_size);
+
+static bool g_imgui_style_initialized = false;
+static ImGuiStyle g_imgui_base_style{};
+static float g_last_gui_scale = -1.0f;
+
+static float ComputeGuiScale(ImVec2 viewport_size) {
+    constexpr float kMinViewportH = 720.0f;
+    constexpr float kMaxViewportH = 1080.0f;
+    constexpr float kMinScale = 0.80f;
+    constexpr float kMaxScale = 1.00f;
+
+    const float h = viewport_size.y;
+    if (!(h > 0.0f)) {
+        return kMaxScale;
+    }
+
+    const float t = std::clamp((h - kMinViewportH) / (kMaxViewportH - kMinViewportH), 0.0f, 1.0f);
+    return kMinScale + t * (kMaxScale - kMinScale);
+}
+
+static void InitializeImGuiStyle() {
+    ImGui::StyleColorsDark();
+
+    ImGuiStyle& style = ImGui::GetStyle();
+    style.WindowPadding = ImVec2(14.0f, 12.0f);
+    style.FramePadding = ImVec2(10.0f, 6.0f);
+    style.ItemSpacing = ImVec2(10.0f, 8.0f);
+    style.ItemInnerSpacing = ImVec2(8.0f, 6.0f);
+    style.IndentSpacing = 18.0f;
+    style.ScrollbarSize = 18.0f;
+    style.GrabMinSize = 12.0f;
+
+    style.WindowRounding = 6.0f;
+    style.ChildRounding = 4.0f;
+    style.FrameRounding = 4.0f;
+    style.PopupRounding = 4.0f;
+    style.ScrollbarRounding = 9.0f;
+    style.GrabRounding = 4.0f;
+    style.TabRounding = 4.0f;
+
+    style.WindowBorderSize = 1.0f;
+    style.FrameBorderSize = 1.0f;
+    style.TabBorderSize = 1.0f;
+
+    // D3-ish palette: dark stone + gold accent.
+    constexpr ImVec4 kAccent = ImVec4(0.86f, 0.67f, 0.18f, 1.00f);
+    constexpr ImVec4 kAccentHi = ImVec4(0.95f, 0.80f, 0.28f, 1.00f);
+    constexpr ImVec4 kBg = ImVec4(0.08f, 0.08f, 0.09f, 0.94f);
+    constexpr ImVec4 kPanel = ImVec4(0.16f, 0.16f, 0.18f, 1.00f);
+    constexpr ImVec4 kPanelHover = ImVec4(0.22f, 0.22f, 0.25f, 1.00f);
+    constexpr ImVec4 kPanelActive = ImVec4(0.26f, 0.26f, 0.29f, 1.00f);
+
+    ImVec4* colors = style.Colors;
+    colors[ImGuiCol_Text] = ImVec4(0.95f, 0.96f, 0.98f, 1.00f);
+    colors[ImGuiCol_TextDisabled] = ImVec4(0.55f, 0.55f, 0.58f, 1.00f);
+    colors[ImGuiCol_WindowBg] = kBg;
+    colors[ImGuiCol_PopupBg] = ImVec4(0.06f, 0.06f, 0.07f, 0.94f);
+    colors[ImGuiCol_Border] = ImVec4(0.23f, 0.23f, 0.26f, 0.90f);
+    colors[ImGuiCol_BorderShadow] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+
+    colors[ImGuiCol_FrameBg] = kPanel;
+    colors[ImGuiCol_FrameBgHovered] = kPanelHover;
+    colors[ImGuiCol_FrameBgActive] = kPanelActive;
+
+    colors[ImGuiCol_TitleBg] = ImVec4(0.12f, 0.04f, 0.04f, 1.00f);
+    colors[ImGuiCol_TitleBgActive] = ImVec4(0.18f, 0.06f, 0.06f, 1.00f);
+    colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.12f, 0.04f, 0.04f, 0.80f);
+    colors[ImGuiCol_MenuBarBg] = ImVec4(0.12f, 0.12f, 0.13f, 1.00f);
+
+    colors[ImGuiCol_CheckMark] = kAccent;
+    colors[ImGuiCol_SliderGrab] = kAccent;
+    colors[ImGuiCol_SliderGrabActive] = kAccentHi;
+
+    colors[ImGuiCol_Button] = ImVec4(0.18f, 0.18f, 0.20f, 1.00f);
+    colors[ImGuiCol_ButtonHovered] = ImVec4(0.25f, 0.25f, 0.28f, 1.00f);
+    colors[ImGuiCol_ButtonActive] = ImVec4(0.30f, 0.30f, 0.33f, 1.00f);
+
+    colors[ImGuiCol_Header] = ImVec4(0.20f, 0.20f, 0.22f, 1.00f);
+    colors[ImGuiCol_HeaderHovered] = ImVec4(0.28f, 0.28f, 0.31f, 1.00f);
+    colors[ImGuiCol_HeaderActive] = ImVec4(0.32f, 0.32f, 0.35f, 1.00f);
+
+    colors[ImGuiCol_Separator] = ImVec4(0.23f, 0.23f, 0.26f, 1.00f);
+    colors[ImGuiCol_SeparatorHovered] = ImVec4(kAccent.x, kAccent.y, kAccent.z, 1.00f);
+    colors[ImGuiCol_SeparatorActive] = ImVec4(kAccentHi.x, kAccentHi.y, kAccentHi.z, 1.00f);
+
+    colors[ImGuiCol_Tab] = ImVec4(0.13f, 0.13f, 0.14f, 1.00f);
+    colors[ImGuiCol_TabHovered] = ImVec4(kAccent.x, kAccent.y, kAccent.z, 0.55f);
+    colors[ImGuiCol_TabActive] = ImVec4(0.20f, 0.20f, 0.22f, 1.00f);
+    colors[ImGuiCol_TabUnfocused] = ImVec4(0.10f, 0.10f, 0.11f, 1.00f);
+    colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.16f, 0.16f, 0.18f, 1.00f);
+
+    colors[ImGuiCol_TextSelectedBg] = ImVec4(kAccent.x, kAccent.y, kAccent.z, 0.35f);
+    colors[ImGuiCol_NavCursor] = ImVec4(kAccentHi.x, kAccentHi.y, kAccentHi.z, 0.80f);
+    colors[ImGuiCol_NavWindowingHighlight] = ImVec4(kAccent.x, kAccent.y, kAccent.z, 0.80f);
+
+    g_imgui_base_style = style;
+    g_imgui_style_initialized = true;
+}
+
+static void UpdateImGuiStyleAndScale(ImVec2 viewport_size) {
+    if (!g_imgui_style_initialized) {
+        InitializeImGuiStyle();
+        g_last_gui_scale = -1.0f;
+    }
+
+    const float scale = ComputeGuiScale(viewport_size);
+    if (g_last_gui_scale > 0.0f && std::fabs(scale - g_last_gui_scale) < 0.01f) {
+        return;
+    }
+
+    ImGuiStyle& style = ImGui::GetStyle();
+    style = g_imgui_base_style;
+    style.ScaleAllSizes(scale);
+
+    ImGui::GetIO().FontGlobalScale = scale;
+    g_last_gui_scale = scale;
+}
 
 static void PushImGuiGamepadInputs(float dt_s) {
     if (!g_imgui_ctx_initialized) {
@@ -217,25 +327,17 @@ static void PushImGuiGamepadInputs(float dt_s) {
     const bool plus  = NpadButtonDown(st.buttons, nn::hid::NpadButton::Plus);
     const bool minus = NpadButtonDown(st.buttons, nn::hid::NpadButton::Minus);
 
-        if (plus && minus) {
-            g_overlay_toggle_hold_s += dt_s;
-            if (g_overlay_toggle_hold_s >= 0.5f && g_overlay_toggle_armed) {
-                const bool was_visible = g_overlay_visible;
-                g_overlay_visible = !g_overlay_visible;
-                if (!was_visible && g_overlay_visible) {
-                    g_overlay_request_focus = true;
-                }
-                if (g_ui_config_initialized) {
-                    g_ui_config.gui.visible = g_overlay_visible;
-                    g_ui_dirty = true;
-                }
-                PRINT("[imgui_overlay] overlay visible=%d", g_overlay_visible ? 1 : 0);
-                g_overlay_toggle_armed = false;
-            }
-        } else {
-            g_overlay_toggle_hold_s = 0.0f;
-            g_overlay_toggle_armed = true;
+    if (plus && minus) {
+        g_overlay_toggle_hold_s += dt_s;
+        if (g_overlay_toggle_hold_s >= 0.5f && g_overlay_toggle_armed) {
+            g_overlay.ToggleVisibleAndPersist();
+            PRINT("[imgui_overlay] overlay visible=%d", g_overlay.overlay_visible() ? 1 : 0);
+            g_overlay_toggle_armed = false;
         }
+    } else {
+        g_overlay_toggle_hold_s = 0.0f;
+        g_overlay_toggle_armed = true;
+    }
 
     ImGuiIO& io = ImGui::GetIO();
     io.BackendFlags |= ImGuiBackendFlags_HasGamepad;
@@ -410,44 +512,6 @@ static void InstallHidHooks() {
     PRINT_LINE("[imgui_overlay] nn::hid input hooks installed");
 }
 
-static void EnsureUiConfigLoaded() {
-    if (g_ui_config_initialized) {
-        return;
-    }
-    if (!global_config.initialized) {
-        return;
-    }
-    g_ui_config = global_config;
-    g_imgui_render_enabled = global_config.gui.enabled;
-    g_overlay_visible = global_config.gui.visible;
-    g_ui_config_initialized = true;
-    g_ui_dirty = false;
-}
-
-static void SetUiStatus(const ImVec4& color, float ttl_s, const char* fmt, ...) {
-    g_ui_status_color = color;
-    g_ui_status_ttl_s = ttl_s;
-    g_ui_status[0] = '\0';
-
-    va_list vl;
-    va_start(vl, fmt);
-    vsnprintf(g_ui_status, sizeof(g_ui_status), fmt, vl);
-    va_end(vl);
-}
-
-static const char* SeasonMapModeToString(PatchConfig::SeasonEventMapMode mode) {
-    switch (mode) {
-    case PatchConfig::SeasonEventMapMode::MapOnly:
-        return "MapOnly";
-    case PatchConfig::SeasonEventMapMode::OverlayConfig:
-        return "OverlayConfig";
-    case PatchConfig::SeasonEventMapMode::Disabled:
-        return "Disabled";
-    default:
-        return "Disabled";
-    }
-}
-
 static NVNboolean CmdBufInitializeWrapper(NVNcommandBuffer *buffer, NVNdevice *device) {
     if (g_cmd_buf == nullptr && buffer != nullptr) {
         g_cmd_buf = buffer;
@@ -464,13 +528,33 @@ static NVNboolean CmdBufInitializeWrapper(NVNcommandBuffer *buffer, NVNdevice *d
 }
 
 void QueuePresentTextureWrapper(NVNqueue *queue, NVNwindow *window, int texture_index) {
+    static bool s_logged_present = false;
+    if (!s_logged_present) {
+        s_logged_present = true;
+        PRINT_LINE("[imgui_overlay] Present hook entered");
+    }
+
     if (g_queue == nullptr && queue != nullptr) {
         g_queue = queue;
     }
 
+    // Create the ImGui context on the render/present thread to avoid cross-thread visibility issues
+    // with ImGui's global context pointer.
+    if (!g_imgui_ctx_initialized) {
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+        g_imgui_ctx_initialized = true;
+
+        ImGuiIO& io = ImGui::GetIO();
+        io.IniFilename = nullptr;
+        io.LogFilename = nullptr;
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+        io.BackendFlags |= ImGuiBackendFlags_HasGamepad;
+        io.BackendPlatformName = "d3hack";
+    }
+
     if (!g_backend_initialized && g_device && g_queue) {
         if (g_orig_get_proc != nullptr) {
-            // Seed NVN C++ proc table using the real function pointer captured from the game.
             nvnLoadCPPProcs(reinterpret_cast<nvn::Device *>(g_device),
                             reinterpret_cast<nvn::DeviceGetProcAddressFunc>(g_orig_get_proc));
         }
@@ -482,16 +566,23 @@ void QueuePresentTextureWrapper(NVNqueue *queue, NVNwindow *window, int texture_
             init_info.cmdBuf = reinterpret_cast<nvn::CommandBuffer *>(g_cmd_buf);
             ImguiNvnBackend::InitBackend(init_info);
             g_backend_initialized = true;
+            PRINT_LINE("[imgui_overlay] ImGui NVN backend initialized");
         }
     }
 
     if (g_backend_initialized) {
+        // Build the font atlas only once the shell is initialized. This avoids blocking the early
+        // boot path (MainInit) and prevents any surprise default-font work during NewFrame().
+        if (kImGuiBringup_DrawText && g_imgui_ctx_initialized && !g_font_atlas_built) {
+            PrepareFonts();
+        }
+
         if (kImGuiBringup_DrawText && !g_font_uploaded && g_font_atlas_built) {
             if (ImguiNvnBackend::setupFont()) {
                 g_font_uploaded = true;
                 PRINT_LINE("[imgui_overlay] ImGui font uploaded");
             } else {
-                PRINT_LINE("[imgui_overlay] ERROR: ImGui font upload failed (fallback to proof-of-life only)");
+                PRINT_LINE("[imgui_overlay] ERROR: ImGui font upload failed");
             }
         }
 
@@ -520,369 +611,39 @@ void QueuePresentTextureWrapper(NVNqueue *queue, NVNwindow *window, int texture_
         }
 
         if (kImGuiBringup_AlwaysSubmitProofOfLife) {
-            // Gate C: submit an unmistakable fontless proof-of-life draw.
             ImguiNvnBackend::SubmitProofOfLifeClear();
         }
 
-        EnsureUiConfigLoaded();
+        g_overlay.EnsureConfigLoaded();
 
         g_block_gamepad_input_to_game = false;
 
-        if (kImGuiBringup_DrawText && g_imgui_ctx_initialized) {
+        if (kImGuiBringup_DrawText && g_imgui_ctx_initialized && g_font_uploaded && g_overlay.imgui_render_enabled()) {
             ImguiNvnBackend::newFrame();
 
+            const ImVec2 viewport_size = ImguiNvnBackend::getBackendData()->viewportSize;
+            UpdateImGuiStyleAndScale(viewport_size);
             PushImGuiGamepadInputs(ImGui::GetIO().DeltaTime);
 
             ImGui::NewFrame();
 
-            const bool gui_enabled = g_ui_config_initialized ? g_ui_config.gui.enabled : global_config.gui.enabled;
-            g_block_gamepad_input_to_game = (gui_enabled && g_overlay_visible);
-            if (gui_enabled && g_overlay_visible && g_font_uploaded) {
-                ImGui::SetNextWindowPos(ImVec2(24.0f, 140.0f), ImGuiCond_Once);
-                ImGui::SetNextWindowSize(ImVec2(740.0f, 480.0f), ImGuiCond_Once);
-                const bool focus = g_overlay_request_focus;
-                if (focus) {
-                    ImGui::SetNextWindowFocus();
-                }
-                const bool window_visible = ImGui::Begin("d3hack config", &g_overlay_visible, ImGuiWindowFlags_NoSavedSettings);
-                if (window_visible) {
-                    if (focus) {
-                        g_overlay_request_focus = false;
-                    }
+            g_overlay.UpdateFrame(
+                g_font_uploaded,
+                g_crop_w,
+                g_crop_h,
+                g_swapchain_texture_count,
+                viewport_size,
+                g_last_npad_valid,
+                static_cast<unsigned long long>(g_last_npad.buttons),
+                g_last_npad.stick_l.X,
+                g_last_npad.stick_l.Y,
+                g_last_npad.stick_r.X,
+                g_last_npad.stick_r.Y);
 
-                    ImGuiIO& io = ImGui::GetIO();
-                    ImGui::TextUnformatted("Hold + and - (0.5s) to toggle overlay visibility.");
-                    ImGui::Text("Viewport: %.0fx%.0f | Crop: %dx%d | Swapchain: %d",
-                                ImguiNvnBackend::getBackendData()->viewportSize.x,
-                                ImguiNvnBackend::getBackendData()->viewportSize.y,
-                                g_crop_w, g_crop_h, g_swapchain_texture_count);
-                    ImGui::Text("ImGui: NavActive=%d NavVisible=%d",
-                                io.NavActive ? 1 : 0,
-                                io.NavVisible ? 1 : 0);
-                    ImGui::Text("NPAD: ok=%d buttons=0x%llx stickL=(%d,%d) stickR=(%d,%d)",
-                                g_last_npad_valid ? 1 : 0,
-                                static_cast<unsigned long long>(g_last_npad.buttons),
-                                g_last_npad.stick_l.X, g_last_npad.stick_l.Y,
-                                g_last_npad.stick_r.X, g_last_npad.stick_r.Y);
-
-                    ImGui::Separator();
-
-                    if (!g_ui_config_initialized) {
-                        ImGui::TextUnformatted("Config not loaded yet.");
-                    } else {
-                        ImGui::Text("Config source: %s", global_config.defaults_only ? "built-in defaults" : "sd:/config/d3hack-nx/config.toml");
-
-                        if (g_ui_dirty) {
-                            ImGui::TextUnformatted("UI state: UNSAVED changes");
-                        } else {
-                            ImGui::TextUnformatted("UI state: clean");
-                        }
-
-                        if (focus) {
-                            ImGui::SetKeyboardFocusHere();
-                        }
-
-                        if (ImGui::Button("Reset UI to current config")) {
-                            g_ui_config = global_config;
-                            g_imgui_render_enabled = global_config.gui.enabled;
-                            g_overlay_visible = global_config.gui.visible;
-                            g_ui_dirty = false;
-                        }
-
-                        ImGui::SameLine();
-                        if (ImGui::Checkbox("GUI enabled", &g_ui_config.gui.enabled)) {
-                            g_imgui_render_enabled = g_ui_config.gui.enabled;
-                            g_ui_dirty = true;
-                        }
-
-                        ImGui::SameLine();
-                        if (ImGui::Button("Apply")) {
-                            const PatchConfig normalized = NormalizePatchConfig(g_ui_config);
-                            d3::RuntimeApplyResult apply{};
-                            d3::ApplyPatchConfigRuntime(normalized, &apply);
-
-                            g_ui_config = global_config;
-                            g_imgui_render_enabled = global_config.gui.enabled;
-                            g_overlay_visible = global_config.gui.visible;
-                            g_ui_dirty = false;
-
-                            if (apply.restart_required) {
-                                SetUiStatus(ImVec4(1.0f, 0.75f, 0.2f, 1.0f), 6.0f, "Applied. Restart required.");
-                            } else if (apply.applied_enable_only || apply.note[0] != '\0') {
-                                SetUiStatus(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), 4.0f, "Applied (%s).", apply.note[0] ? apply.note : "runtime");
-                            } else {
-                                SetUiStatus(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), 4.0f, "Applied.");
-                            }
-                        }
-
-                        ImGui::SameLine();
-                        if (ImGui::Button("Save")) {
-                            std::string error;
-                            g_ui_config.gui.visible = g_overlay_visible;
-                            if (SavePatchConfigToPath("sd:/config/d3hack-nx/config.toml", g_ui_config, error)) {
-                                SetUiStatus(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), 4.0f, "Saved config.toml");
-                            } else {
-                                SetUiStatus(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), 8.0f, "Save failed: %s", error.empty() ? "unknown" : error.c_str());
-                            }
-                        }
-
-                        ImGui::SameLine();
-                        if (ImGui::Button("Reload")) {
-                            PatchConfig loaded{};
-                            std::string error;
-                            if (LoadPatchConfigFromPath("sd:/config/d3hack-nx/config.toml", loaded, error)) {
-                                d3::RuntimeApplyResult apply{};
-                                d3::ApplyPatchConfigRuntime(loaded, &apply);
-                                g_ui_config = global_config;
-                                g_imgui_render_enabled = global_config.gui.enabled;
-                                g_overlay_visible = global_config.gui.visible;
-                                g_ui_dirty = false;
-                                SetUiStatus(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), 4.0f, "Reloaded config.toml");
-                            } else {
-                                SetUiStatus(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), 8.0f, "Reload failed: %s", error.empty() ? "not found" : error.c_str());
-                            }
-                        }
-
-                        if (g_ui_status_ttl_s > 0.0f) {
-                            g_ui_status_ttl_s -= ImGui::GetIO().DeltaTime;
-                            if (g_ui_status_ttl_s < 0.0f) {
-                                g_ui_status_ttl_s = 0.0f;
-                            }
-                        }
-                        if (g_ui_status_ttl_s > 0.0f && g_ui_status[0] != '\0') {
-                            ImGui::TextColored(g_ui_status_color, "%s", g_ui_status);
-                        }
-
-                        ImGui::Separator();
-
-                        if (!g_imgui_render_enabled) {
-                            ImGui::TextUnformatted("GUI is disabled (proof-of-life stays on). Enable GUI to edit config.");
-                        } else if (ImGui::BeginTabBar("d3hack_cfg_tabs")) {
-                            auto mark_dirty = [](bool changed) {
-                                if (changed) {
-                                    g_ui_dirty = true;
-                                }
-                            };
-
-                            if (ImGui::BeginTabItem("Overlays")) {
-                                mark_dirty(ImGui::Checkbox("Enabled##overlays", &g_ui_config.overlays.active));
-                                ImGui::BeginDisabled(!g_ui_config.overlays.active);
-                                mark_dirty(ImGui::Checkbox("Build locker watermark", &g_ui_config.overlays.buildlocker_watermark));
-                                mark_dirty(ImGui::Checkbox("DDM labels", &g_ui_config.overlays.ddm_labels));
-                                mark_dirty(ImGui::Checkbox("FPS label", &g_ui_config.overlays.fps_label));
-                                mark_dirty(ImGui::Checkbox("Variable resolution label", &g_ui_config.overlays.var_res_label));
-                                ImGui::EndDisabled();
-                                ImGui::EndTabItem();
-                            }
-
-                            if (ImGui::BeginTabItem("GUI")) {
-                                mark_dirty(ImGui::Checkbox("Enabled (persist)", &g_ui_config.gui.enabled));
-                                mark_dirty(ImGui::Checkbox("Visible by default", &g_ui_config.gui.visible));
-                                ImGui::TextUnformatted("Hotkey: hold + and - (0.5s) to toggle visibility.");
-                                ImGui::EndTabItem();
-                            }
-
-                            if (ImGui::BeginTabItem("Resolution")) {
-                                mark_dirty(ImGui::Checkbox("Enabled##res", &g_ui_config.resolution_hack.active));
-                                ImGui::BeginDisabled(!g_ui_config.resolution_hack.active);
-                                int target = static_cast<int>(g_ui_config.resolution_hack.target_resolution);
-                                if (ImGui::SliderInt("Output target (vertical)", &target, 720, 1440, "%dp")) {
-                                    g_ui_config.resolution_hack.SetTargetRes(static_cast<u32>(target));
-                                    g_ui_dirty = true;
-                                }
-                                float min_scale = g_ui_config.resolution_hack.min_res_scale;
-                                if (ImGui::SliderFloat("Minimum resolution scale", &min_scale, 10.0f, 100.0f, "%.0f%%")) {
-                                    g_ui_config.resolution_hack.min_res_scale = min_scale;
-                                    g_ui_dirty = true;
-                                }
-                                mark_dirty(ImGui::Checkbox("Clamp textures to 2048", &g_ui_config.resolution_hack.clamp_textures_2048));
-                                mark_dirty(ImGui::Checkbox("Experimental scheduler", &g_ui_config.resolution_hack.exp_scheduler));
-                                ImGui::Text("Output size: %ux%u", g_ui_config.resolution_hack.OutputWidthPx(), g_ui_config.resolution_hack.OutputHeightPx());
-                                ImGui::EndDisabled();
-                                ImGui::EndTabItem();
-                            }
-
-                            if (ImGui::BeginTabItem("Seasons")) {
-                                mark_dirty(ImGui::Checkbox("Enabled##seasons", &g_ui_config.seasons.active));
-                                ImGui::BeginDisabled(!g_ui_config.seasons.active);
-                                mark_dirty(ImGui::Checkbox("Allow online play", &g_ui_config.seasons.allow_online));
-                                int season = static_cast<int>(g_ui_config.seasons.current_season);
-                                if (ImGui::SliderInt("Current season", &season, 1, 200)) {
-                                    g_ui_config.seasons.current_season = static_cast<u32>(season);
-                                    g_ui_dirty = true;
-                                }
-                                mark_dirty(ImGui::Checkbox("Spoof PTR flag", &g_ui_config.seasons.spoof_ptr));
-                                ImGui::EndDisabled();
-                                ImGui::EndTabItem();
-                            }
-
-                            if (ImGui::BeginTabItem("Events")) {
-                                mark_dirty(ImGui::Checkbox("Enabled##events", &g_ui_config.events.active));
-
-                                const char* mode_label = SeasonMapModeToString(g_ui_config.events.SeasonMapMode);
-                                if (ImGui::BeginCombo("Season map mode", mode_label)) {
-                                    auto selectable_mode = [&](PatchConfig::SeasonEventMapMode mode) {
-                                        const bool is_selected = (g_ui_config.events.SeasonMapMode == mode);
-                                        if (ImGui::Selectable(SeasonMapModeToString(mode), is_selected)) {
-                                            g_ui_config.events.SeasonMapMode = mode;
-                                            g_ui_dirty = true;
-                                        }
-                                        if (is_selected) {
-                                            ImGui::SetItemDefaultFocus();
-                                        }
-                                    };
-                                    selectable_mode(PatchConfig::SeasonEventMapMode::MapOnly);
-                                    selectable_mode(PatchConfig::SeasonEventMapMode::OverlayConfig);
-                                    selectable_mode(PatchConfig::SeasonEventMapMode::Disabled);
-                                    ImGui::EndCombo();
-                                }
-
-                                ImGui::BeginDisabled(!g_ui_config.events.active);
-                                mark_dirty(ImGui::Checkbox("IGR enabled", &g_ui_config.events.IgrEnabled));
-                                mark_dirty(ImGui::Checkbox("Anniversary enabled", &g_ui_config.events.AnniversaryEnabled));
-                                mark_dirty(ImGui::Checkbox("Easter egg world enabled", &g_ui_config.events.EasterEggWorldEnabled));
-                                mark_dirty(ImGui::Checkbox("Double rift keystones", &g_ui_config.events.DoubleRiftKeystones));
-                                mark_dirty(ImGui::Checkbox("Double blood shards", &g_ui_config.events.DoubleBloodShards));
-                                mark_dirty(ImGui::Checkbox("Double treasure goblins", &g_ui_config.events.DoubleTreasureGoblins));
-                                mark_dirty(ImGui::Checkbox("Double bounty bags", &g_ui_config.events.DoubleBountyBags));
-                                mark_dirty(ImGui::Checkbox("Royal Grandeur", &g_ui_config.events.RoyalGrandeur));
-                                mark_dirty(ImGui::Checkbox("Legacy of Nightmares", &g_ui_config.events.LegacyOfNightmares));
-                                mark_dirty(ImGui::Checkbox("Triune's Will", &g_ui_config.events.TriunesWill));
-                                mark_dirty(ImGui::Checkbox("Pandemonium", &g_ui_config.events.Pandemonium));
-                                mark_dirty(ImGui::Checkbox("Kanai powers", &g_ui_config.events.KanaiPowers));
-                                mark_dirty(ImGui::Checkbox("Trials of Tempests", &g_ui_config.events.TrialsOfTempests));
-                                mark_dirty(ImGui::Checkbox("Shadow clones", &g_ui_config.events.ShadowClones));
-                                mark_dirty(ImGui::Checkbox("Fourth Kanai's Cube slot", &g_ui_config.events.FourthKanaisCubeSlot));
-                                mark_dirty(ImGui::Checkbox("Ethereal items", &g_ui_config.events.EtherealItems));
-                                mark_dirty(ImGui::Checkbox("Soul shards", &g_ui_config.events.SoulShards));
-                                mark_dirty(ImGui::Checkbox("Swarm rifts", &g_ui_config.events.SwarmRifts));
-                                mark_dirty(ImGui::Checkbox("Sanctified items", &g_ui_config.events.SanctifiedItems));
-                                mark_dirty(ImGui::Checkbox("Dark Alchemy", &g_ui_config.events.DarkAlchemy));
-                                mark_dirty(ImGui::Checkbox("Nesting portals", &g_ui_config.events.NestingPortals));
-                                ImGui::EndDisabled();
-
-                                ImGui::EndTabItem();
-                            }
-
-                            if (ImGui::BeginTabItem("Rare cheats")) {
-                                mark_dirty(ImGui::Checkbox("Enabled##rare_cheats", &g_ui_config.rare_cheats.active));
-                                ImGui::BeginDisabled(!g_ui_config.rare_cheats.active);
-
-                                float move_speed = static_cast<float>(g_ui_config.rare_cheats.move_speed);
-                                if (ImGui::SliderFloat("Move speed multiplier", &move_speed, 0.1f, 10.0f, "%.2fx")) {
-                                    g_ui_config.rare_cheats.move_speed = static_cast<double>(move_speed);
-                                    g_ui_dirty = true;
-                                }
-                                float attack_speed = static_cast<float>(g_ui_config.rare_cheats.attack_speed);
-                                if (ImGui::SliderFloat("Attack speed multiplier", &attack_speed, 0.1f, 10.0f, "%.2fx")) {
-                                    g_ui_config.rare_cheats.attack_speed = static_cast<double>(attack_speed);
-                                    g_ui_dirty = true;
-                                }
-
-                                mark_dirty(ImGui::Checkbox("Floating damage color", &g_ui_config.rare_cheats.floating_damage_color));
-                                mark_dirty(ImGui::Checkbox("Guaranteed legendaries", &g_ui_config.rare_cheats.guaranteed_legendaries));
-                                mark_dirty(ImGui::Checkbox("Drop anything", &g_ui_config.rare_cheats.drop_anything));
-                                mark_dirty(ImGui::Checkbox("Instant portal", &g_ui_config.rare_cheats.instant_portal));
-                                mark_dirty(ImGui::Checkbox("No cooldowns", &g_ui_config.rare_cheats.no_cooldowns));
-                                mark_dirty(ImGui::Checkbox("Instant craft actions", &g_ui_config.rare_cheats.instant_craft_actions));
-                                mark_dirty(ImGui::Checkbox("Any gem any slot", &g_ui_config.rare_cheats.any_gem_any_slot));
-                                mark_dirty(ImGui::Checkbox("Auto pickup", &g_ui_config.rare_cheats.auto_pickup));
-                                mark_dirty(ImGui::Checkbox("Equip any slot", &g_ui_config.rare_cheats.equip_any_slot));
-                                mark_dirty(ImGui::Checkbox("Unlock all difficulties", &g_ui_config.rare_cheats.unlock_all_difficulties));
-                                mark_dirty(ImGui::Checkbox("Easy kill damage", &g_ui_config.rare_cheats.easy_kill_damage));
-                                mark_dirty(ImGui::Checkbox("Cube no consume", &g_ui_config.rare_cheats.cube_no_consume));
-                                mark_dirty(ImGui::Checkbox("Gem upgrade always", &g_ui_config.rare_cheats.gem_upgrade_always));
-                                mark_dirty(ImGui::Checkbox("Gem upgrade speed", &g_ui_config.rare_cheats.gem_upgrade_speed));
-                                mark_dirty(ImGui::Checkbox("Gem upgrade lvl150", &g_ui_config.rare_cheats.gem_upgrade_lvl150));
-                                mark_dirty(ImGui::Checkbox("Equip multi legendary", &g_ui_config.rare_cheats.equip_multi_legendary));
-
-                                ImGui::EndDisabled();
-                                ImGui::EndTabItem();
-                            }
-
-                            if (ImGui::BeginTabItem("Challenge rifts")) {
-                                mark_dirty(ImGui::Checkbox("Enabled##cr", &g_ui_config.challenge_rifts.active));
-                                ImGui::BeginDisabled(!g_ui_config.challenge_rifts.active);
-                                mark_dirty(ImGui::Checkbox("Randomize within range", &g_ui_config.challenge_rifts.random));
-                                int start = static_cast<int>(g_ui_config.challenge_rifts.range_start);
-                                int end = static_cast<int>(g_ui_config.challenge_rifts.range_end);
-                                if (ImGui::InputInt("Range start", &start)) {
-                                    g_ui_config.challenge_rifts.range_start = static_cast<u32>(std::max(0, start));
-                                    g_ui_dirty = true;
-                                }
-                                if (ImGui::InputInt("Range end", &end)) {
-                                    g_ui_config.challenge_rifts.range_end = static_cast<u32>(std::max(0, end));
-                                    g_ui_dirty = true;
-                                }
-                                ImGui::EndDisabled();
-                                ImGui::EndTabItem();
-                            }
-
-                            if (ImGui::BeginTabItem("Loot")) {
-                                mark_dirty(ImGui::Checkbox("Enabled##loot", &g_ui_config.loot_modifiers.active));
-                                ImGui::BeginDisabled(!g_ui_config.loot_modifiers.active);
-                                mark_dirty(ImGui::Checkbox("Disable ancient drops", &g_ui_config.loot_modifiers.DisableAncientDrops));
-                                mark_dirty(ImGui::Checkbox("Disable primal ancient drops", &g_ui_config.loot_modifiers.DisablePrimalAncientDrops));
-                                mark_dirty(ImGui::Checkbox("Disable torment drops", &g_ui_config.loot_modifiers.DisableTormentDrops));
-                                mark_dirty(ImGui::Checkbox("Disable torment check", &g_ui_config.loot_modifiers.DisableTormentCheck));
-                                mark_dirty(ImGui::Checkbox("Suppress gift generation", &g_ui_config.loot_modifiers.SuppressGiftGeneration));
-
-                                int forced_ilevel = static_cast<int>(g_ui_config.loot_modifiers.ForcedILevel);
-                                if (ImGui::SliderInt("Forced iLevel", &forced_ilevel, 0, 70)) {
-                                    g_ui_config.loot_modifiers.ForcedILevel = static_cast<u32>(forced_ilevel);
-                                    g_ui_dirty = true;
-                                }
-                                int tiered_level = static_cast<int>(g_ui_config.loot_modifiers.TieredLootRunLevel);
-                                if (ImGui::SliderInt("Tiered loot run level", &tiered_level, 0, 150)) {
-                                    g_ui_config.loot_modifiers.TieredLootRunLevel = static_cast<u32>(tiered_level);
-                                    g_ui_dirty = true;
-                                }
-
-                                static constexpr const char* ranks[] = {"Normal", "Ancient", "Primal"};
-                                int rank_value = g_ui_config.loot_modifiers.AncientRankValue;
-                                if (ImGui::Combo("Ancient rank", &rank_value, ranks, static_cast<int>(IM_ARRAYSIZE(ranks)))) {
-                                    g_ui_config.loot_modifiers.AncientRankValue = rank_value;
-                                    g_ui_dirty = true;
-                                }
-
-                                ImGui::EndDisabled();
-                                ImGui::EndTabItem();
-                            }
-
-                            if (ImGui::BeginTabItem("Debug")) {
-                                mark_dirty(ImGui::Checkbox("Enabled##debug", &g_ui_config.debug.active));
-                                ImGui::BeginDisabled(!g_ui_config.debug.active);
-                                mark_dirty(ImGui::Checkbox("Enable crashes (danger)", &g_ui_config.debug.enable_crashes));
-                                mark_dirty(ImGui::Checkbox("Enable pubfile dump", &g_ui_config.debug.enable_pubfile_dump));
-                                mark_dirty(ImGui::Checkbox("Enable error traces", &g_ui_config.debug.enable_error_traces));
-                                mark_dirty(ImGui::Checkbox("Enable debug flags", &g_ui_config.debug.enable_debug_flags));
-                                ImGui::EndDisabled();
-
-                                ImGui::Separator();
-                                ImGui::Checkbox("Show ImGui demo window", &g_show_demo_window);
-                                ImGui::Checkbox("Show ImGui metrics", &g_show_metrics);
-
-                                ImGui::EndTabItem();
-                            }
-
-                            ImGui::EndTabBar();
-                        }
-                    }
-                }
-
-                // Always end the window even if Begin() returned false.
-                ImGui::End();
-
-                if (g_show_demo_window) {
-                    ImGui::ShowDemoWindow(&g_show_demo_window);
-                }
-                if (g_show_metrics) {
-                    ImGui::ShowMetricsWindow(&g_show_metrics);
-                }
-            }
+            g_block_gamepad_input_to_game = g_overlay.focus_state().should_block_game_input;
 
             ImGui::Render();
-            if (gui_enabled && g_overlay_visible && g_font_uploaded) {
+            if (g_overlay.focus_state().visible) {
                 ImguiNvnBackend::renderDrawData(ImGui::GetDrawData());
             }
         }
@@ -936,6 +697,10 @@ HOOK_DEFINE_TRAMPOLINE(DeviceGetProcAddressHook) {
 
 }  // namespace
 
+const d3::gui2::ui::GuiFocusState& GetGuiFocusState() {
+    return g_overlay.focus_state();
+}
+
 void Initialize() {
     if (g_hooks_installed) {
         return;
@@ -956,32 +721,15 @@ void Initialize() {
 
     InstallHidHooks();
 
-    // Create the context once.
-    if (!g_imgui_ctx_initialized) {
-        PRINT_LINE("[imgui_overlay] Initialize: ImGui::CreateContext (begin)");
-        IMGUI_CHECKVERSION();
-        ImGui::CreateContext();
-        g_imgui_ctx_initialized = true;
-        PRINT_LINE("[imgui_overlay] Initialize: ImGui::CreateContext (end)");
-
-        ImGuiIO &io = ImGui::GetIO();
-        io.IniFilename = nullptr;
-        io.LogFilename = nullptr;
-        io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
-        io.BackendFlags |= ImGuiBackendFlags_HasGamepad;
-        io.BackendPlatformName = "d3hack";
-    }
-
-    // Build the font atlas outside NVN present/init hooks.
-    // Avoid calling NewFrame/Render here; CPU-only font work is enough.
-    PrepareFonts();
+    // NOTE: Font preparation is intentionally deferred until after ShellInitialized (or, as a
+    // fallback, from the NVN present hook once g_ptMainRWindow is non-null). Calling into the
+    // default font decompression path during MainInit can stall early boot.
 
     PRINT_LINE("[imgui_overlay] Initialize: end");
 }
 
 void PrepareFonts() {
     if (!g_imgui_ctx_initialized) {
-        PRINT_LINE("[imgui_overlay] PrepareFonts: ImGui context missing; skipping");
         return;
     }
 
@@ -989,25 +737,80 @@ void PrepareFonts() {
         return;
     }
 
+    // Heuristic for "boot is far enough along" to do heavier work.
+    // This matches how we gate HID calls elsewhere in this file.
+    if (d3::g_ptMainRWindow == nullptr) {
+        static bool s_logged_defer = false;
+        if (!s_logged_defer) {
+            PRINT_LINE("[imgui_overlay] PrepareFonts: deferring until ShellInitialized");
+            s_logged_defer = true;
+        }
+        return;
+    }
+
     if (g_font_build_attempted) {
         return;
     }
 
+    // Avoid re-entrancy if PrepareFonts() is called from multiple threads/hooks.
+    // (Keep this lock-free/simple: Switch builds may not provide libatomic helpers for 1-byte atomics.)
+    if (g_font_build_in_progress) {
+        return;
+    }
+    g_font_build_in_progress = true;
+    struct ScopedClearInProgress {
+        ~ScopedClearInProgress() { g_font_build_in_progress = false; }
+    } clear_in_progress{};
+
     g_font_build_attempted = true;
 
-    ImGuiIO &io = ImGui::GetIO();
+    ImGuiIO& io = ImGui::GetIO();
+    if (io.Fonts == nullptr) {
+        PRINT_LINE("[imgui_overlay] ERROR: ImGuiIO::Fonts is null; cannot build font atlas");
+        return;
+    }
 
-    PRINT_LINE("[imgui_overlay] PrepareFonts: AddFontDefaultVector (begin)");
+    PRINT_LINE("[imgui_overlay] Building ImGui font atlas...");
     ImFontConfig font_cfg{};
     font_cfg.Name[0] = 'd';
     font_cfg.Name[1] = '3';
     font_cfg.Name[2] = '\0';
-    io.Fonts->AddFontDefaultVector(&font_cfg);
-    PRINT_LINE("[imgui_overlay] PrepareFonts: AddFontDefaultVector (end)");
+    // Build for docked readability (we apply a runtime scale for 720p).
+    font_cfg.SizePixels = 18.0f;
 
-    PRINT_LINE("[imgui_overlay] PrepareFonts: Fonts->Build (begin)");
+    ImFont* font = nullptr;
+
+    static std::vector<unsigned char> s_romfs_ttf;
+    static bool s_romfs_ttf_tried = false;
+
+    if (!s_romfs_ttf_tried) {
+        s_romfs_ttf_tried = true;
+        if (d3::romfs::ReadFileToBytes("romfs:/d3gui/ProggyClean.ttf", s_romfs_ttf, 4 * 1024 * 1024)) {
+            PRINT("[imgui_overlay] Loaded romfs ProggyClean.ttf (%lu bytes)", static_cast<unsigned long>(s_romfs_ttf.size()));
+        } else {
+            PRINT_LINE("[imgui_overlay] romfs ProggyClean.ttf not found; falling back to ImGui default font");
+        }
+    }
+
+    if (!s_romfs_ttf.empty()) {
+        font_cfg.FontDataOwnedByAtlas = false;
+        font = io.Fonts->AddFontFromMemoryTTF(s_romfs_ttf.data(), static_cast<int>(s_romfs_ttf.size()), font_cfg.SizePixels, &font_cfg);
+        if (font == nullptr) {
+            PRINT_LINE("[imgui_overlay] ERROR: AddFontFromMemoryTTF failed; falling back to ImGui default font");
+        }
+    }
+
+    if (font == nullptr) {
+        (void)io.Fonts->AddFontDefault();
+    }
+
     g_font_atlas_built = io.Fonts->Build();
-    PRINT("[imgui_overlay] PrepareFonts: Fonts->Build (end) built=%d\n", g_font_atlas_built ? 1 : 0);
+    if (!g_font_atlas_built) {
+        PRINT_LINE("[imgui_overlay] ERROR: ImFontAtlas::Build failed");
+        return;
+    }
+    PRINT_LINE("[imgui_overlay] ImGui font atlas built");
+
 }
 
 }  // namespace d3::imgui_overlay

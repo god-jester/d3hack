@@ -59,3 +59,8 @@ FUNC_PTR(blz_basic_string,                        void (*)(blz::string *, char c
 FUNC_PTR(blz_string_ctor,                  blz::string (*)(char const*, blz::allocator<char> const&));         //(const char *s, const blz::allocator<char> *alloc));
 FUNC_PTR(blz_make_stringf,                 blz::string (*)(char const* fmt,...));
 FUNC_PTR(blz_make_stringfb,                blz::string (*)(void *,...));
+
+// Localization helpers (2.7.6):
+// - Game locale is stored in "unicode_text_current_locale" (XLocale).
+// - XLocaleToString converts XLocale -> locale string (e.g. "enUS").
+FUNC_PTR(XLocaleToString,                         LPCSTR (*)(uint32));

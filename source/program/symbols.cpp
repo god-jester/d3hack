@@ -87,6 +87,7 @@ SETUP_FUNC_PTR(blz_basic_string);
 SETUP_FUNC_PTR(blz_string_ctor);
 SETUP_FUNC_PTR(blz_make_stringfb);
 SETUP_FUNC_PTR(blz_make_stringf);
+SETUP_FUNC_PTR(XLocaleToString);
 // items.hpp
 #include "symbols/items.hpp"
 SETUP_FUNC_PTR(sGetItemTypeString);                         // void  sGetItemTypeString(GBID a1@<W0>, CRefString *a2@<X8>)

@@ -128,6 +128,7 @@ struct PatchConfig {
     struct {
         bool enabled = true;  // render the ImGui UI (proof-of-life stays separate)
         bool visible = true;  // window visible by default
+        std::string language_override{};  // optional; when set, overrides game locale for GUI translations (e.g. "zh")
     } gui;
 
     void ApplyTable(const toml::table& table);

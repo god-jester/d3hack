@@ -2,9 +2,9 @@
 
 #include "lib/diag/assert.hpp"
 
-#define IM_ASSERT(_EXPR)           \
-    do {                          \
-        EXL_ASSERT((_EXPR));      \
+#define IM_ASSERT(_EXPR)        \
+    do {                       \
+        EXL_ABORT_UNLESS((_EXPR)); \
     } while (0)
 
 // ImGui 1.92+ requires selecting at least one font loader backend at compile time.

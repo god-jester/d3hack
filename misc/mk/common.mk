@@ -29,7 +29,12 @@ SOURCES		:=	$(foreach module,$(MODULES),$(shell find $(module) -type d))
 SOURCES		:= 	$(foreach source,$(SOURCES),$(source:$(TOPDIR)/%=%)/)
 
 # Exclude Dear ImGui example sources.
-SOURCES		:=	$(filter-out source/third_party/imgui/examples/%,$(SOURCES))
+SOURCES		:=	$(filter-out source/third_party/imgui/examples/ source/third_party/imgui/examples/%,$(SOURCES))
+
+# Exclude Dear ImGui built-in backends and misc/tools.
+SOURCES		:=	$(filter-out source/third_party/imgui/backends/ source/third_party/imgui/backends/%,$(SOURCES))
+SOURCES		:=	$(filter-out source/third_party/imgui/docs/ source/third_party/imgui/docs/%,$(SOURCES))
+SOURCES		:=	$(filter-out source/third_party/imgui/misc/ source/third_party/imgui/misc/%,$(SOURCES))
 
 DATA		:=	data
 INCLUDES	:=	include
@@ -50,7 +55,7 @@ CFLAGS	+=	$(INCLUDE) -D__SWITCH__ -D__RTLD_6XX__ -DIMGUI_USER_CONFIG=\"imgui_bac
 
 CFLAGS	+= $(EXL_CFLAGS) -I"$(DEVKITPRO)/libnx/include" -I$(ROOT_SOURCE) $(addprefix -I,$(MODULES))
 
-CXXFLAGS	:= $(CFLAGS) $(EXL_CXXFLAGS) -fno-rtti -fno-exceptions -fno-asynchronous-unwind-tables -fno-unwind-tables -std=gnu++23
+CXXFLAGS	:= $(CFLAGS) $(EXL_CXXFLAGS) -fno-rtti -fno-exceptions -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-threadsafe-statics -std=gnu++23
 
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	:=  -specs=$(SPECS_PATH)/$(SPECS_NAME) -g $(ARCH) -Wl,-Map,$(notdir $*.map) -nostartfiles
@@ -87,7 +92,7 @@ CPPFILES	:=	$(filter-out main.cpp,$(CPPFILES))
 endif
 
 # Drop unused Dear ImGui misc helpers.
-CPPFILES	:=	$(filter-out imgui_freetype.cpp imgui_stdlib.cpp binary_to_compressed_c.cpp,$(CPPFILES))
+CPPFILES	:=	$(filter-out imgui_demo.cpp imgui_freetype.cpp imgui_stdlib.cpp binary_to_compressed_c.cpp,$(CPPFILES))
 
 # Exclude official Dear ImGui backends (we use custom NVN backend).
 CPPFILES	:=	$(filter-out imgui_impl_%.cpp,$(CPPFILES))
@@ -104,7 +109,8 @@ CPPFILES	:=	$(filter-out uSynergy.c,$(CPPFILES))
 CPPFILES	:=	$(filter-out main.cpp,$(CPPFILES))
 CPPFILES	+=	main.cpp
 SFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
-BINFILES	:=	$(foreach dir,$(DATA),$(notdir $(wildcard $(dir)/*.*)))
+# Only .bin files have build rules (see %.bin.o below).
+BINFILES	:=	$(foreach dir,$(DATA),$(notdir $(wildcard $(dir)/*.bin)))
 
 #---------------------------------------------------------------------------------
 # use CXX for linking C++ projects, CC for standard C

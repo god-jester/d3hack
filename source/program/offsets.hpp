@@ -77,6 +77,7 @@ namespace exl::reloc {
             { util::ModuleIndex::Main, 0x1154B68, "item_invalid" },
             { util::ModuleIndex::Main, 0x1A39CF0, "world_place_null" },
             { util::ModuleIndex::Main, 0x1A5F108, "refstring_data_buffer_nil" },
+            { util::ModuleIndex::Main, 0x1A63CEC, "unicode_text_current_locale" },
 
             /* Season/event request flags (main module). */
             { util::ModuleIndex::Main, 0x114AD48, "season_config_request_flag_ptr" },
@@ -221,6 +222,7 @@ namespace exl::reloc {
             { util::ModuleIndex::Main, 0xA491D0, "sym_CRefString_op_eq_lpcstr" },
             { util::ModuleIndex::Main, 0xA492C0, "sym_CRefString_op_add_eq_lpcstr" },
             { util::ModuleIndex::Main, 0xA49370, "sym_CRefString_Append" },
+            { util::ModuleIndex::Main, 0xA4A270, "sym_XLocaleToString" },
 
             // Patch-only offsets/patch-sites (main module).
             // See `source/program/offsets_patch_only.inl` (includes resolution hack entries).

@@ -535,6 +535,9 @@ namespace {
             toml::table t;
             t.insert("Enabled", config.gui.enabled);
             t.insert("Visible", config.gui.visible);
+            if (!config.gui.language_override.empty()) {
+                t.insert("Language", config.gui.language_override);
+            }
             root.insert("gui", std::move(t));
         }
 
@@ -750,6 +753,9 @@ void PatchConfig::ApplyTable(const toml::table& table) {
     if (const auto* section = FindTable(table, "gui")) {
         gui.enabled = ReadBool(*section, {"Enabled", "SectionEnabled", "Active"}, gui.enabled);
         gui.visible = ReadBool(*section, {"Visible", "Show", "WindowVisible"}, gui.visible);
+        if (auto value = ReadValue<std::string>(*section, {"Language", "Lang", "Locale"})) {
+            gui.language_override = *value;
+        }
     }
 
     ApplySeasonEventMapIfNeeded(*this);

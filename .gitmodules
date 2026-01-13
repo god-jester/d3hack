@@ -1,3 +1,6 @@
 [submodule "include/tomlplusplus"]
 	path = include/tomlplusplus
 	url = https://github.com/marzer/tomlplusplus.git
+[submodule "source/third_party/imgui"]
+	path = source/third_party/imgui
+	url = https://github.com/ocornut/imgui.git
