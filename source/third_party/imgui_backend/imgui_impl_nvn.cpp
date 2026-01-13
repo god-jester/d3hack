@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include "imgui_backend/imgui_impl_nvn.hpp"
@@ -36,13 +37,33 @@ namespace {
 
 typedef float Matrix44f[4][4];
 
-// orthographic matrix used for shader
-static const Matrix44f projMatrix = {
-        {0.001563f, 0.0f,       0.0f,  0.0f},
-        {0.0f,      -0.002778f, 0.0f,  0.0f},
-        {0.0f,      0.0f,       -0.5f, 0.0f},
-        {-1.0f,     1.0f,       0.5f,  1.0f}
-};
+static void BuildOrthoMatrix(Matrix44f out, const ImVec2 &display_pos, const ImVec2 &display_size) {
+    const float L = display_pos.x;
+    const float R = display_pos.x + display_size.x;
+    const float T = display_pos.y;
+    const float B = display_pos.y + display_size.y;
+
+    out[0][0] = 2.0f / (R - L);
+    out[0][1] = 0.0f;
+    out[0][2] = 0.0f;
+    out[0][3] = 0.0f;
+
+    out[1][0] = 0.0f;
+    out[1][1] = 2.0f / (T - B);
+    out[1][2] = 0.0f;
+    out[1][3] = 0.0f;
+
+    // Keep Z mapping consistent with the existing baked shader expectations.
+    out[2][0] = 0.0f;
+    out[2][1] = 0.0f;
+    out[2][2] = -0.5f;
+    out[2][3] = 0.0f;
+
+    out[3][0] = (R + L) / (L - R);
+    out[3][1] = (T + B) / (B - T);
+    out[3][2] = 0.5f;
+    out[3][3] = 1.0f;
+}
 
 namespace ImguiNvnBackend {
 
@@ -212,7 +233,9 @@ namespace ImguiNvnBackend {
         bd->cmdBuf->BindProgram(&bd->shaderProgram, nvn::ShaderStageBits::VERTEX | nvn::ShaderStageBits::FRAGMENT);
 
         bd->cmdBuf->BindUniformBuffer(nvn::ShaderStage::VERTEX, 0, *bd->uniformMemory, UBOSIZE);
-        bd->cmdBuf->UpdateUniformBuffer(*bd->uniformMemory, UBOSIZE, 0, sizeof(projMatrix), &projMatrix);
+        Matrix44f proj_matrix{};
+        BuildOrthoMatrix(proj_matrix, ImVec2(0.0f, 0.0f), io.DisplaySize);
+        bd->cmdBuf->UpdateUniformBuffer(*bd->uniformMemory, UBOSIZE, 0, sizeof(proj_matrix), &proj_matrix);
 
         bd->cmdBuf->BindVertexBuffer(0, (*bd->vtxBuffer), bd->vtxBuffer->GetPoolSize());
 
@@ -510,8 +533,10 @@ namespace ImguiNvnBackend {
 
     void newFrame() {
         ImGuiIO &io = ImGui::GetIO();
-        (void)getBackendData();
+        auto bd = getBackendData();
 
+        io.DisplaySize = bd->viewportSize;
+        io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
         io.DeltaTime = 1.0f / 60.0f;
 
         updateInput(); // update backend inputs
@@ -642,13 +667,20 @@ namespace ImguiNvnBackend {
 
         bd->cmdBuf->BindUniformBuffer(nvn::ShaderStage::VERTEX, 0, *bd->uniformMemory,
                                       UBOSIZE); // bind uniform block ptr
-        bd->cmdBuf->UpdateUniformBuffer(*bd->uniformMemory, UBOSIZE, 0, sizeof(projMatrix),
-                                        &projMatrix); // add projection matrix data to uniform data
+        Matrix44f proj_matrix{};
+        BuildOrthoMatrix(proj_matrix, drawData->DisplayPos, drawData->DisplaySize);
+        bd->cmdBuf->UpdateUniformBuffer(*bd->uniformMemory, UBOSIZE, 0, sizeof(proj_matrix),
+                                        &proj_matrix); // add projection matrix data to uniform data
 
         setRenderStates(); // sets up the rest of the render state, required so that our shader properly gets drawn to the screen
 
         size_t vtxOffset = 0, idxOffset = 0;
         nvn::TextureHandle boundTextureHandle = 0;
+
+        const ImVec2 clip_off = drawData->DisplayPos;
+        const ImVec2 clip_scale = drawData->FramebufferScale;
+        const ImVec2 vp = bd->viewportSize;
+        bd->cmdBuf->SetViewport(0, 0, vp.x, vp.y);
 
         // load data into buffers, and process draw commands
         for (int i = 0; i < drawData->CmdListsCount; i++) {
@@ -666,17 +698,42 @@ namespace ImguiNvnBackend {
             memcpy(bd->vtxBuffer->GetMemPtr() + vtxOffset, cmdList->VtxBuffer.Data, vtxSize);
             memcpy(bd->idxBuffer->GetMemPtr() + idxOffset, cmdList->IdxBuffer.Data, idxSize);
 
-            for (auto cmd: cmdList->CmdBuffer) {
+            for (const ImDrawCmd &cmd: cmdList->CmdBuffer) {
+                if (cmd.UserCallback != nullptr) {
+                    if (cmd.UserCallback == ImDrawCallback_ResetRenderState) {
+                        setRenderStates();
+                    } else {
+                        cmd.UserCallback(cmdList, const_cast<ImDrawCmd *>(&cmd));
+                    }
+                    continue;
+                }
 
-                // im not exactly sure this scaling is a good solution,
-                // for some reason imgui clipping coords are relative to 720p instead of whatever I set for disp size.
-                ImVec2 newRes = getBackendData()->viewportSize;
+                ImVec4 clip_rect;
+                clip_rect.x = (cmd.ClipRect.x - clip_off.x) * clip_scale.x;
+                clip_rect.y = (cmd.ClipRect.y - clip_off.y) * clip_scale.y;
+                clip_rect.z = (cmd.ClipRect.z - clip_off.x) * clip_scale.x;
+                clip_rect.w = (cmd.ClipRect.w - clip_off.y) * clip_scale.y;
 
-                bd->cmdBuf->SetViewport(0, 0, newRes.x, newRes.y);
-                bd->cmdBuf->SetScissor(0, 0, newRes.x, newRes.y);
+                if (clip_rect.x >= vp.x || clip_rect.y >= vp.y || clip_rect.z <= 0.0f || clip_rect.w <= 0.0f) {
+                    continue;
+                }
+
+                const int scissor_x = std::max(0, static_cast<int>(std::floor(clip_rect.x)));
+                const int scissor_y = std::max(0, static_cast<int>(std::floor(clip_rect.y)));
+                const int scissor_z = std::min(static_cast<int>(vp.x), static_cast<int>(std::ceil(clip_rect.z)));
+                const int scissor_w = std::min(static_cast<int>(vp.y), static_cast<int>(std::ceil(clip_rect.w)));
+                const int scissor_w_px = std::max(0, scissor_z - scissor_x);
+                const int scissor_h_px = std::max(0, scissor_w - scissor_y);
+                if (scissor_w_px == 0 || scissor_h_px == 0) {
+                    continue;
+                }
+                bd->cmdBuf->SetScissor(scissor_x, scissor_y, scissor_w_px, scissor_h_px);
 
                 // get texture ID from the command
-                nvn::TextureHandle TexID = *(nvn::TextureHandle *) cmd.GetTexID();
+                nvn::TextureHandle TexID = bd->fontTexHandle;
+                if (cmd.GetTexID() != 0) {
+                    TexID = *(nvn::TextureHandle *) cmd.GetTexID();
+                }
                 // if our previous handle is different from the current, bind the texture
                 if (boundTextureHandle != TexID) {
                     boundTextureHandle = TexID;

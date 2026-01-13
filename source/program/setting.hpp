@@ -4,7 +4,7 @@
 
 #define EXL_MODULE_NAME "D3Hack"
 
-// #define EXL_DEBUG
+#define EXL_DEBUG
 #define EXL_USE_FAKEHEAP
 
 /*
@@ -13,7 +13,7 @@
 
 namespace exl::setting {
     /* How large the fake .bss heap will be. */
-    constexpr size_t HeapSize = 0x100000;
+    constexpr size_t HeapSize = 0x400000;
 
     /* How large the JIT area will be for hooks. */
     constexpr size_t JitSize = 0x5000;  // default 0x1000 usually works

@@ -2,5 +2,5 @@
 
 namespace d3::imgui_overlay {
     void Initialize();
+    void PrepareFonts();
 }
-

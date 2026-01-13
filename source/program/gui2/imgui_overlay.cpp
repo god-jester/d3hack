@@ -26,6 +26,9 @@ using NvnCommandBufferInitializeFn = PFNNVNCOMMANDBUFFERINITIALIZEPROC;
 using NvnWindowBuilderSetTexturesFn = PFNNVNWINDOWBUILDERSETTEXTURESPROC;
 using NvnWindowSetCropFn = PFNNVNWINDOWSETCROPPROC;
 
+constexpr bool kImGuiBringup_DrawText = true;
+constexpr bool kImGuiBringup_AlwaysSubmitProofOfLife = true;
+
 NvnDeviceGetProcAddressFn g_orig_get_proc = nullptr;
 NvnQueuePresentTextureFn g_orig_present = nullptr;
 NvnCommandBufferInitializeFn g_orig_cmd_buf_initialize = nullptr;
@@ -69,11 +72,15 @@ void WindowSetCropHook(NVNwindow *window, int x, int y, int w, int h) {
 
 bool g_imgui_ctx_initialized = false;
 bool g_backend_initialized = false;
+bool g_font_atlas_built = false;
+bool g_font_uploaded = false;
 bool g_overlay_visible = true;
 
 // NOTE: The backend expects NVN C++ wrapper types (nvn::Device/Queue/CommandBuffer).
 // We will wire those up once we hook stable NVN init entrypoints.
 bool g_hooks_installed = false;
+
+bool g_font_build_attempted = false;
 
 static NVNboolean CmdBufInitializeWrapper(NVNcommandBuffer *buffer, NVNdevice *device) {
     if (g_cmd_buf == nullptr && buffer != nullptr) {
@@ -85,20 +92,14 @@ static NVNboolean CmdBufInitializeWrapper(NVNcommandBuffer *buffer, NVNdevice *d
         return 0;
     }
 
-    return g_orig_cmd_buf_initialize(buffer, device);
+    const auto ret = g_orig_cmd_buf_initialize(buffer, device);
+
+    return ret;
 }
 
 void QueuePresentTextureWrapper(NVNqueue *queue, NVNwindow *window, int texture_index) {
     if (g_queue == nullptr && queue != nullptr) {
         g_queue = queue;
-    }
-
-    // Create an ImGui context, but keep bringup fontless: do not call NewFrame/Render
-    // (they will build the font atlas in the present hook).
-    if (!g_imgui_ctx_initialized) {
-        IMGUI_CHECKVERSION();
-        ImGui::CreateContext();
-        g_imgui_ctx_initialized = true;
     }
 
     if (!g_backend_initialized && g_device && g_queue) {
@@ -119,6 +120,15 @@ void QueuePresentTextureWrapper(NVNqueue *queue, NVNwindow *window, int texture_
     }
 
     if (g_backend_initialized) {
+        if (kImGuiBringup_DrawText && !g_font_uploaded && g_font_atlas_built) {
+            if (ImguiNvnBackend::setupFont()) {
+                g_font_uploaded = true;
+                PRINT_LINE("[imgui_overlay] ImGui font uploaded");
+            } else {
+                PRINT_LINE("[imgui_overlay] ERROR: ImGui font upload failed (fallback to proof-of-life only)");
+            }
+        }
+
         // Dynamic viewport: prefer crop (if available), otherwise swapchain texture size.
         int w = g_crop_w;
         int h = g_crop_h;
@@ -144,8 +154,23 @@ void QueuePresentTextureWrapper(NVNqueue *queue, NVNwindow *window, int texture_
         }
 
         if (g_overlay_visible) {
-            // Gate C: submit an unmistakable fontless proof-of-life draw.
-            ImguiNvnBackend::SubmitProofOfLifeClear();
+            if (kImGuiBringup_AlwaysSubmitProofOfLife) {
+                // Gate C: submit an unmistakable fontless proof-of-life draw.
+                ImguiNvnBackend::SubmitProofOfLifeClear();
+            }
+
+            if (kImGuiBringup_DrawText && g_font_uploaded) {
+                ImguiNvnBackend::newFrame();
+                ImGui::NewFrame();
+
+                ImGui::GetForegroundDrawList()->AddText(
+                    ImVec2(160.0f, 40.0f),
+                    IM_COL32(255, 255, 255, 255),
+                    "ImGui OK");
+
+                ImGui::Render();
+                ImguiNvnBackend::renderDrawData(ImGui::GetDrawData());
+            }
         }
     }
 
@@ -202,6 +227,8 @@ void Initialize() {
         return;
     }
 
+    PRINT_LINE("[imgui_overlay] Initialize: begin");
+
     // Resolve symbol via bootstrap loader (most reliable path in NVN environments).
     const auto get_proc = nvnBootstrapLoader("nvnDeviceGetProcAddress");
     if (get_proc == nullptr) {
@@ -212,6 +239,56 @@ void Initialize() {
     g_orig_get_proc = reinterpret_cast<NvnDeviceGetProcAddressFn>(get_proc);
     DeviceGetProcAddressHook::InstallAtPtr(reinterpret_cast<uintptr_t>(get_proc));
     g_hooks_installed = true;
+
+    // Create the context once.
+    if (!g_imgui_ctx_initialized) {
+        PRINT_LINE("[imgui_overlay] Initialize: ImGui::CreateContext (begin)");
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+        g_imgui_ctx_initialized = true;
+        PRINT_LINE("[imgui_overlay] Initialize: ImGui::CreateContext (end)");
+
+        ImGuiIO &io = ImGui::GetIO();
+        io.IniFilename = nullptr;
+        io.LogFilename = nullptr;
+    }
+
+    // Build the font atlas outside NVN present/init hooks.
+    // Avoid calling NewFrame/Render here; CPU-only font work is enough.
+    PrepareFonts();
+
+    PRINT_LINE("[imgui_overlay] Initialize: end");
+}
+
+void PrepareFonts() {
+    if (!g_imgui_ctx_initialized) {
+        PRINT_LINE("[imgui_overlay] PrepareFonts: ImGui context missing; skipping");
+        return;
+    }
+
+    if (g_font_atlas_built) {
+        return;
+    }
+
+    if (g_font_build_attempted) {
+        return;
+    }
+
+    g_font_build_attempted = true;
+
+    ImGuiIO &io = ImGui::GetIO();
+
+    PRINT_LINE("[imgui_overlay] PrepareFonts: AddFontDefaultVector (begin)");
+    ImFontConfig font_cfg{};
+    font_cfg.Name[0] = 'd';
+    font_cfg.Name[1] = '3';
+    font_cfg.Name[2] = '\0';
+    io.Fonts->AddFontDefaultVector(&font_cfg);
+    PRINT_LINE("[imgui_overlay] PrepareFonts: AddFontDefaultVector (end)");
+
+    PRINT_LINE("[imgui_overlay] PrepareFonts: Fonts->Build (begin)");
+    g_font_atlas_built = io.Fonts->Build();
+    PRINT("[imgui_overlay] PrepareFonts: Fonts->Build (end) built=%d\n", g_font_atlas_built ? 1 : 0);
 }
 
 }  // namespace d3::imgui_overlay

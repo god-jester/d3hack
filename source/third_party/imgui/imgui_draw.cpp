@@ -4789,15 +4789,21 @@ static bool ImGui_ImplStbTrueType_FontBakedLoadGlyph(ImFontAtlas* atlas, ImFontC
 
 const ImFontLoader* ImFontAtlasGetFontLoaderForStbTruetype()
 {
-    static ImFontLoader loader;
-    loader.Name = "stb_truetype";
-    loader.FontSrcInit = ImGui_ImplStbTrueType_FontSrcInit;
-    loader.FontSrcDestroy = ImGui_ImplStbTrueType_FontSrcDestroy;
-    loader.FontSrcContainsGlyph = ImGui_ImplStbTrueType_FontSrcContainsGlyph;
-    loader.FontBakedInit = ImGui_ImplStbTrueType_FontBakedInit;
-    loader.FontBakedDestroy = NULL;
-    loader.FontBakedLoadGlyph = ImGui_ImplStbTrueType_FontBakedLoadGlyph;
-    return &loader;
+    // Avoid function-scope non-trivial statics here: on some embedded runtimes the
+    // thread-safe local static guard can hang very early during process init.
+    static ImFontLoader* loader = NULL;
+    if (loader == NULL)
+    {
+        loader = IM_NEW(ImFontLoader)();
+        loader->Name = "stb_truetype";
+        loader->FontSrcInit = ImGui_ImplStbTrueType_FontSrcInit;
+        loader->FontSrcDestroy = ImGui_ImplStbTrueType_FontSrcDestroy;
+        loader->FontSrcContainsGlyph = ImGui_ImplStbTrueType_FontSrcContainsGlyph;
+        loader->FontBakedInit = ImGui_ImplStbTrueType_FontBakedInit;
+        loader->FontBakedDestroy = NULL;
+        loader->FontBakedLoadGlyph = ImGui_ImplStbTrueType_FontBakedLoadGlyph;
+    }
+    return loader;
 }
 
 #endif // IMGUI_ENABLE_STB_TRUETYPE

@@ -46,7 +46,7 @@ CFLAGS	:=	-g -Wall -Werror -Og \
 			$(ARCH) \
 			$(DEFINES)
 
-CFLAGS	+=	$(INCLUDE) -D__SWITCH__ -D__RTLD_6XX__ -I$(ROOT_SOURCE)/third_party/imgui
+CFLAGS	+=	$(INCLUDE) -D__SWITCH__ -D__RTLD_6XX__ -DIMGUI_USER_CONFIG=\"imgui_backend/nvn_imgui_config.h\" -I$(ROOT_SOURCE)/third_party/imgui
 
 CFLAGS	+= $(EXL_CFLAGS) -I"$(DEVKITPRO)/libnx/include" -I$(ROOT_SOURCE) $(addprefix -I,$(MODULES))
 
