@@ -84,4 +84,17 @@ namespace nn::fs {
         handle: Handle representing file to flush. 
     */
    Result FlushFile(FileHandle handle);
+
+    /*
+        Deletes a file at the given path.
+        path: File path to delete.
+    */
+    Result DeleteFile(char const* path);
+
+    /*
+        Renames a file.
+        oldPath: Existing file path.
+        newPath: Destination file path.
+    */
+    Result RenameFile(char const* oldPath, char const* newPath);
 }

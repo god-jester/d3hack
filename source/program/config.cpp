@@ -3,6 +3,8 @@
 #include "lib/diag/assert.hpp"
 #include "nn/fs.hpp"
 
+#include <sstream>
+
 PatchConfig global_config{};
 
 namespace {
@@ -377,7 +379,7 @@ namespace {
         return true;
     }
 
-    bool LoadFromPath(const char* path, std::string& error_out) {
+    bool LoadFromPath(const char* path, PatchConfig& out, std::string& error_out) {
         std::string text;
         if (!ReadAll(path, text))
             return false;
@@ -395,7 +397,229 @@ namespace {
             }
             return false;
         }
-        global_config.ApplyTable(result.table());
+        out.ApplyTable(result.table());
+        return true;
+    }
+
+    const char* SeasonMapModeToString(PatchConfig::SeasonEventMapMode mode) {
+        switch (mode) {
+        case PatchConfig::SeasonEventMapMode::MapOnly:
+            return "MapOnly";
+        case PatchConfig::SeasonEventMapMode::OverlayConfig:
+            return "OverlayConfig";
+        case PatchConfig::SeasonEventMapMode::Disabled:
+            return "Disabled";
+        default:
+            return "Disabled";
+        }
+    }
+
+    toml::table BuildPatchConfigTable(const PatchConfig& config) {
+        toml::table root;
+
+        {
+            toml::table t;
+            t.insert("SectionEnabled", config.resolution_hack.active);
+            t.insert("OutputTarget", static_cast<int64_t>(config.resolution_hack.target_resolution));
+            t.insert("MinResScale", static_cast<double>(config.resolution_hack.min_res_scale));
+            t.insert("ClampTextures2048", config.resolution_hack.clamp_textures_2048);
+            t.insert("ExperimentalScheduler", config.resolution_hack.exp_scheduler);
+            root.insert("resolution_hack", std::move(t));
+        }
+
+        {
+            toml::table t;
+            t.insert("SectionEnabled", config.seasons.active);
+            t.insert("AllowOnlinePlay", config.seasons.allow_online);
+            t.insert("SeasonNumber", static_cast<int64_t>(config.seasons.current_season));
+            t.insert("SpoofPtr", config.seasons.spoof_ptr);
+            root.insert("seasons", std::move(t));
+        }
+
+        {
+            toml::table t;
+            t.insert("SectionEnabled", config.challenge_rifts.active);
+            t.insert("MakeRiftsRandom", config.challenge_rifts.random);
+            t.insert("RiftRangeStart", static_cast<int64_t>(config.challenge_rifts.range_start));
+            t.insert("RiftRangeEnd", static_cast<int64_t>(config.challenge_rifts.range_end));
+            root.insert("challenge_rifts", std::move(t));
+        }
+
+        {
+            toml::table t;
+            t.insert("SectionEnabled", config.events.active);
+            t.insert("SeasonMapMode", std::string(SeasonMapModeToString(config.events.SeasonMapMode)));
+            t.insert("IgrEnabled", config.events.IgrEnabled);
+            t.insert("AnniversaryEnabled", config.events.AnniversaryEnabled);
+            t.insert("EasterEggWorldEnabled", config.events.EasterEggWorldEnabled);
+            t.insert("DoubleRiftKeystones", config.events.DoubleRiftKeystones);
+            t.insert("DoubleBloodShards", config.events.DoubleBloodShards);
+            t.insert("DoubleTreasureGoblins", config.events.DoubleTreasureGoblins);
+            t.insert("DoubleBountyBags", config.events.DoubleBountyBags);
+            t.insert("RoyalGrandeur", config.events.RoyalGrandeur);
+            t.insert("LegacyOfNightmares", config.events.LegacyOfNightmares);
+            t.insert("TriunesWill", config.events.TriunesWill);
+            t.insert("Pandemonium", config.events.Pandemonium);
+            t.insert("KanaiPowers", config.events.KanaiPowers);
+            t.insert("TrialsOfTempests", config.events.TrialsOfTempests);
+            t.insert("ShadowClones", config.events.ShadowClones);
+            t.insert("FourthKanaisCubeSlot", config.events.FourthKanaisCubeSlot);
+            t.insert("EtherealItems", config.events.EtherealItems);
+            t.insert("SoulShards", config.events.SoulShards);
+            t.insert("SwarmRifts", config.events.SwarmRifts);
+            t.insert("SanctifiedItems", config.events.SanctifiedItems);
+            t.insert("DarkAlchemy", config.events.DarkAlchemy);
+            t.insert("NestingPortals", config.events.NestingPortals);
+            root.insert("events", std::move(t));
+        }
+
+        {
+            toml::table t;
+            t.insert("SectionEnabled", config.rare_cheats.active);
+            t.insert("MovementSpeedMultiplier", config.rare_cheats.move_speed);
+            t.insert("AttackSpeedMultiplier", config.rare_cheats.attack_speed);
+            t.insert("FloatingDamageColor", config.rare_cheats.floating_damage_color);
+            t.insert("GuaranteedLegendaryChance", config.rare_cheats.guaranteed_legendaries);
+            t.insert("DropAnyItems", config.rare_cheats.drop_anything);
+            t.insert("InstantPortalAndBookOfCain", config.rare_cheats.instant_portal);
+            t.insert("NoCooldowns", config.rare_cheats.no_cooldowns);
+            t.insert("InstantCubeAndCraftsAndEnchants", config.rare_cheats.instant_craft_actions);
+            t.insert("SocketGemsToAnySlot", config.rare_cheats.any_gem_any_slot);
+            t.insert("AutoPickup", config.rare_cheats.auto_pickup);
+            t.insert("EquipAnySlot", config.rare_cheats.equip_any_slot);
+            t.insert("UnlockAllDifficulties", config.rare_cheats.unlock_all_difficulties);
+            t.insert("EasyKillDamage", config.rare_cheats.easy_kill_damage);
+            t.insert("CubeNoConsumeMaterials", config.rare_cheats.cube_no_consume);
+            t.insert("LegendaryGemUpgradeAlways", config.rare_cheats.gem_upgrade_always);
+            t.insert("LegendaryGemUpgradeSpeed", config.rare_cheats.gem_upgrade_speed);
+            t.insert("LegendaryGemLevel150", config.rare_cheats.gem_upgrade_lvl150);
+            t.insert("EquipMultipleLegendaries", config.rare_cheats.equip_multi_legendary);
+            root.insert("rare_cheats", std::move(t));
+        }
+
+        {
+            toml::table t;
+            t.insert("SectionEnabled", config.overlays.active);
+            t.insert("BuildLockerWatermark", config.overlays.buildlocker_watermark);
+            t.insert("DDMLabels", config.overlays.ddm_labels);
+            t.insert("FPSLabel", config.overlays.fps_label);
+            t.insert("VariableResLabel", config.overlays.var_res_label);
+            root.insert("overlays", std::move(t));
+        }
+
+        {
+            toml::table t;
+            t.insert("SectionEnabled", config.loot_modifiers.active);
+            t.insert("DisableAncientDrops", config.loot_modifiers.DisableAncientDrops);
+            t.insert("DisablePrimalAncientDrops", config.loot_modifiers.DisablePrimalAncientDrops);
+            t.insert("DisableTormentDrops", config.loot_modifiers.DisableTormentDrops);
+            t.insert("DisableTormentCheck", config.loot_modifiers.DisableTormentCheck);
+            t.insert("SuppressGiftGeneration", config.loot_modifiers.SuppressGiftGeneration);
+            t.insert("ForcedILevel", static_cast<int64_t>(config.loot_modifiers.ForcedILevel));
+            t.insert("TieredLootRunLevel", static_cast<int64_t>(config.loot_modifiers.TieredLootRunLevel));
+            t.insert("AncientRank", std::string(AncientRankCanonical(config.loot_modifiers.AncientRankValue, config.loot_modifiers.AncientRank)));
+            root.insert("loot_modifiers", std::move(t));
+        }
+
+        {
+            toml::table t;
+            t.insert("SectionEnabled", config.debug.active);
+            t.insert("Acknowledge_god_jester", config.debug.enable_crashes);
+            t.insert("EnablePubFileDump", config.debug.enable_pubfile_dump);
+            t.insert("EnableErrorTraces", config.debug.enable_error_traces);
+            t.insert("EnableDebugFlags", config.debug.enable_debug_flags);
+            root.insert("debug", std::move(t));
+        }
+
+        {
+            toml::table t;
+            t.insert("Enabled", config.gui.enabled);
+            t.insert("Visible", config.gui.visible);
+            root.insert("gui", std::move(t));
+        }
+
+        return root;
+    }
+
+    bool EnsureConfigDirectories(const char* path, std::string& error_out) {
+        // Currently only supports the standard config directory layout.
+        // Path is expected to be: sd:/config/d3hack-nx/config.toml
+        (void)path;
+        const char* root_dir = "sd:/config";
+        const char* hack_dir = "sd:/config/d3hack-nx";
+
+        (void)nn::fs::CreateDirectory(root_dir);
+        (void)nn::fs::CreateDirectory(hack_dir);
+
+        nn::fs::DirectoryEntryType type{};
+        auto rc = nn::fs::GetEntryType(&type, hack_dir);
+        if (R_FAILED(rc)) {
+            error_out = "Failed to ensure config directory exists";
+            return false;
+        }
+        return true;
+    }
+
+    bool WriteAllAtomic(const char* path, const std::string& text, std::string& error_out) {
+        if (!EnsureConfigDirectories(path, error_out)) {
+            return false;
+        }
+
+        std::string tmp_path = std::string(path) + ".tmp";
+        std::string bak_path = std::string(path) + ".bak";
+
+        (void)nn::fs::DeleteFile(tmp_path.c_str());
+
+        auto rc = nn::fs::CreateFile(tmp_path.c_str(), static_cast<s64>(text.size()));
+        if (R_FAILED(rc)) {
+            error_out = "Failed to create temp config file";
+            return false;
+        }
+
+        nn::fs::FileHandle fh{};
+        rc = nn::fs::OpenFile(&fh, tmp_path.c_str(), nn::fs::OpenMode_Write);
+        if (R_FAILED(rc)) {
+            (void)nn::fs::DeleteFile(tmp_path.c_str());
+            error_out = "Failed to open temp config file";
+            return false;
+        }
+
+        const auto opt = nn::fs::WriteOption::CreateOption(nn::fs::WriteOptionFlag_Flush);
+        rc = nn::fs::WriteFile(fh, 0, text.data(), static_cast<u64>(text.size()), opt);
+        if (R_FAILED(rc)) {
+            nn::fs::CloseFile(fh);
+            (void)nn::fs::DeleteFile(tmp_path.c_str());
+            error_out = "Failed to write temp config file";
+            return false;
+        }
+
+        (void)nn::fs::FlushFile(fh);
+        nn::fs::CloseFile(fh);
+
+        if (DoesFileExist(path)) {
+            (void)nn::fs::DeleteFile(bak_path.c_str());
+            rc = nn::fs::RenameFile(path, bak_path.c_str());
+            if (R_FAILED(rc)) {
+                (void)nn::fs::DeleteFile(tmp_path.c_str());
+                error_out = "Failed to backup existing config file";
+                return false;
+            }
+        }
+
+        rc = nn::fs::RenameFile(tmp_path.c_str(), path);
+        if (R_FAILED(rc)) {
+            if (DoesFileExist(bak_path.c_str())) {
+                (void)nn::fs::RenameFile(bak_path.c_str(), path);
+            }
+            (void)nn::fs::DeleteFile(tmp_path.c_str());
+            error_out = "Failed to move temp config into place";
+            return false;
+        }
+
+        if (DoesFileExist(bak_path.c_str())) {
+            (void)nn::fs::DeleteFile(bak_path.c_str());
+        }
+
         return true;
     }
 }
@@ -523,6 +747,11 @@ void PatchConfig::ApplyTable(const toml::table& table) {
         debug.enable_debug_flags = ReadBool(*section, {"EnableDebugFlags", "DebugFlags"}, debug.enable_debug_flags);
     }
 
+    if (const auto* section = FindTable(table, "gui")) {
+        gui.enabled = ReadBool(*section, {"Enabled", "SectionEnabled", "Active"}, gui.enabled);
+        gui.visible = ReadBool(*section, {"Visible", "Show", "WindowVisible"}, gui.visible);
+    }
+
     ApplySeasonEventMapIfNeeded(*this);
 
     initialized = true;
@@ -533,7 +762,7 @@ void LoadPatchConfig() {
     global_config = PatchConfig{};
     const char* path = "sd:/config/d3hack-nx/config.toml";
     std::string error;
-    if (LoadFromPath(path, error)) {
+    if (LoadFromPath(path, global_config, error)) {
         PRINT("Loaded config: %s", path);
         global_config.initialized = true;
         global_config.defaults_only = false;
@@ -544,4 +773,43 @@ void LoadPatchConfig() {
     global_config.initialized = true;
     global_config.defaults_only = true;
     PRINT("Config not found; using built-in defaults%s", ".");
+}
+
+PatchConfig NormalizePatchConfig(const PatchConfig& config) {
+    const toml::table root = BuildPatchConfigTable(config);
+    PatchConfig out{};
+    out.ApplyTable(root);
+    return out;
+}
+
+bool LoadPatchConfigFromPath(const char* path, PatchConfig& out, std::string& error_out) {
+    out = PatchConfig{};
+    if (LoadFromPath(path, out, error_out)) {
+        return true;
+    }
+    return false;
+}
+
+bool SavePatchConfigToPath(const char* path, const PatchConfig& config, std::string& error_out) {
+    const PatchConfig normalized = NormalizePatchConfig(config);
+    const toml::table root = BuildPatchConfigTable(normalized);
+
+    std::stringstream ss;
+    ss << toml::toml_formatter{root};
+    return WriteAllAtomic(path, ss.str(), error_out);
+}
+
+bool SavePatchConfig(const PatchConfig& config) {
+    const char* path = "sd:/config/d3hack-nx/config.toml";
+    std::string error;
+    if (!SavePatchConfigToPath(path, config, error)) {
+        if (!error.empty()) {
+            PRINT("Config save failed for %s: %s", path, error.c_str());
+        } else {
+            PRINT("Config save failed for %s", path);
+        }
+        return false;
+    }
+    PRINT("Saved config: %s", path);
+    return true;
 }

@@ -125,6 +125,11 @@ struct PatchConfig {
         bool enable_debug_flags = false;
     } debug;
 
+    struct {
+        bool enabled = true;  // render the ImGui UI (proof-of-life stays separate)
+        bool visible = true;  // window visible by default
+    } gui;
+
     void ApplyTable(const toml::table& table);
 };
 
@@ -134,3 +139,15 @@ extern PatchConfig global_config;
 //   sd:/config/d3hack-nx/config.toml
 // Logs and keeps defaults when not found/invalid.
 void LoadPatchConfig();
+
+// Normalize/clamp config using the same rules as TOML load.
+PatchConfig NormalizePatchConfig(const PatchConfig& config);
+
+// Load config from a specific path into an output struct (does not mutate global_config).
+bool LoadPatchConfigFromPath(const char* path, PatchConfig& out, std::string& error_out);
+
+// Save config to TOML (best-effort). Writes to a temp file and renames into place.
+bool SavePatchConfigToPath(const char* path, const PatchConfig& config, std::string& error_out);
+
+// Default path: sd:/config/d3hack-nx/config.toml
+bool SavePatchConfig(const PatchConfig& config);

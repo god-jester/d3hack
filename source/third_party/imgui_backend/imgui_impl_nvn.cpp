@@ -681,6 +681,7 @@ namespace ImguiNvnBackend {
         const ImVec2 clip_scale = drawData->FramebufferScale;
         const ImVec2 vp = bd->viewportSize;
         bd->cmdBuf->SetViewport(0, 0, vp.x, vp.y);
+        bd->cmdBuf->SetScissor(0, 0, vp.x, vp.y);
 
         // load data into buffers, and process draw commands
         for (int i = 0; i < drawData->CmdListsCount; i++) {
@@ -750,6 +751,9 @@ namespace ImguiNvnBackend {
             vtxOffset += vtxSize;
             idxOffset += idxSize;
         }
+
+        // Important: restore full-screen scissor so we don't leak a clipped scissor state into the game's next frame.
+        bd->cmdBuf->SetScissor(0, 0, vp.x, vp.y);
 
         // end the command recording and submit to queue.
         auto handle = bd->cmdBuf->EndRecording();

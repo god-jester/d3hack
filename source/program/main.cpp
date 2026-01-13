@@ -16,7 +16,10 @@
 #include "d3/hooks/season_events.hpp"
 #include "d3/hooks/lobby.hpp"
 #include "program/gui2/imgui_overlay.hpp"
+#include "program/runtime_apply.hpp"
 #include "idadefs.h"
+
+#include <cstring>
 
 #define to_float(v)         __coerce<float>(v)
 #define to_s32(v)           vcvtps_s32_f32(v)
@@ -178,6 +181,90 @@ namespace d3 {
         // GfxSetDepthTargetSwapchainFix::InstallAtOffset(0x29C4E0);
         // LobbyServiceIdleInternal::InstallAtFuncPtr(lobby_service_idle_internal);
         // StubCopyright::InstallAtFuncPtr(nn::oe::SetCopyrightVisibility);
+    }
+
+    void ApplyPatchConfigRuntime(const PatchConfig& config, RuntimeApplyResult* out) {
+        RuntimeApplyResult result{};
+
+        const PatchConfig prev = global_config;
+        global_config = config;
+        global_config.initialized = true;
+        global_config.defaults_only = false;
+
+        // Safe, per-frame-gated features should apply immediately just by updating global_config.
+        // For enable-only static patches, re-run patch entrypoints when turning them on.
+
+        auto append_note = [&](const char* text) {
+            if (text == nullptr || text[0] == '\0') {
+                return;
+            }
+            if (result.note[0] == '\0') {
+                snprintf(result.note, sizeof(result.note), "%s", text);
+                return;
+            }
+            const size_t len = std::strlen(result.note);
+            if (len + 2 >= sizeof(result.note)) {
+                return;
+            }
+            std::strncat(result.note, ", ", sizeof(result.note) - len - 1);
+            std::strncat(result.note, text, sizeof(result.note) - std::strlen(result.note) - 1);
+        };
+
+        // XVars that can be updated at runtime.
+        XVarBool_Set(&s_varOnlineServicePTR, global_config.seasons.spoof_ptr, 3u);
+        XVarBool_Set(&s_varExperimentalScheduling, global_config.resolution_hack.exp_scheduler, 3u);
+
+        // Enable-only patches.
+        if (global_config.overlays.active && global_config.overlays.buildlocker_watermark &&
+            !(prev.overlays.active && prev.overlays.buildlocker_watermark)) {
+            PatchBuildlocker();
+            result.applied_enable_only = true;
+            append_note("BuildLocker");
+        } else if ((prev.overlays.active && prev.overlays.buildlocker_watermark) &&
+                   !(global_config.overlays.active && global_config.overlays.buildlocker_watermark)) {
+            result.restart_required = true;
+        }
+
+        if (global_config.overlays.active && global_config.overlays.ddm_labels &&
+            !(prev.overlays.active && prev.overlays.ddm_labels)) {
+            PatchDDMLabels();
+            result.applied_enable_only = true;
+            append_note("DDM labels");
+        } else if ((prev.overlays.active && prev.overlays.ddm_labels) &&
+                   !(global_config.overlays.active && global_config.overlays.ddm_labels)) {
+            result.restart_required = true;
+        }
+
+        // Dynamic/runtime patches.
+        if (global_config.events.active) {
+            PatchDynamicEvents();
+        } else if (prev.events.active) {
+            result.restart_required = true;
+        }
+
+        if (global_config.seasons.active) {
+            PatchDynamicSeasonal();
+        } else if (prev.seasons.active) {
+            result.restart_required = true;
+        }
+
+        // Resolution output target is mostly static-patch-driven; avoid re-patching it mid-run.
+        if (prev.resolution_hack.active != global_config.resolution_hack.active ||
+            prev.resolution_hack.target_resolution != global_config.resolution_hack.target_resolution) {
+            result.restart_required = true;
+        }
+
+        // Hooks/patches gated at boot.
+        if (!prev.debug.enable_crashes && global_config.debug.enable_crashes) {
+            result.restart_required = true;
+        }
+        if (prev.seasons.allow_online != global_config.seasons.allow_online) {
+            result.restart_required = true;
+        }
+
+        if (out) {
+            *out = result;
+        }
     }
 
 }  // namespace d3

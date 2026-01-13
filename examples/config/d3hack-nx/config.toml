@@ -165,3 +165,9 @@ EnablePubFileDump = false
 EnableErrorTraces = true
 # Enable additional debug flags.
 EnableDebugFlags = false
+
+[gui]
+# NVN ImGui overlay configuration UI.
+# Hotkey: hold + and - (0.5s) to toggle visibility.
+Enabled = true
+Visible = true
