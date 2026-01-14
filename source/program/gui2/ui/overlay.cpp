@@ -109,6 +109,8 @@ void Overlay::EnsureWindowsCreated() {
 
     auto notifications = std::make_unique<windows::NotificationsWindow>();
     notifications_window_ = notifications.get();
+    notifications_window_->AddNotification(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), 6.0f, D3HACK_VER " initialized!");
+    notifications_window_->AddNotification(ImVec4(1.0f, 1.0f, 0.3f, 1.0f), 10.0f, "Hold + and - to toggle GUI");
 
     auto config = std::make_unique<windows::ConfigWindow>(*this);
     config_window_ = config.get();

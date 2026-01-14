@@ -105,6 +105,7 @@ namespace d3 {
             auto ret        = Orig(tParams, ptResolvedPlayer);
             auto sGameCurID = AppServerGetOnlyGame();
             PRINT_EXPR("%x, %i", sGameCurID, ServerIsLocal());
+            // d3::imgui_overlay::PostOverlayNotification(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), 4.0f, "SGame initialized");
             return ret;
         }
     };

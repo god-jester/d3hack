@@ -1,15 +1,19 @@
 #include "program/gui2/imgui_overlay.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <cstdlib>
 #include <cstring>
 #include <cmath>
 #include <vector>
 
 #include "lib/hook/trampoline.hpp"
+#include "lib/reloc/reloc.hpp"
+#include "lib/util/sys/mem_layout.hpp"
 #include "nn/hid.hpp"
 #include "program/romfs_assets.hpp"
 #include "program/gui2/ui/overlay.hpp"
+#include "program/gui2/ui/windows/notifications_window.hpp"
 #include "program/d3/setting.hpp"
 
 #include "imgui/imgui.h"
@@ -95,9 +99,9 @@ bool g_font_build_in_progress = false;
 
 float g_overlay_toggle_hold_s = 0.0f;
 bool g_overlay_toggle_armed = true;
-bool g_block_gamepad_input_to_game = false;
-bool g_hid_passthrough_for_overlay = false;
+std::atomic<bool> g_block_gamepad_input_to_game{false};
 bool g_hid_hooks_installed = false;
+bool g_hid_passthrough_for_overlay = false;
 
 struct ScopedHidPassthroughForOverlay {
     ScopedHidPassthroughForOverlay() { g_hid_passthrough_for_overlay = true; }
@@ -109,11 +113,31 @@ static void ClearNpadButtonsAndSticks(TState* st) {
     if (st == nullptr) {
         return;
     }
-    st->mButtons.field[0] = 0;
-    st->mAnalogStickL.X = 0;
-    st->mAnalogStickL.Y = 0;
-    st->mAnalogStickR.X = 0;
-    st->mAnalogStickR.Y = 0;
+    st->mButtons = {};
+    st->mAnalogStickL = {};
+    st->mAnalogStickR = {};
+}
+
+template <typename TState>
+static void ResetNpadState(TState* st) {
+    if (st == nullptr) {
+        return;
+    }
+    *st = {};
+}
+
+template <typename TState>
+static void ResetNpadStates(TState* out, int count) {
+    if (out == nullptr || count <= 0) {
+        return;
+    }
+    for (int i = 0; i < count; ++i) {
+        ResetNpadState(out + i);
+    }
+}
+
+static bool ShouldBlockGamepadInput() {
+    return g_block_gamepad_input_to_game.load(std::memory_order_relaxed) && !g_hid_passthrough_for_overlay;
 }
 
 struct NpadCombinedState {
@@ -391,105 +415,87 @@ using GetNpadStatesJoyDualFn = void (*)(nn::hid::NpadJoyDualState*, int, uint co
 using GetNpadStatesJoyLeftFn = void (*)(nn::hid::NpadJoyLeftState*, int, uint const&);
 using GetNpadStatesJoyRightFn = void (*)(nn::hid::NpadJoyRightState*, int, uint const&);
 
-HOOK_DEFINE_TRAMPOLINE(HidGetNpadStateFullKeyHook) {
-    static void Callback(nn::hid::NpadFullKeyState* out, uint const& port) {
-        Orig(out, port);
-        if (g_block_gamepad_input_to_game && !g_hid_passthrough_for_overlay) {
-            ClearNpadButtonsAndSticks(out);
+using GetNpadStatesDetailFullKeyFn = int (*)(int*, nn::hid::NpadFullKeyState*, int, uint const&);
+using GetNpadStatesDetailHandheldFn = int (*)(int*, nn::hid::NpadHandheldState*, int, uint const&);
+using GetNpadStatesDetailJoyDualFn = int (*)(int*, nn::hid::NpadJoyDualState*, int, uint const&);
+using GetNpadStatesDetailJoyLeftFn = int (*)(int*, nn::hid::NpadJoyLeftState*, int, uint const&);
+using GetNpadStatesDetailJoyRightFn = int (*)(int*, nn::hid::NpadJoyRightState*, int, uint const&);
+
+static void* LookupSymbolAddress(const char* name) {
+    for (int i = static_cast<int>(exl::util::ModuleIndex::Start);
+         i < static_cast<int>(exl::util::ModuleIndex::End);
+         ++i) {
+        const auto index = static_cast<exl::util::ModuleIndex>(i);
+        if (!exl::util::HasModule(index)) {
+            continue;
         }
+        const auto* sym = exl::reloc::GetSymbol(index, name);
+        if (sym == nullptr || sym->st_value == 0) {
+            continue;
+        }
+        const auto& info = exl::util::GetModuleInfo(index);
+        return reinterpret_cast<void*>(info.m_Total.m_Start + sym->st_value);
     }
+    return nullptr;
+}
+
+#define DEFINE_HID_GET_STATE_HOOK(HOOK_NAME, STATE_TYPE)            \
+HOOK_DEFINE_TRAMPOLINE(HOOK_NAME) {                                 \
+    static void Callback(nn::hid::STATE_TYPE* out, uint const& port) { \
+        if (ShouldBlockGamepadInput()) {                            \
+            ResetNpadState(out);                                    \
+            return;                                                 \
+        }                                                           \
+        Orig(out, port);                                            \
+    }                                                               \
 };
 
-HOOK_DEFINE_TRAMPOLINE(HidGetNpadStateHandheldHook) {
-    static void Callback(nn::hid::NpadHandheldState* out, uint const& port) {
-        Orig(out, port);
-        if (g_block_gamepad_input_to_game && !g_hid_passthrough_for_overlay) {
-            ClearNpadButtonsAndSticks(out);
-        }
-    }
+#define DEFINE_HID_GET_STATES_HOOK(HOOK_NAME, STATE_TYPE)           \
+HOOK_DEFINE_TRAMPOLINE(HOOK_NAME) {                                 \
+    static void Callback(nn::hid::STATE_TYPE* out, int count, uint const& port) { \
+        if (ShouldBlockGamepadInput()) {                            \
+            ResetNpadStates(out, count);                            \
+            return;                                                 \
+        }                                                           \
+        Orig(out, count, port);                                     \
+    }                                                               \
 };
 
-HOOK_DEFINE_TRAMPOLINE(HidGetNpadStateJoyDualHook) {
-    static void Callback(nn::hid::NpadJoyDualState* out, uint const& port) {
-        Orig(out, port);
-        if (g_block_gamepad_input_to_game && !g_hid_passthrough_for_overlay) {
-            ClearNpadButtonsAndSticks(out);
-        }
-    }
+#define DEFINE_HID_DETAIL_GET_STATES_HOOK(HOOK_NAME, STATE_TYPE)    \
+HOOK_DEFINE_TRAMPOLINE(HOOK_NAME) {                                 \
+    static int Callback(int* out_count, nn::hid::STATE_TYPE* out, int count, uint const& port) { \
+        if (ShouldBlockGamepadInput()) {                            \
+            if (out_count != nullptr) {                             \
+                *out_count = 0;                                     \
+            }                                                       \
+            ResetNpadStates(out, count);                            \
+            return 0;                                               \
+        }                                                           \
+        return Orig(out_count, out, count, port);                   \
+    }                                                               \
 };
 
-HOOK_DEFINE_TRAMPOLINE(HidGetNpadStateJoyLeftHook) {
-    static void Callback(nn::hid::NpadJoyLeftState* out, uint const& port) {
-        Orig(out, port);
-        if (g_block_gamepad_input_to_game && !g_hid_passthrough_for_overlay) {
-            ClearNpadButtonsAndSticks(out);
-        }
-    }
-};
+DEFINE_HID_GET_STATE_HOOK(HidGetNpadStateFullKeyHook, NpadFullKeyState)
+DEFINE_HID_GET_STATE_HOOK(HidGetNpadStateHandheldHook, NpadHandheldState)
+DEFINE_HID_GET_STATE_HOOK(HidGetNpadStateJoyDualHook, NpadJoyDualState)
+DEFINE_HID_GET_STATE_HOOK(HidGetNpadStateJoyLeftHook, NpadJoyLeftState)
+DEFINE_HID_GET_STATE_HOOK(HidGetNpadStateJoyRightHook, NpadJoyRightState)
 
-HOOK_DEFINE_TRAMPOLINE(HidGetNpadStateJoyRightHook) {
-    static void Callback(nn::hid::NpadJoyRightState* out, uint const& port) {
-        Orig(out, port);
-        if (g_block_gamepad_input_to_game && !g_hid_passthrough_for_overlay) {
-            ClearNpadButtonsAndSticks(out);
-        }
-    }
-};
+DEFINE_HID_GET_STATES_HOOK(HidGetNpadStatesFullKeyHook, NpadFullKeyState)
+DEFINE_HID_GET_STATES_HOOK(HidGetNpadStatesHandheldHook, NpadHandheldState)
+DEFINE_HID_GET_STATES_HOOK(HidGetNpadStatesJoyDualHook, NpadJoyDualState)
+DEFINE_HID_GET_STATES_HOOK(HidGetNpadStatesJoyLeftHook, NpadJoyLeftState)
+DEFINE_HID_GET_STATES_HOOK(HidGetNpadStatesJoyRightHook, NpadJoyRightState)
 
-HOOK_DEFINE_TRAMPOLINE(HidGetNpadStatesFullKeyHook) {
-    static void Callback(nn::hid::NpadFullKeyState* out, int count, uint const& port) {
-        Orig(out, count, port);
-        if (g_block_gamepad_input_to_game && !g_hid_passthrough_for_overlay) {
-            for (int i = 0; i < count; ++i) {
-                ClearNpadButtonsAndSticks(out + i);
-            }
-        }
-    }
-};
+DEFINE_HID_DETAIL_GET_STATES_HOOK(HidDetailGetNpadStatesFullKeyHook, NpadFullKeyState)
+DEFINE_HID_DETAIL_GET_STATES_HOOK(HidDetailGetNpadStatesHandheldHook, NpadHandheldState)
+DEFINE_HID_DETAIL_GET_STATES_HOOK(HidDetailGetNpadStatesJoyDualHook, NpadJoyDualState)
+DEFINE_HID_DETAIL_GET_STATES_HOOK(HidDetailGetNpadStatesJoyLeftHook, NpadJoyLeftState)
+DEFINE_HID_DETAIL_GET_STATES_HOOK(HidDetailGetNpadStatesJoyRightHook, NpadJoyRightState)
 
-HOOK_DEFINE_TRAMPOLINE(HidGetNpadStatesHandheldHook) {
-    static void Callback(nn::hid::NpadHandheldState* out, int count, uint const& port) {
-        Orig(out, count, port);
-        if (g_block_gamepad_input_to_game && !g_hid_passthrough_for_overlay) {
-            for (int i = 0; i < count; ++i) {
-                ClearNpadButtonsAndSticks(out + i);
-            }
-        }
-    }
-};
-
-HOOK_DEFINE_TRAMPOLINE(HidGetNpadStatesJoyDualHook) {
-    static void Callback(nn::hid::NpadJoyDualState* out, int count, uint const& port) {
-        Orig(out, count, port);
-        if (g_block_gamepad_input_to_game && !g_hid_passthrough_for_overlay) {
-            for (int i = 0; i < count; ++i) {
-                ClearNpadButtonsAndSticks(out + i);
-            }
-        }
-    }
-};
-
-HOOK_DEFINE_TRAMPOLINE(HidGetNpadStatesJoyLeftHook) {
-    static void Callback(nn::hid::NpadJoyLeftState* out, int count, uint const& port) {
-        Orig(out, count, port);
-        if (g_block_gamepad_input_to_game && !g_hid_passthrough_for_overlay) {
-            for (int i = 0; i < count; ++i) {
-                ClearNpadButtonsAndSticks(out + i);
-            }
-        }
-    }
-};
-
-HOOK_DEFINE_TRAMPOLINE(HidGetNpadStatesJoyRightHook) {
-    static void Callback(nn::hid::NpadJoyRightState* out, int count, uint const& port) {
-        Orig(out, count, port);
-        if (g_block_gamepad_input_to_game && !g_hid_passthrough_for_overlay) {
-            for (int i = 0; i < count; ++i) {
-                ClearNpadButtonsAndSticks(out + i);
-            }
-        }
-    }
-};
+#undef DEFINE_HID_DETAIL_GET_STATES_HOOK
+#undef DEFINE_HID_GET_STATES_HOOK
+#undef DEFINE_HID_GET_STATE_HOOK
 
 static void InstallHidHooks() {
     if (g_hid_hooks_installed) {
@@ -507,6 +513,33 @@ static void InstallHidHooks() {
     HidGetNpadStatesJoyDualHook::InstallAtFuncPtr(static_cast<GetNpadStatesJoyDualFn>(&nn::hid::GetNpadStates));
     HidGetNpadStatesJoyLeftHook::InstallAtFuncPtr(static_cast<GetNpadStatesJoyLeftFn>(&nn::hid::GetNpadStates));
     HidGetNpadStatesJoyRightHook::InstallAtFuncPtr(static_cast<GetNpadStatesJoyRightFn>(&nn::hid::GetNpadStates));
+
+    struct DetailHookEntry {
+        const char* name;
+        void (*install)(uintptr_t);
+    };
+
+    const DetailHookEntry detail_hooks[] = {
+        {"_ZN2nn3hid6detail13GetNpadStatesEPiPNS0_16NpadFullKeyStateEiRKj",
+         [](uintptr_t addr) { HidDetailGetNpadStatesFullKeyHook::InstallAtPtr(addr); }},
+        {"_ZN2nn3hid6detail13GetNpadStatesEPiPNS0_17NpadHandheldStateEiRKj",
+         [](uintptr_t addr) { HidDetailGetNpadStatesHandheldHook::InstallAtPtr(addr); }},
+        {"_ZN2nn3hid6detail13GetNpadStatesEPiPNS0_16NpadJoyDualStateEiRKj",
+         [](uintptr_t addr) { HidDetailGetNpadStatesJoyDualHook::InstallAtPtr(addr); }},
+        {"_ZN2nn3hid6detail13GetNpadStatesEPiPNS0_16NpadJoyLeftStateEiRKj",
+         [](uintptr_t addr) { HidDetailGetNpadStatesJoyLeftHook::InstallAtPtr(addr); }},
+        {"_ZN2nn3hid6detail13GetNpadStatesEPiPNS0_17NpadJoyRightStateEiRKj",
+         [](uintptr_t addr) { HidDetailGetNpadStatesJoyRightHook::InstallAtPtr(addr); }},
+    };
+
+    for (const auto& hook : detail_hooks) {
+        void* addr = LookupSymbolAddress(hook.name);
+        if (addr == nullptr) {
+            PRINT("[imgui_overlay] nn::hid detail symbol missing: %s", hook.name);
+            continue;
+        }
+        hook.install(reinterpret_cast<uintptr_t>(addr));
+    }
 
     g_hid_hooks_installed = true;
     PRINT_LINE("[imgui_overlay] nn::hid input hooks installed");
@@ -616,7 +649,7 @@ void QueuePresentTextureWrapper(NVNqueue *queue, NVNwindow *window, int texture_
 
         g_overlay.EnsureConfigLoaded();
 
-        g_block_gamepad_input_to_game = false;
+        g_block_gamepad_input_to_game.store(false, std::memory_order_relaxed);
 
         if (kImGuiBringup_DrawText && g_imgui_ctx_initialized && g_font_uploaded && g_overlay.imgui_render_enabled()) {
             ImguiNvnBackend::newFrame();
@@ -640,7 +673,8 @@ void QueuePresentTextureWrapper(NVNqueue *queue, NVNwindow *window, int texture_
                 g_last_npad.stick_r.X,
                 g_last_npad.stick_r.Y);
 
-            g_block_gamepad_input_to_game = g_overlay.focus_state().should_block_game_input;
+            g_block_gamepad_input_to_game.store(g_overlay.focus_state().should_block_game_input,
+                                                std::memory_order_relaxed);
 
             ImGui::Render();
             if (g_overlay.focus_state().visible) {
@@ -699,6 +733,21 @@ HOOK_DEFINE_TRAMPOLINE(DeviceGetProcAddressHook) {
 
 const d3::gui2::ui::GuiFocusState& GetGuiFocusState() {
     return g_overlay.focus_state();
+}
+
+void PostOverlayNotification(const ImVec4 &color, float ttl_s, const char *fmt, ...) {
+    auto *notifications = g_overlay.notifications_window();
+    if (notifications == nullptr) {
+        return;
+    }
+
+    char    buf[1024];
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+
+    notifications->AddNotification(color, ttl_s, "%s", buf);
 }
 
 void Initialize() {

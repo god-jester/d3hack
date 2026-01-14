@@ -44,7 +44,7 @@ INCLUDES	:=	include
 #---------------------------------------------------------------------------------
 ARCH	:=	-march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIC -fvisibility=hidden
 
-CFLAGS	:=	-g -Wall -Werror -Og \
+CFLAGS	:=	-g -Wall -Werror -Ofast \
 			-ffunction-sections \
 			-Wno-format-zero-length \
 			-fdata-sections \

@@ -51,15 +51,21 @@ def main(*args: Tuple[Any], **kwargs: Dict[str, Any]):
     with ftputil.FTPHost(FTP_IP, FTP_PORT, FTP_USERNAME, FTP_PASSWORD, session_factory=SessionFactory) as ftp_host:
         # Make output directory.
         ftp_host.makedirs(SD_OUT, exist_ok=True)
-        
-        # Iterate every file in the deploy directory.
-        for name in os.listdir(OUT):
-            # Ignore directories, for now.
-            if not os.path.isfile(os.path.join(OUT, name)):
-                continue
-                
-            # Upload file to server.
-            ftp_host.upload(os.path.join(OUT, name), ftp_host.path.join(SD_OUT, name))
+
+        def upload_tree(local_root: str, remote_root: str) -> None:
+            if not os.path.isdir(local_root):
+                return
+            for dirpath, dirnames, filenames in os.walk(local_root):
+                rel_path = os.path.relpath(dirpath, local_root)
+                remote_dir = remote_root if rel_path == "." else ftp_host.path.join(remote_root, rel_path)
+                ftp_host.makedirs(remote_dir, exist_ok=True)
+                for filename in filenames:
+                    local_path = os.path.join(dirpath, filename)
+                    remote_path = ftp_host.path.join(remote_dir, filename)
+                    ftp_host.upload(local_path, remote_path)
+
+        upload_tree(os.path.join(OUT, "exefs"), ftp_host.path.join(SD_OUT, "exefs"))
+        upload_tree(os.path.join(OUT, "romfs"), ftp_host.path.join(SD_OUT, "romfs"))
 
 
 if __name__ == '__main__':

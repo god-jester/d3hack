@@ -52,8 +52,26 @@ namespace nn::hid {
         IsRightWired = 5,
     };
 
+    enum class NpadStyleTag : u32 {
+        NpadStyleFullKey = 0,
+        NpadStyleHandheld = 1,
+        NpadStyleJoyDual = 2,
+        NpadStyleJoyLeft = 3,
+        NpadStyleJoyRight = 4,
+        NpadStyleGc = 5,
+        NpadStylePalma = 6,
+        NpadStyleLark = 7,
+        NpadStyleHandheldLark = 8,
+        NpadStyleLucia = 9,
+        NpadStyleLagon = 10,
+        NpadStyleLager = 11,
+        NpadStyleSystemExt = 29,
+        NpadStyleSystem = 30,
+    };
+
     using NpadButtonSet    = nn::util::BitFlagSet<64, NpadButton>;
     using NpadAttributeSet = nn::util::BitFlagSet<32, NpadAttribute>;
+    using NpadStyleSet     = nn::util::BitFlagSet<32, NpadStyleTag>;
 
     struct AnalogStickState {
         s32 X;
@@ -79,6 +97,17 @@ namespace nn::hid {
     };
     struct NpadJoyRightState : NpadBaseState {
     };
+    struct NpadPalmaState : NpadBaseState {
+    };
+    struct NpadSystemState : NpadBaseState {
+    };
+    struct NpadSystemExtState : NpadBaseState {
+    };
+
+    void InitializeNpad();
+    void SetSupportedNpadIdType(const u32*, u64);
+    void SetSupportedNpadStyleSet(NpadStyleSet);
+    NpadStyleSet GetNpadStyleSet(const u32& port);
 
     void GetNpadState(nn::hid::NpadFullKeyState*, uint const& port);
     void GetNpadState(nn::hid::NpadHandheldState*, uint const& port);
@@ -91,5 +120,13 @@ namespace nn::hid {
     void GetNpadStates(nn::hid::NpadJoyDualState*, int count, uint const& port);
     void GetNpadStates(nn::hid::NpadJoyLeftState*, int count, uint const& port);
     void GetNpadStates(nn::hid::NpadJoyRightState*, int count, uint const& port);
+
+    namespace detail {
+        int GetNpadStates(int* out_count, nn::hid::NpadFullKeyState*, int count, uint const& port);
+        int GetNpadStates(int* out_count, nn::hid::NpadHandheldState*, int count, uint const& port);
+        int GetNpadStates(int* out_count, nn::hid::NpadJoyDualState*, int count, uint const& port);
+        int GetNpadStates(int* out_count, nn::hid::NpadJoyLeftState*, int count, uint const& port);
+        int GetNpadStates(int* out_count, nn::hid::NpadJoyRightState*, int count, uint const& port);
+    }  // namespace detail
 
 }  // namespace nn::hid

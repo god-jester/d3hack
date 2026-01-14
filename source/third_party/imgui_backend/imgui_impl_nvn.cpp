@@ -8,32 +8,9 @@
 
 
 #include "lib/diag/assert.hpp"
+#include "program/d3/setting.hpp"
 #include "program/romfs_assets.hpp"
-#include "program/logging.hpp"
 #include "imgui_bin.h"
-
-#include <cstdarg>
-
-namespace {
-    void DebugPrint(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
-
-    void DebugPrint(const char *fmt, ...) {
-        std::va_list vl;
-        va_start(vl, fmt);
-        exl::log::PrintV(fmt, vl);
-        va_end(vl);
-    }
-
-    void DebugPrintTagged(const char *tag, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
-
-    void DebugPrintTagged(const char *tag, const char *fmt, ...) {
-        exl::log::PrintFmt("%s", tag);
-        std::va_list vl;
-        va_start(vl, fmt);
-        exl::log::PrintV(fmt, vl);
-        va_end(vl);
-    }
-}
 
 #define UBOSIZE 0x1000
 
@@ -112,7 +89,7 @@ namespace ImguiNvnBackend {
         bd->queue->SubmitCommands(1, &handle);
 
         if (!g_logged_fontless_clear) {
-            DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] Proof-of-life marker submitted\n");
+            PRINT_LINE("[imgui_backend] Proof-of-life marker submitted");
             g_logged_fontless_clear = true;
         }
     }
@@ -145,7 +122,7 @@ namespace ImguiNvnBackend {
         EXL_ASSERT(bd->testShader.Initialize(bd->device), "Unable to Init Program!");
         EXL_ASSERT(bd->testShader.SetShaders(2, bd->testShaderDatas), "Unable to Set Shaders!");
 
-        DebugPrint("[imgui_backend] Test Shader Setup.\n");
+        PRINT_LINE("[imgui_backend] Test Shader Setup.");
 
     }
 
@@ -213,11 +190,11 @@ namespace ImguiNvnBackend {
                 IM_FREE(bd->vtxBuffer);
             }
             bd->vtxBuffer = IM_NEW(MemoryBuffer)(totalVtxSize);
-            DebugPrint("[imgui_backend] (Re)sized Vertex Buffer to Size: %ld\n", static_cast<long>(totalVtxSize));
+            PRINT("[imgui_backend] (Re)sized Vertex Buffer to Size: %ld", static_cast<long>(totalVtxSize));
         }
 
         if (!bd->vtxBuffer->IsBufferReady()) {
-            DebugPrint("[imgui_backend] Cannot Draw Data! Buffers are not Ready.\n");
+            PRINT_LINE("[imgui_backend] Cannot Draw Data! Buffers are not Ready.");
             return;
         }
 
@@ -272,9 +249,10 @@ namespace ImguiNvnBackend {
             s_romfs_loaded = d3::romfs::ReadFileToBytes("romfs:/d3gui/imgui.bin", s_romfs_imgui_bin, 4 * 1024 * 1024);
 
             if (s_romfs_loaded) {
-                DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] Using romfs imgui.bin (%lu bytes)\n", static_cast<unsigned long>(s_romfs_imgui_bin.size()));
+                PRINT("[imgui_backend] Using romfs imgui.bin (%lu bytes)",
+                      static_cast<unsigned long>(s_romfs_imgui_bin.size()));
             } else {
-                DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] romfs imgui.bin not found; using built-in imgui.bin\n");
+                PRINT_LINE("[imgui_backend] romfs imgui.bin not found; using built-in imgui.bin");
             }
         }
 
@@ -287,7 +265,7 @@ namespace ImguiNvnBackend {
         }
 
         if (bd->imguiShaderBinary.size == 0) {
-            DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] ERROR: imgui.bin is empty\n");
+            PRINT_LINE("[imgui_backend] ERROR: imgui.bin is empty");
             return false;
         }
 
@@ -296,79 +274,75 @@ namespace ImguiNvnBackend {
 
     bool setupFont() {
 
-        DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] Setting up ImGui Font.\n");
+        PRINT_LINE("[imgui_backend] Setting up ImGui Font.");
 
         auto bd = getBackendData();
 
         ImGuiIO &io = ImGui::GetIO();
 
-        DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] setupFont: begin\n");
+        PRINT_LINE("[imgui_backend] setupFont: begin");
 
         // init sampler and texture pools
 
         int sampDescSize = 0;
-        DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] setupFont: GetInteger(SAMPLER_DESCRIPTOR_SIZE) before\n");
+        PRINT_LINE("[imgui_backend] setupFont: GetInteger(SAMPLER_DESCRIPTOR_SIZE) before");
         bd->device->GetInteger(nvn::DeviceInfo::SAMPLER_DESCRIPTOR_SIZE, &sampDescSize);
-        DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] setupFont: GetInteger(SAMPLER_DESCRIPTOR_SIZE) after => %d\n", sampDescSize);
+        PRINT("[imgui_backend] setupFont: GetInteger(SAMPLER_DESCRIPTOR_SIZE) after => %d", sampDescSize);
         int texDescSize = 0;
-        DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] setupFont: GetInteger(TEXTURE_DESCRIPTOR_SIZE) before\n");
+        PRINT_LINE("[imgui_backend] setupFont: GetInteger(TEXTURE_DESCRIPTOR_SIZE) before");
         bd->device->GetInteger(nvn::DeviceInfo::TEXTURE_DESCRIPTOR_SIZE, &texDescSize);
-        DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] setupFont: GetInteger(TEXTURE_DESCRIPTOR_SIZE) after => %d\n", texDescSize);
+        PRINT("[imgui_backend] setupFont: GetInteger(TEXTURE_DESCRIPTOR_SIZE) after => %d", texDescSize);
 
         int sampMemPoolSize = sampDescSize * MaxSampDescriptors;
         int texMemPoolSize = texDescSize * MaxTexDescriptors;
         int totalPoolSize = ALIGN_UP(sampMemPoolSize + texMemPoolSize, 0x1000);
 
-        DebugPrintTagged(
-            "[D3Hack|exlaunch] ",
-            "[imgui_backend] setupFont: descriptor sizes samp=%d tex=%d; pool sizes samp=0x%x tex=0x%x total=0x%x\n",
-            sampDescSize, texDescSize, sampMemPoolSize, texMemPoolSize, totalPoolSize);
+        PRINT("[imgui_backend] setupFont: descriptor sizes samp=%d tex=%d; pool sizes samp=0x%x tex=0x%x total=0x%x",
+              sampDescSize, texDescSize, sampMemPoolSize, texMemPoolSize, totalPoolSize);
 
-        DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] setupFont: createPool(sampTexMemPool) before\n");
+        PRINT_LINE("[imgui_backend] setupFont: createPool(sampTexMemPool) before");
         if (!MemoryPoolMaker::createPool(&bd->sampTexMemPool, totalPoolSize)) {
-            DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] Failed to Create Texture/Sampler Memory Pool!\n");
+            PRINT_LINE("[imgui_backend] Failed to Create Texture/Sampler Memory Pool!");
             return false;
         }
-        DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] setupFont: createPool(sampTexMemPool) after\n");
+        PRINT_LINE("[imgui_backend] setupFont: createPool(sampTexMemPool) after");
 
-        DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] setupFont: samplerPool.Initialize before\n");
+        PRINT_LINE("[imgui_backend] setupFont: samplerPool.Initialize before");
         if (!bd->samplerPool.Initialize(&bd->sampTexMemPool, 0, MaxSampDescriptors)) {
-            DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] Failed to Create Sampler Pool!\n");
+            PRINT_LINE("[imgui_backend] Failed to Create Sampler Pool!");
             return false;
         }
-        DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] setupFont: samplerPool.Initialize after\n");
+        PRINT_LINE("[imgui_backend] setupFont: samplerPool.Initialize after");
 
-        DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] setupFont: texPool.Initialize before\n");
+        PRINT_LINE("[imgui_backend] setupFont: texPool.Initialize before");
         if (!bd->texPool.Initialize(&bd->sampTexMemPool, sampMemPoolSize, MaxTexDescriptors)) {
-            DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] Failed to Create Texture Pool!\n");
+            PRINT_LINE("[imgui_backend] Failed to Create Texture Pool!");
             return false;
         }
-        DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] setupFont: texPool.Initialize after\n");
+        PRINT_LINE("[imgui_backend] setupFont: texPool.Initialize after");
 
         // convert imgui font texels
 
         unsigned char *pixels;
         int width, height, pixelByteSize;
-        DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] setupFont: GetTexDataAsRGBA32 before\n");
+        PRINT_LINE("[imgui_backend] setupFont: GetTexDataAsRGBA32 before");
         io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height, &pixelByteSize);
-        DebugPrintTagged("[D3Hack|exlaunch] ",
-                   "[imgui_backend] setupFont: GetTexDataAsRGBA32 after => pixels=%p %dx%d bpp=%d\n",
-                   pixels, width, height, pixelByteSize);
+        PRINT("[imgui_backend] setupFont: GetTexDataAsRGBA32 after => pixels=%p %dx%d bpp=%d",
+              pixels, width, height, pixelByteSize);
         int texPoolSize = pixelByteSize * width * height;
 
-        DebugPrintTagged("[D3Hack|exlaunch] ",
-                   "[imgui_backend] setupFont: font mempool size=0x%x (aligned=0x%lx)\n", texPoolSize,
-                   static_cast<unsigned long>(ALIGN_UP(texPoolSize, 0x1000)));
+        PRINT("[imgui_backend] setupFont: font mempool size=0x%x (aligned=0x%lx)",
+              texPoolSize, static_cast<unsigned long>(ALIGN_UP(texPoolSize, 0x1000)));
 
-        DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] setupFont: createPool(fontMemPool) before\n");
+        PRINT_LINE("[imgui_backend] setupFont: createPool(fontMemPool) before");
         if (!MemoryPoolMaker::createPool(&bd->fontMemPool, ALIGN_UP(texPoolSize, 0x1000),
                                          nvn::MemoryPoolFlags::CPU_UNCACHED | nvn::MemoryPoolFlags::GPU_CACHED)) {
-            DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] Failed to Create Font Memory Pool!\n");
+            PRINT_LINE("[imgui_backend] Failed to Create Font Memory Pool!");
             return false;
         }
-        DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] setupFont: createPool(fontMemPool) after\n");
+        PRINT_LINE("[imgui_backend] setupFont: createPool(fontMemPool) after");
 
-        DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] setupFont: texBuilder.Set* before\n");
+        PRINT_LINE("[imgui_backend] setupFont: texBuilder.Set* before");
         bd->texBuilder.SetDefaults()
                 .SetDevice(bd->device)
                 .SetTarget(nvn::TextureTarget::TARGET_2D)
@@ -376,17 +350,16 @@ namespace ImguiNvnBackend {
                 .SetSize2D(width, height)
                 .SetStorage(&bd->fontMemPool, 0);
 
-        DebugPrintTagged("[D3Hack|exlaunch] ",
-                   "[imgui_backend] setupFont: texBuilder.Set* after storageSize=0x%zx storageAlign=0x%zx\n",
-                   static_cast<size_t>(bd->texBuilder.GetStorageSize()),
-                   static_cast<size_t>(bd->texBuilder.GetStorageAlignment()));
+        PRINT("[imgui_backend] setupFont: texBuilder.Set* after storageSize=0x%zx storageAlign=0x%zx",
+              static_cast<size_t>(bd->texBuilder.GetStorageSize()),
+              static_cast<size_t>(bd->texBuilder.GetStorageAlignment()));
 
-        DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] setupFont: fontTexture.Initialize before\n");
+        PRINT_LINE("[imgui_backend] setupFont: fontTexture.Initialize before");
         if (!bd->fontTexture.Initialize(&bd->texBuilder)) {
-            DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] Failed to Create Font Texture!\n");
+            PRINT_LINE("[imgui_backend] Failed to Create Font Texture!");
             return false;
         }
-        DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] setupFont: fontTexture.Initialize after\n");
+        PRINT_LINE("[imgui_backend] setupFont: fontTexture.Initialize after");
 
         // setup font texture
 
@@ -399,46 +372,45 @@ namespace ImguiNvnBackend {
                 .depth = 1
         };
 
-        DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] setupFont: WriteTexels before (%dx%d)\n", region.width, region.height);
+        PRINT("[imgui_backend] setupFont: WriteTexels before (%dx%d)", region.width, region.height);
         bd->fontTexture.WriteTexels(nullptr, &region, pixels);
-        DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] setupFont: WriteTexels after\n");
-        DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] setupFont: FlushTexels before\n");
+        PRINT_LINE("[imgui_backend] setupFont: WriteTexels after");
+        PRINT_LINE("[imgui_backend] setupFont: FlushTexels before");
         bd->fontTexture.FlushTexels(nullptr, &region);
-        DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] setupFont: FlushTexels after\n");
+        PRINT_LINE("[imgui_backend] setupFont: FlushTexels after");
 
-        DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] setupFont: samplerBuilder.Set* before\n");
+        PRINT_LINE("[imgui_backend] setupFont: samplerBuilder.Set* before");
         bd->samplerBuilder.SetDefaults()
                 .SetDevice(bd->device)
                 .SetMinMagFilter(nvn::MinFilter::LINEAR, nvn::MagFilter::LINEAR)
                 .SetWrapMode(nvn::WrapMode::CLAMP, nvn::WrapMode::CLAMP, nvn::WrapMode::CLAMP);
-        DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] setupFont: samplerBuilder.Set* after\n");
+        PRINT_LINE("[imgui_backend] setupFont: samplerBuilder.Set* after");
 
-        DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] setupFont: fontSampler.Initialize before\n");
+        PRINT_LINE("[imgui_backend] setupFont: fontSampler.Initialize before");
         if (!bd->fontSampler.Initialize(&bd->samplerBuilder)) {
-            DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] Failed to Init Font Sampler!\n");
+            PRINT_LINE("[imgui_backend] Failed to Init Font Sampler!");
             return false;
         }
-        DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] setupFont: fontSampler.Initialize after\n");
+        PRINT_LINE("[imgui_backend] setupFont: fontSampler.Initialize after");
 
         bd->textureId = 257;
         bd->samplerId = 257;
 
-        DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] setupFont: RegisterTexture/RegisterSampler before\n");
+        PRINT_LINE("[imgui_backend] setupFont: RegisterTexture/RegisterSampler before");
         bd->texPool.RegisterTexture(bd->textureId, &bd->fontTexture, nullptr);
         bd->samplerPool.RegisterSampler(bd->samplerId, &bd->fontSampler);
-        DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] setupFont: RegisterTexture/RegisterSampler after\n");
+        PRINT_LINE("[imgui_backend] setupFont: RegisterTexture/RegisterSampler after");
 
-        DebugPrintTagged("[D3Hack|exlaunch] ",
-                   "[imgui_backend] setupFont: GetTextureHandle before (tex=%d samp=%d)\n", bd->textureId, bd->samplerId);
+        PRINT("[imgui_backend] setupFont: GetTextureHandle before (tex=%d samp=%d)", bd->textureId, bd->samplerId);
         bd->fontTexHandle = bd->device->GetTextureHandle(bd->textureId, bd->samplerId);
-        DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] setupFont: GetTextureHandle after\n");
-        DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] setupFont: io.Fonts->SetTexID before\n");
+        PRINT_LINE("[imgui_backend] setupFont: GetTextureHandle after");
+        PRINT_LINE("[imgui_backend] setupFont: io.Fonts->SetTexID before");
         io.Fonts->SetTexID(&bd->fontTexHandle);
-        DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] setupFont: io.Fonts->SetTexID after\n");
+        PRINT_LINE("[imgui_backend] setupFont: io.Fonts->SetTexID after");
 
-        DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] Finished.\n");
+        PRINT_LINE("[imgui_backend] Finished.");
 
-        DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] setupFont: end\n");
+        PRINT_LINE("[imgui_backend] setupFont: end");
 
         return true;
     }
@@ -448,7 +420,7 @@ namespace ImguiNvnBackend {
         auto bd = getBackendData();
 
         if (!bd->shaderProgram.Initialize(bd->device)) {
-            DebugPrint("[imgui_backend] Failed to Initialize Shader Program!\n");
+            PRINT_LINE("[imgui_backend] Failed to Initialize Shader Program!");
             return false;
         }
 
@@ -457,7 +429,7 @@ namespace ImguiNvnBackend {
                                                                           nvn::MemoryPoolFlags::SHADER_CODE);
 
         if (!bd->shaderMemory->IsBufferReady()) {
-            DebugPrint("[imgui_backend] Shader Memory Pool not Ready! Unable to continue.\n");
+            PRINT_LINE("[imgui_backend] Shader Memory Pool not Ready! Unable to continue.");
             return false;
         }
 
@@ -475,7 +447,7 @@ namespace ImguiNvnBackend {
         fragShaderData.control = shaderBinary + offsetData.mFragmentControlOffset;
 
         if (!bd->shaderProgram.SetShaders(2, bd->shaderDatas)) {
-            DebugPrint("[imgui_backend] Failed to Set shader data for program.\n");
+            PRINT_LINE("[imgui_backend] Failed to Set shader data for program.");
             return false;
         }
 
@@ -486,7 +458,7 @@ namespace ImguiNvnBackend {
         bd->uniformMemory = IM_NEW(MemoryBuffer)(UBOSIZE);
 
         if (!bd->uniformMemory->IsBufferReady()) {
-            DebugPrint("[imgui_backend] Uniform Memory Pool not Ready! Unable to continue.\n");
+            PRINT_LINE("[imgui_backend] Uniform Memory Pool not Ready! Unable to continue.");
             return false;
         }
 
@@ -529,7 +501,7 @@ namespace ImguiNvnBackend {
         // Fonts are optional for proof-of-life; do not build/decompress them in the present hook.
 
         if (!createShaders()) {
-            DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] ERROR: createShaders failed\n");
+            PRINT_LINE("[imgui_backend] ERROR: createShaders failed");
             return;
         }
 
@@ -538,7 +510,7 @@ namespace ImguiNvnBackend {
         }
 
         if (!setupShaders(bd->imguiShaderBinary.ptr, bd->imguiShaderBinary.size)) {
-            DebugPrintTagged("[D3Hack|exlaunch] ", "[imgui_backend] ERROR: setupShaders failed\n");
+            PRINT_LINE("[imgui_backend] ERROR: setupShaders failed");
             return;
         }
 
@@ -646,9 +618,9 @@ namespace ImguiNvnBackend {
             if (bd->vtxBuffer) {
                 bd->vtxBuffer->Finalize();
                 IM_FREE(bd->vtxBuffer);
-                DebugPrint("[imgui_backend] Resizing Vertex Buffer to Size: %ld\n", static_cast<long>(totalVtxSize));
+                PRINT("[imgui_backend] Resizing Vertex Buffer to Size: %ld", static_cast<long>(totalVtxSize));
             } else {
-                DebugPrint("[imgui_backend] Initializing Vertex Buffer to Size: %ld\n", static_cast<long>(totalVtxSize));
+                PRINT("[imgui_backend] Initializing Vertex Buffer to Size: %ld", static_cast<long>(totalVtxSize));
             }
 
             bd->vtxBuffer = IM_NEW(MemoryBuffer)(totalVtxSize);
@@ -662,9 +634,9 @@ namespace ImguiNvnBackend {
                 bd->idxBuffer->Finalize();
                 IM_FREE(bd->idxBuffer);
 
-                DebugPrint("[imgui_backend] Resizing Index Buffer to Size: %ld\n", static_cast<long>(totalIdxSize));
+                PRINT("[imgui_backend] Resizing Index Buffer to Size: %ld", static_cast<long>(totalIdxSize));
             } else {
-                DebugPrint("[imgui_backend] Initializing Index Buffer to Size: %ld\n", static_cast<long>(totalIdxSize));
+                PRINT("[imgui_backend] Initializing Index Buffer to Size: %ld", static_cast<long>(totalIdxSize));
             }
 
             bd->idxBuffer = IM_NEW(MemoryBuffer)(totalIdxSize);
@@ -673,7 +645,7 @@ namespace ImguiNvnBackend {
 
         // if we fail to resize/init either buffers, end execution before we try to use said invalid buffer(s)
         if (!(bd->vtxBuffer->IsBufferReady() && bd->idxBuffer->IsBufferReady())) {
-            DebugPrint("[imgui_backend] Cannot Draw Data! Buffers are not Ready.\n");
+            PRINT_LINE("[imgui_backend] Cannot Draw Data! Buffers are not Ready.");
             return;
         }
 

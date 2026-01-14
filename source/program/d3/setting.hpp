@@ -6,8 +6,6 @@
 #include "program/logging.hpp"
 #include <cstdio>
 
-#define DBGLOG
-#define DBGPRINT
 #define D3HACK_VER     "D3Hack v2.3"
 #define D3HACK_AUTHOR  "jester"
 #define D3HACK_WEB     "https://jester.dev"
@@ -17,6 +15,11 @@
 #define D3HACK_FULLVER D3HACK_VER " by " D3HACK_AUTHOR " - Diablo III: Eternal Collection [v" D3CLIENT_VER "]"
 #define D3HACK_FULLFPS D3HACK_VER D3HACK_BUILD
 #define D3HACK_FULLWWW D3HACK_VER D3HACK_BUILD CRLF CRLF D3HACK_DESC
+
+#ifdef EXL_DEBUG
+#define DBGLOG
+#define DBGPRINT
+#endif
 
 #ifndef DBGLOG
 #define LOG(...) (static_cast<void>(sizeof(__VA_ARGS__)));
@@ -29,6 +32,7 @@
 
 #ifndef DBGPRINT
 #define PRINT(...) (static_cast<void>(sizeof(__VA_ARGS__)));
+#define PRINT_LINE PRINT
 #define PRINT_EXPR PRINT
 #else
 #define PRINT(fmt, ...)                                      \

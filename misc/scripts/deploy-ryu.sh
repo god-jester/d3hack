@@ -22,9 +22,11 @@ export MODS_PATH=${RYU_PATH}/mods/contents/${PROGRAM_ID}/${NAME}
 
 # Ensure directory exists.
 mkdir -p "${MODS_PATH}/exefs";
+mkdir -p "${MODS_PATH}/romfs";
 
 # Copy over files.
-cp ${OUT}/* "${MODS_PATH}/exefs"
+cp -R "${OUT}/exefs/." "${MODS_PATH}/exefs/"
+cp -R "${OUT}/romfs/." "${MODS_PATH}/romfs/"
 
 # Indicate completion so VSCode doesn't make us guess
 echo "Deployed to Ryujinx: "; date

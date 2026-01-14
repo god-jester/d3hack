@@ -26,7 +26,7 @@ static const char* SeasonMapModeToString(PatchConfig::SeasonEventMapMode mode) {
 }  // namespace
 
 ConfigWindow::ConfigWindow(ui::Overlay& overlay)
-    : Window("d3hack config"), overlay_(overlay) {
+    : Window(D3HACK_VER), overlay_(overlay) {
     SetDefaultPos(ImVec2(24.0f, 140.0f), ImGuiCond_Once);
     SetDefaultSize(ImVec2(740.0f, 480.0f), ImGuiCond_Once);
     SetFlags(ImGuiWindowFlags_NoSavedSettings);

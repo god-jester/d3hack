@@ -4,18 +4,7 @@
 // PRINT macros
 #include "program/d3/setting.hpp"
 
-#include <cstdarg>
-
 namespace {
-    void DebugPrint(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
-
-    void DebugPrint(const char *fmt, ...) {
-        std::va_list vl;
-        va_start(vl, fmt);
-        exl::log::PrintV(fmt, vl);
-        va_end(vl);
-    }
-
     size_t GetDevicePageSizeOrFallback(const nvn::Device *device) {
         int page_size = 0;
         if (device != nullptr) {
@@ -44,7 +33,7 @@ MemoryBuffer::MemoryBuffer(size_t size) {
 
     void *rawPtr = IM_ALLOC(alignedSize + (pool_alignment - 1));
     if (rawPtr == nullptr) {
-        DebugPrint("[D3Hack|exlaunch] [imgui_backend] MemoryBuffer IM_ALLOC failed (size=0x%zx)\n", alignedSize);
+        PRINT("[imgui_backend] MemoryBuffer IM_ALLOC failed (size=0x%zx)", alignedSize);
         return;
     }
     rawBuffer = rawPtr;
@@ -54,8 +43,7 @@ MemoryBuffer::MemoryBuffer(size_t size) {
 
     const bool isAligned = ((reinterpret_cast<uintptr_t>(memBuffer) & (pool_alignment - 1)) == 0);
     if (!isAligned) {
-        DebugPrint("[D3Hack|exlaunch] [imgui_backend] ERROR: MemoryBuffer backing is not 0x%zx-aligned (ptr=%p)\n",
-                   pool_alignment, memBuffer);
+        PRINT("[imgui_backend] ERROR: MemoryBuffer backing is not 0x%zx-aligned (ptr=%p)", pool_alignment, memBuffer);
         return;
     }
 
@@ -65,14 +53,14 @@ MemoryBuffer::MemoryBuffer(size_t size) {
             .SetStorage(memBuffer, alignedSize);
 
     if (!pool.Initialize(&bd->memPoolBuilder)) {
-        DebugPrint("[D3Hack|exlaunch] [imgui_backend] Failed to Create Memory Pool!\n");
+        PRINT_LINE("[imgui_backend] Failed to Create Memory Pool!");
         return;
     }
 
     bd->bufferBuilder.SetDevice(bd->device).SetDefaults().SetStorage(&pool, 0, alignedSize);
 
     if (!buffer.Initialize(&bd->bufferBuilder)) {
-        DebugPrint("[D3Hack|exlaunch] [imgui_backend] Failed to Init Buffer!\n");
+        PRINT_LINE("[imgui_backend] Failed to Init Buffer!");
         return;
     }
 
@@ -91,7 +79,7 @@ MemoryBuffer::MemoryBuffer(size_t size, nvn::MemoryPoolFlags flags) {
 
     void *rawPtr = IM_ALLOC(alignedSize + (pool_alignment - 1));
     if (rawPtr == nullptr) {
-        DebugPrint("[D3Hack|exlaunch] [imgui_backend] MemoryBuffer IM_ALLOC failed (size=0x%zx)\n", alignedSize);
+        PRINT("[imgui_backend] MemoryBuffer IM_ALLOC failed (size=0x%zx)", alignedSize);
         return;
     }
     rawBuffer = rawPtr;
@@ -101,8 +89,7 @@ MemoryBuffer::MemoryBuffer(size_t size, nvn::MemoryPoolFlags flags) {
 
     const bool isAligned = ((reinterpret_cast<uintptr_t>(memBuffer) & (pool_alignment - 1)) == 0);
     if (!isAligned) {
-        DebugPrint("[D3Hack|exlaunch] [imgui_backend] ERROR: MemoryBuffer backing is not 0x%zx-aligned (ptr=%p)\n",
-                   pool_alignment, memBuffer);
+        PRINT("[imgui_backend] ERROR: MemoryBuffer backing is not 0x%zx-aligned (ptr=%p)", pool_alignment, memBuffer);
         return;
     }
 
@@ -112,14 +99,14 @@ MemoryBuffer::MemoryBuffer(size_t size, nvn::MemoryPoolFlags flags) {
             .SetStorage(memBuffer, alignedSize);
 
     if (!pool.Initialize(&bd->memPoolBuilder)) {
-        DebugPrint("[D3Hack|exlaunch] [imgui_backend] Failed to Create Memory Pool!\n");
+        PRINT_LINE("[imgui_backend] Failed to Create Memory Pool!");
         return;
     }
 
     bd->bufferBuilder.SetDevice(bd->device).SetDefaults().SetStorage(&pool, 0, alignedSize);
 
     if (!buffer.Initialize(&bd->bufferBuilder)) {
-        DebugPrint("[D3Hack|exlaunch] [imgui_backend] Failed to Init Buffer!\n");
+        PRINT_LINE("[imgui_backend] Failed to Init Buffer!");
         return;
     }
 
@@ -140,14 +127,14 @@ MemoryBuffer::MemoryBuffer(size_t size, void *bufferPtr, nvn::MemoryPoolFlags fl
             .SetStorage(memBuffer, size);
 
     if (!pool.Initialize(&bd->memPoolBuilder)) {
-        DebugPrint("[imgui_backend] Failed to Create Memory Pool!\n");
+        PRINT_LINE("[imgui_backend] Failed to Create Memory Pool!");
         return;
     }
 
     bd->bufferBuilder.SetDevice(bd->device).SetDefaults().SetStorage(&pool, 0, size);
 
     if (!buffer.Initialize(&bd->bufferBuilder)) {
-        DebugPrint("[imgui_backend] Failed to Init Buffer!\n");
+        PRINT_LINE("[imgui_backend] Failed to Init Buffer!");
         return;
     }
 
