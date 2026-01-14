@@ -43,15 +43,7 @@ namespace d3::gui2::ui::windows {
     }
 
     void ConfigWindow::RenderContents() {
-        const ImGuiIO &io = ImGui::GetIO();
         ImGui::TextUnformatted(overlay_.tr("gui.hotkey_toggle", "Hold + and - (0.5s) to toggle overlay visibility."));
-
-        const auto &dbg = overlay_.frame_debug();
-        ImGui::Text("Viewport: %.0fx%.0f | Crop: %dx%d | Swapchain: %d", dbg.viewport_size.x, dbg.viewport_size.y, dbg.crop_w, dbg.crop_h, dbg.swapchain_texture_count);
-        ImGui::Text("ImGui: NavActive=%d NavVisible=%d", io.NavActive ? 1 : 0, io.NavVisible ? 1 : 0);
-        ImGui::Text("NPAD: ok=%d buttons=0x%llx stickL=(%d,%d) stickR=(%d,%d)", dbg.last_npad_valid ? 1 : 0, dbg.last_npad_buttons, dbg.last_npad_stick_lx, dbg.last_npad_stick_ly, dbg.last_npad_stick_rx, dbg.last_npad_stick_ry);
-
-        ImGui::Separator();
 
         if (!overlay_.is_config_loaded()) {
             ImGui::TextUnformatted(overlay_.tr("gui.config_not_loaded", "Config not loaded yet."));
@@ -61,6 +53,10 @@ namespace d3::gui2::ui::windows {
         PatchConfig &cfg = overlay_.ui_config();
 
         ImGui::Text("Config source: %s", global_config.defaults_only ? "built-in defaults" : "sd:/config/d3hack-nx/config.toml");
+        ImGui::Separator();
+
+        const auto &dbg = overlay_.frame_debug();
+        ImGui::Text("Viewport: %.0fx%.0f | Crop: %dx%d | Swapchain: %d", dbg.viewport_size.x, dbg.viewport_size.y, dbg.crop_w, dbg.crop_h, dbg.swapchain_texture_count);
 
         if (overlay_.ui_dirty()) {
             ImGui::TextUnformatted(overlay_.tr("gui.ui_state_dirty", "UI state: UNSAVED changes"));

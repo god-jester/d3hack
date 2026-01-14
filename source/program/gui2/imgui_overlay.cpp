@@ -11,11 +11,13 @@
 #include "lib/hook/trampoline.hpp"
 #include "lib/reloc/reloc.hpp"
 #include "lib/util/sys/mem_layout.hpp"
+#include "nn/fs.hpp"
 #include "nn/hid.hpp"
 #include "program/romfs_assets.hpp"
 #include "program/gui2/ui/overlay.hpp"
 #include "program/gui2/ui/windows/notifications_window.hpp"
 #include "program/d3/setting.hpp"
+#include "symbols/common.hpp"
 
 #include "imgui/imgui.h"
 #include "imgui_backend/imgui_impl_nvn.hpp"
@@ -86,7 +88,80 @@ namespace d3::imgui_overlay {
             }
         }
 
+        void *ImGuiAlloc(size_t size, void *user_data) {
+            (void)user_data;
+
+            if (SigmaMemoryNew != nullptr) {
+                return SigmaMemoryNew(size, 0x20, nullptr, false);
+            }
+
+            return std::malloc(size);
+        }
+
+        void ImGuiFree(void *ptr, void *user_data) {
+            (void)user_data;
+            if (ptr == nullptr) {
+                return;
+            }
+
+            if (SigmaMemoryFree != nullptr) {
+                SigmaMemoryFree(ptr, nullptr);
+                return;
+            }
+
+            std::free(ptr);
+        }
+
+        bool ReadFileToImGuiBuffer(const char *path, unsigned char **out_data, size_t *out_size, size_t max_size) {
+            if (out_data == nullptr || out_size == nullptr) {
+                return false;
+            }
+            *out_data = nullptr;
+            *out_size = 0;
+
+            if (path == nullptr || path[0] == '\0') {
+                return false;
+            }
+
+            nn::fs::FileHandle fh {};
+            auto               rc = nn::fs::OpenFile(&fh, path, nn::fs::OpenMode_Read);
+            if (R_FAILED(rc)) {
+                return false;
+            }
+
+            long size = 0;
+            rc        = nn::fs::GetFileSize(&size, fh);
+            if (R_FAILED(rc) || size <= 0) {
+                nn::fs::CloseFile(fh);
+                return false;
+            }
+
+            const size_t size_st = static_cast<size_t>(size);
+            if (size_st > max_size) {
+                nn::fs::CloseFile(fh);
+                return false;
+            }
+
+            auto *buffer = static_cast<unsigned char *>(IM_ALLOC(size_st));
+            if (buffer == nullptr) {
+                nn::fs::CloseFile(fh);
+                return false;
+            }
+
+            rc = nn::fs::ReadFile(fh, 0, buffer, static_cast<ulong>(size_st));
+            nn::fs::CloseFile(fh);
+            if (R_FAILED(rc)) {
+                IM_FREE(buffer);
+                return false;
+            }
+
+            *out_data = buffer;
+            *out_size = size_st;
+            return true;
+        }
+
         bool g_imgui_ctx_initialized = false;
+        bool g_imgui_allocators_set  = false;
         bool g_backend_initialized   = false;
         bool g_font_atlas_built      = false;
         bool g_font_uploaded         = false;
@@ -650,6 +725,10 @@ namespace d3::imgui_overlay {
             // with ImGui's global context pointer.
             if (!g_imgui_ctx_initialized) {
                 IMGUI_CHECKVERSION();
+                if (!g_imgui_allocators_set) {
+                    ImGui::SetAllocatorFunctions(ImGuiAlloc, ImGuiFree);
+                    g_imgui_allocators_set = true;
+                }
                 ImGui::CreateContext();
                 g_imgui_ctx_initialized = true;
 
@@ -901,10 +980,24 @@ namespace d3::imgui_overlay {
         font_cfg.Name[2] = '\0';
         // Build for docked readability (we apply a runtime scale for 720p).
         font_cfg.SizePixels = 18.0f;
+        static ImVector<ImWchar> s_font_ranges;
+        static bool              s_font_ranges_built = false;
+        if (!s_font_ranges_built) {
+            ImFontGlyphRangesBuilder builder;
+            builder.AddRanges(io.Fonts->GetGlyphRangesDefault());
+            builder.AddRanges(io.Fonts->GetGlyphRangesKorean());
+            builder.AddRanges(io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
+            builder.AddRanges(io.Fonts->GetGlyphRangesJapanese());
+            builder.AddRanges(io.Fonts->GetGlyphRangesCyrillic());
+            builder.BuildRanges(&s_font_ranges);
+            s_font_ranges_built = true;
+        }
+        font_cfg.GlyphRanges = s_font_ranges.Data;
 
         ImFont *font = nullptr;
 
-        static std::vector<unsigned char> s_romfs_ttf;
+        static unsigned char             *s_romfs_ttf_data  = nullptr;
+        static size_t                     s_romfs_ttf_size  = 0;
         static std::string                s_romfs_ttf_path;
         static bool                       s_romfs_ttf_tried = false;
 
@@ -913,17 +1006,17 @@ namespace d3::imgui_overlay {
 
             std::string path;
             if (d3::romfs::FindFirstFileWithSuffix("romfs:/d3gui", ".ttf", path) &&
-                d3::romfs::ReadFileToBytes(path.c_str(), s_romfs_ttf, 4 * 1024 * 1024)) {
+                ReadFileToImGuiBuffer(path.c_str(), &s_romfs_ttf_data, &s_romfs_ttf_size, 5 * 1024 * 1024)) {
                 s_romfs_ttf_path = path;
-                PRINT("[imgui_overlay] Loaded romfs font: %s (%lu bytes)", s_romfs_ttf_path.c_str(), static_cast<unsigned long>(s_romfs_ttf.size()));
+                PRINT("[imgui_overlay] Loaded romfs font: %s (%lu bytes)", s_romfs_ttf_path.c_str(), static_cast<unsigned long>(s_romfs_ttf_size));
             } else {
                 PRINT_LINE("[imgui_overlay] romfs font not found; falling back to ImGui default font");
             }
         }
 
-        if (!s_romfs_ttf.empty()) {
+        if (s_romfs_ttf_data != nullptr && s_romfs_ttf_size > 0) {
             font_cfg.FontDataOwnedByAtlas = false;
-            font                          = io.Fonts->AddFontFromMemoryTTF(s_romfs_ttf.data(), static_cast<int>(s_romfs_ttf.size()), font_cfg.SizePixels, &font_cfg);
+            font                          = io.Fonts->AddFontFromMemoryTTF(s_romfs_ttf_data, static_cast<int>(s_romfs_ttf_size), font_cfg.SizePixels, &font_cfg);
             if (font == nullptr) {
                 PRINT_LINE("[imgui_overlay] ERROR: AddFontFromMemoryTTF failed; falling back to ImGui default font");
             }
@@ -937,6 +1030,11 @@ namespace d3::imgui_overlay {
         if (!g_font_atlas_built) {
             PRINT_LINE("[imgui_overlay] ERROR: ImFontAtlas::Build failed");
             return;
+        }
+        if (s_romfs_ttf_data != nullptr) {
+            IM_FREE(s_romfs_ttf_data);
+            s_romfs_ttf_data = nullptr;
+            s_romfs_ttf_size = 0;
         }
         PRINT_LINE("[imgui_overlay] ImGui font atlas built");
     }

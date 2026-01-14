@@ -14,3 +14,7 @@
 // Avoid pulling any file I/O into the Switch build (ImGui uses fopen/fread for ini/log helpers).
 // Config lives on sd:/ and is handled by d3hack's own FS layer.
 #define IMGUI_DISABLE_FILE_FUNCTIONS
+
+// Route stb_truetype allocations through ImGui's allocator.
+#define STBTT_malloc(x, u) ((void)(u), IM_ALLOC(x))
+#define STBTT_free(x, u)   ((void)(u), IM_FREE(x))
