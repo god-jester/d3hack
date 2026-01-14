@@ -1,0 +1,25 @@
+# Optional CMake-only overrides for local workflows.
+# Copy to config.cmake and edit as needed.
+#
+# Note: if you want -DVAR=... on the command line to win, wrap overrides in:
+#   if(NOT DEFINED VAR)
+#     set(VAR "...") 
+#   endif()
+
+# set(LOAD_KIND "Module")
+# set(PROGRAM_ID "01001b300b9be000")
+# set(CONFIG_JSON "d3hack-nx.json")
+
+# set(PYTHON "python3")
+# set(ELF_EXTRACT "")
+# set(NPDM_JSON "qlaunch.json")
+
+# set(MOUNT_PATH "/mnt/k")
+# set(FTP_IP "192.168.1.101")
+# set(FTP_PORT "5000")
+# set(FTP_USERNAME "anonymous")
+# set(FTP_PASSWORD "")
+
+# set(RYU_WIN_PATH "/home/jester/AppData/Roaming/Ryujinx/")
+# set(RYU_MAC_PATH "/Users/dev/Library/Application Support/Ryujinx/")
+# set(YUZU_PATH "/home/jester/AppData/Roaming/yuzu/load/")

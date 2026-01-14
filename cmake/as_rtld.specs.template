@@ -1,0 +1,7 @@
+%rename link old_link_
+
+*link:
+%(old_link_) -T @EXL_LINK_LD@ -pie --gc-sections -z text -z nodynamic-undefined-weak --build-id=sha1 --nx-module-name --exclude-libs=ALL
+
+*startfile:
+crti%O%s crtbegin%O%s

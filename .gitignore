@@ -16,6 +16,7 @@ Starlight/
 *.zip
 compile_commands.json
 config.mk
+config.cmake
 
 # Local-only convenience symlink to the Ryujinx log filter script.
 misc/scripts/ryu_filter_logs.py
