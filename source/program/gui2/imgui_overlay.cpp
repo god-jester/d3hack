@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <cmath>
+#include <string>
 #include <vector>
 
 #include "lib/hook/trampoline.hpp"
@@ -215,6 +216,7 @@ static NpadCombinedState g_last_npad{};
 static bool g_last_npad_valid = false;
 
 static void PushImGuiGamepadInputs(float dt_s);
+static void PushImGuiMouseInputs(const ImVec2& viewport_size);
 static void UpdateImGuiStyleAndScale(ImVec2 viewport_size);
 
 static bool g_imgui_style_initialized = false;
@@ -403,6 +405,56 @@ static void PushImGuiGamepadInputs(float dt_s) {
     }
 }
 
+static void PushImGuiMouseInputs(const ImVec2& viewport_size) {
+    if (!g_imgui_ctx_initialized) {
+        return;
+    }
+
+    // Avoid calling into hid early; wait until the game has completed shell initialization.
+    if (d3::g_ptMainRWindow == nullptr) {
+        return;
+    }
+
+    // Keep KBM init and reads scoped so our own HID hooks don't block us while the overlay is visible.
+    ScopedHidPassthroughForOverlay passthrough_guard;
+
+    static bool s_mouse_init_tried = false;
+    if (!s_mouse_init_tried) {
+        s_mouse_init_tried = true;
+        nn::hid::InitializeMouse();
+    }
+
+    nn::hid::MouseState st{};
+    nn::hid::GetMouseState(&st);
+
+    ImGuiIO& io = ImGui::GetIO();
+
+    // Mouse/touch coordinates are typically reported in 1280x720 space; rescale to the active viewport.
+    float x = (static_cast<float>(st.x) / 1280.0f) * viewport_size.x;
+    float y = (static_cast<float>(st.y) / 720.0f) * viewport_size.y;
+    if (x < 0.0f) x = 0.0f;
+    if (y < 0.0f) y = 0.0f;
+    if (x > viewport_size.x) x = viewport_size.x;
+    if (y > viewport_size.y) y = viewport_size.y;
+
+    io.AddMousePosEvent(x, y);
+
+    const bool left = st.buttons.isBitSet(nn::hid::MouseButton::Left);
+    const bool right = st.buttons.isBitSet(nn::hid::MouseButton::Right);
+    const bool middle = st.buttons.isBitSet(nn::hid::MouseButton::Middle);
+
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, left);
+    io.AddMouseButtonEvent(ImGuiMouseButton_Right, right);
+    io.AddMouseButtonEvent(ImGuiMouseButton_Middle, middle);
+
+    if (st.wheelDeltaX != 0) {
+        io.AddMouseWheelEvent(st.wheelDeltaX > 0 ? 0.5f : -0.5f, 0.0f);
+    }
+    if (st.wheelDeltaY != 0) {
+        io.AddMouseWheelEvent(0.0f, st.wheelDeltaY > 0 ? 0.5f : -0.5f);
+    }
+}
+
 using GetNpadStateFullKeyFn = void (*)(nn::hid::NpadFullKeyState*, uint const&);
 using GetNpadStateHandheldFn = void (*)(nn::hid::NpadHandheldState*, uint const&);
 using GetNpadStateJoyDualFn = void (*)(nn::hid::NpadJoyDualState*, uint const&);
@@ -420,6 +472,8 @@ using GetNpadStatesDetailHandheldFn = int (*)(int*, nn::hid::NpadHandheldState*,
 using GetNpadStatesDetailJoyDualFn = int (*)(int*, nn::hid::NpadJoyDualState*, int, uint const&);
 using GetNpadStatesDetailJoyLeftFn = int (*)(int*, nn::hid::NpadJoyLeftState*, int, uint const&);
 using GetNpadStatesDetailJoyRightFn = int (*)(int*, nn::hid::NpadJoyRightState*, int, uint const&);
+
+using GetMouseStateFn = void (*)(nn::hid::MouseState*);
 
 static void* LookupSymbolAddress(const char* name) {
     for (int i = static_cast<int>(exl::util::ModuleIndex::Start);
@@ -493,6 +547,18 @@ DEFINE_HID_DETAIL_GET_STATES_HOOK(HidDetailGetNpadStatesJoyDualHook, NpadJoyDual
 DEFINE_HID_DETAIL_GET_STATES_HOOK(HidDetailGetNpadStatesJoyLeftHook, NpadJoyLeftState)
 DEFINE_HID_DETAIL_GET_STATES_HOOK(HidDetailGetNpadStatesJoyRightHook, NpadJoyRightState)
 
+HOOK_DEFINE_TRAMPOLINE(HidGetMouseStateHook) {
+    static void Callback(nn::hid::MouseState* out) {
+        if (ShouldBlockGamepadInput()) {
+            if (out != nullptr) {
+                *out = {};
+            }
+            return;
+        }
+        Orig(out);
+    }
+};
+
 #undef DEFINE_HID_DETAIL_GET_STATES_HOOK
 #undef DEFINE_HID_GET_STATES_HOOK
 #undef DEFINE_HID_GET_STATE_HOOK
@@ -513,6 +579,8 @@ static void InstallHidHooks() {
     HidGetNpadStatesJoyDualHook::InstallAtFuncPtr(static_cast<GetNpadStatesJoyDualFn>(&nn::hid::GetNpadStates));
     HidGetNpadStatesJoyLeftHook::InstallAtFuncPtr(static_cast<GetNpadStatesJoyLeftFn>(&nn::hid::GetNpadStates));
     HidGetNpadStatesJoyRightHook::InstallAtFuncPtr(static_cast<GetNpadStatesJoyRightFn>(&nn::hid::GetNpadStates));
+
+    HidGetMouseStateHook::InstallAtFuncPtr(static_cast<GetMouseStateFn>(&nn::hid::GetMouseState));
 
     struct DetailHookEntry {
         const char* name;
@@ -657,6 +725,9 @@ void QueuePresentTextureWrapper(NVNqueue *queue, NVNwindow *window, int texture_
             const ImVec2 viewport_size = ImguiNvnBackend::getBackendData()->viewportSize;
             UpdateImGuiStyleAndScale(viewport_size);
             PushImGuiGamepadInputs(ImGui::GetIO().DeltaTime);
+            if (g_overlay.overlay_visible()) {
+                PushImGuiMouseInputs(viewport_size);
+            }
 
             ImGui::NewFrame();
 
@@ -830,14 +901,21 @@ void PrepareFonts() {
     ImFont* font = nullptr;
 
     static std::vector<unsigned char> s_romfs_ttf;
+    static std::string s_romfs_ttf_path;
     static bool s_romfs_ttf_tried = false;
 
     if (!s_romfs_ttf_tried) {
         s_romfs_ttf_tried = true;
-        if (d3::romfs::ReadFileToBytes("romfs:/d3gui/ProggyClean.ttf", s_romfs_ttf, 4 * 1024 * 1024)) {
-            PRINT("[imgui_overlay] Loaded romfs ProggyClean.ttf (%lu bytes)", static_cast<unsigned long>(s_romfs_ttf.size()));
+
+        std::string path;
+        if (d3::romfs::FindFirstFileWithSuffix("romfs:/d3gui", ".ttf", path) &&
+            d3::romfs::ReadFileToBytes(path.c_str(), s_romfs_ttf, 4 * 1024 * 1024)) {
+            s_romfs_ttf_path = path;
+            PRINT("[imgui_overlay] Loaded romfs font: %s (%lu bytes)",
+                  s_romfs_ttf_path.c_str(),
+                  static_cast<unsigned long>(s_romfs_ttf.size()));
         } else {
-            PRINT_LINE("[imgui_overlay] romfs ProggyClean.ttf not found; falling back to ImGui default font");
+            PRINT_LINE("[imgui_overlay] romfs font not found; falling back to ImGui default font");
         }
     }
 

@@ -20,6 +20,7 @@ private:
     bool* GetOpenFlag() override;
 
     bool show_metrics_ = false;
+    bool restart_required_ = false;
     ui::Overlay& overlay_;
 };
 

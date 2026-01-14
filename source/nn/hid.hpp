@@ -104,6 +104,92 @@ namespace nn::hid {
     struct NpadSystemExtState : NpadBaseState {
     };
 
+    enum class MouseButton : u32 {
+        Left = 0,
+        Right = 1,
+        Middle = 2,
+        Forward = 3,
+        Back = 4,
+    };
+
+    enum class MouseAttribute : u32 {
+        Transferable = 0,
+        IsConnected = 1,
+    };
+
+    enum class KeyboardModifier : u32 {
+        Control = 0,
+        Shift = 1,
+        LeftAlt = 2,
+        RightAlt = 3,
+        Gui = 4,
+        CapsLock = 5,
+        ScrollLock = 6,
+        NumLock = 7,
+        Katakana = 8,
+        Hiragana = 9,
+    };
+
+    enum class KeyboardKey : u32 {
+        A = 4,
+        B = 5,
+        C = 6,
+        D = 7,
+        E = 8,
+        F = 9,
+        G = 10,
+        H = 11,
+        I = 12,
+        J = 13,
+        K = 14,
+        L = 15,
+        M = 16,
+        N = 17,
+        O = 18,
+        P = 19,
+        Q = 20,
+        R = 21,
+        S = 22,
+        T = 23,
+        U = 24,
+        V = 25,
+        W = 26,
+        X = 27,
+        Y = 28,
+        Z = 29,
+
+        D1 = 30,
+        D2 = 31,
+        D3 = 32,
+        D4 = 33,
+        D5 = 34,
+        D6 = 35,
+        D7 = 36,
+        D8 = 37,
+        D9 = 38,
+        D0 = 39,
+
+        Return = 40,
+        Escape = 41,
+        Backspace = 42,
+        Tab = 43,
+        Space = 44,
+
+        LeftArrow = 80,
+        RightArrow = 79,
+        UpArrow = 82,
+        DownArrow = 81,
+
+        LeftControl = 224,
+        LeftShift = 225,
+        LeftAlt = 226,
+        LeftGui = 227,
+        RightControl = 228,
+        RightShift = 229,
+        RightAlt = 230,
+        RightGui = 231,
+    };
+
     void InitializeNpad();
     void SetSupportedNpadIdType(const u32*, u64);
     void SetSupportedNpadStyleSet(NpadStyleSet);
@@ -128,5 +214,35 @@ namespace nn::hid {
         int GetNpadStates(int* out_count, nn::hid::NpadJoyLeftState*, int count, uint const& port);
         int GetNpadStates(int* out_count, nn::hid::NpadJoyRightState*, int count, uint const& port);
     }  // namespace detail
+
+    using MouseButtonSet = nn::util::BitFlagSet<32, MouseButton>;
+    using MouseAttributeSet = nn::util::BitFlagSet<32, MouseAttribute>;
+
+    struct MouseState {
+        u64 samplingNumber;
+        s32 x;
+        s32 y;
+        s32 deltaX;
+        s32 deltaY;
+        s32 wheelDeltaX;
+        s32 wheelDeltaY;
+        MouseButtonSet buttons;
+        MouseAttributeSet attributes;
+    };
+
+    using KeyboardModifierSet = nn::util::BitFlagSet<32, KeyboardModifier>;
+    using KeyboardKeySet = nn::util::BitFlagSet<256, KeyboardKey>;
+
+    struct KeyboardState {
+        u64 samplingNumber;
+        KeyboardModifierSet modifiers;
+        KeyboardKeySet keys;
+    };
+
+    void InitializeMouse();
+    void InitializeKeyboard();
+
+    void GetMouseState(nn::hid::MouseState*);
+    void GetKeyboardState(nn::hid::KeyboardState*);
 
 }  // namespace nn::hid

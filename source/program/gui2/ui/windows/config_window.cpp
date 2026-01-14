@@ -85,6 +85,7 @@ void ConfigWindow::RenderContents() {
         cfg = global_config;
         overlay_.set_overlay_visible(global_config.gui.visible);
         overlay_.set_ui_dirty(false);
+        restart_required_ = false;
     }
 
     ImGui::SameLine();
@@ -97,6 +98,7 @@ void ConfigWindow::RenderContents() {
         const PatchConfig normalized = NormalizePatchConfig(cfg);
         d3::RuntimeApplyResult apply{};
         d3::ApplyPatchConfigRuntime(normalized, &apply);
+        restart_required_ = apply.restart_required;
 
         cfg = global_config;
         overlay_.set_overlay_visible(global_config.gui.visible);
@@ -135,6 +137,7 @@ void ConfigWindow::RenderContents() {
         if (LoadPatchConfigFromPath("sd:/config/d3hack-nx/config.toml", loaded, error)) {
             d3::RuntimeApplyResult apply{};
             d3::ApplyPatchConfigRuntime(loaded, &apply);
+            restart_required_ = apply.restart_required;
             cfg = global_config;
             overlay_.set_overlay_visible(global_config.gui.visible);
             overlay_.set_ui_dirty(false);
@@ -144,6 +147,12 @@ void ConfigWindow::RenderContents() {
             if (auto* notifications = overlay_.notifications_window())
                 notifications->AddNotification(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), 8.0f, "Reload failed: %s", error.empty() ? "not found" : error.c_str());
         }
+    }
+
+    if (restart_required_) {
+        ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.2f, 1.0f),
+                           "%s",
+                           overlay_.tr("gui.restart_required_banner", "Restart required for some changes."));
     }
 
     ImGui::Separator();
@@ -172,11 +181,43 @@ void ConfigWindow::RenderContents() {
         }
 
         if (ImGui::BeginTabItem("GUI")) {
-            mark_dirty(ImGui::Checkbox("Enabled (persist)", &cfg.gui.enabled));
-            if (ImGui::Checkbox("Visible (persist)", &cfg.gui.visible)) {
+            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.enabled_persist", "Enabled (persist)"), &cfg.gui.enabled));
+            if (ImGui::Checkbox(overlay_.tr("gui.visible_persist", "Visible (persist)"), &cfg.gui.visible)) {
                 overlay_.set_overlay_visible_persist(cfg.gui.visible);
             }
-            ImGui::TextUnformatted("Hotkey: hold + and - (0.5s) to toggle visibility.");
+
+            const char* preview = cfg.gui.language_override.empty() ? overlay_.tr("gui.lang_auto", "Auto (game)") : cfg.gui.language_override.c_str();
+            if (ImGui::BeginCombo(overlay_.tr("gui.language", "Language"), preview)) {
+                struct Lang {
+                    const char* label;
+                    const char* code;
+                };
+                static constexpr Lang kLangs[] = {
+                    {"Auto (game)", ""},
+                    {"English", "en"},
+                    {"Deutsch", "de"},
+                    {"Francais", "fr"},
+                    {"Espanol", "es"},
+                    {"Italiano", "it"},
+                    {"Japanese", "ja"},
+                    {"Korean", "ko"},
+                    {"Chinese", "zh"},
+                };
+
+                for (const auto& lang : kLangs) {
+                    const bool is_selected = (cfg.gui.language_override == lang.code);
+                    if (ImGui::Selectable(lang.label, is_selected)) {
+                        cfg.gui.language_override = lang.code;
+                        overlay_.set_ui_dirty(true);
+                    }
+                    if (is_selected) {
+                        ImGui::SetItemDefaultFocus();
+                    }
+                }
+                ImGui::EndCombo();
+            }
+
+            ImGui::TextUnformatted(overlay_.tr("gui.hotkey_toggle", "Hotkey: hold + and - (0.5s) to toggle visibility."));
             ImGui::EndTabItem();
         }
 
