@@ -717,7 +717,7 @@ void QueuePresentTextureWrapper(NVNqueue *queue, NVNwindow *window, int texture_
 
         g_overlay.EnsureConfigLoaded();
 
-        g_block_gamepad_input_to_game.store(false, std::memory_order_relaxed);
+        g_block_gamepad_input_to_game.store(g_overlay.imgui_render_enabled() && g_overlay.overlay_visible(), std::memory_order_relaxed);
 
         if (kImGuiBringup_DrawText && g_imgui_ctx_initialized && g_font_uploaded && g_overlay.imgui_render_enabled()) {
             ImguiNvnBackend::newFrame();
@@ -743,9 +743,6 @@ void QueuePresentTextureWrapper(NVNqueue *queue, NVNwindow *window, int texture_
                 g_last_npad.stick_l.Y,
                 g_last_npad.stick_r.X,
                 g_last_npad.stick_r.Y);
-
-            g_block_gamepad_input_to_game.store(g_overlay.focus_state().should_block_game_input,
-                                                std::memory_order_relaxed);
 
             ImGui::Render();
             if (g_overlay.focus_state().visible) {
