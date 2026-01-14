@@ -121,7 +121,7 @@ SETUP_FUNC_PTR(SCrafterIncrementLevel);                 // BOOL SCrafterIncremen
 SETUP_FUNC_PTR(SItemCrafting_LearnRecipe);              // void SItemCrafting_LearnRecipe(const ACDID idACDPlayer, const GBID gbidRecipe)
 SETUP_FUNC_PTR(sCrafterOnLevelUp);                      // void sCrafterOnLevelUp(const Player *tPlayer, CrafterType eType, const BOOL fChangedRank, const BOOL fSendToClient)
 SETUP_FUNC_PTR(LootRollForAncientLegendary);            // void LootRollForAncientLegendary(LootSpecifier *tSpecifier, const ACDID idACDLooter)
-// SETUP_FUNC_PTR(GlobalSNOGet);                            // SNO GlobalSNOGet(const GlobalSNO eGlobalSNO)
+SETUP_FUNC_PTR(GlobalSNOGet);                           // SNO GlobalSNOGet(const GlobalSNO eGlobalSNO)
 SETUP_FUNC_PTR(GBEnumerate);                            // void GBEnumerate(GameBalanceType eType, GBHandleList *listResults)
 SETUP_FUNC_PTR(GBGetHandlePool);
 // SETUP_FUNC_PTR(ItemGetAttributeFromInventorySlot);
@@ -148,7 +148,7 @@ SETUP_FUNC_PTR(ACD_AttributesGetInt);      // __int64 ActorCommonData::Attribute
 SETUP_FUNC_PTR(ACD_AttributesSetInt);      // void ActorCommonData::AttributesSetInt(ActorCommonData *this, FastAttribKey tKey, int32 nValue)
 SETUP_FUNC_PTR(ACD_AttributesGetFloat);    // float ActorCommonData::AttributesGetFloat(const ActorCommonData *this, FastAttribKey tKey)
 SETUP_FUNC_PTR(ACD_AttributesSetFloat);    // float ActorCommonData::AttributesSetFloat(ActorCommonData *this, FastAttribKey tKey, float flValue)
-// SETUP_FUNC_PTR(ACD_ModifyCurrencyAmount);                   // BOOL ActorCommonData::ModifyCurrencyAmount  (ActorCommonData *this, const int64 nAmount, const CurrencyType eCurrencyType, const GoldModifiedReason eReason, const BOOL bForceNoSound)
+SETUP_FUNC_PTR(ACD_ModifyCurrencyAmount);  // BOOL ActorCommonData::ModifyCurrencyAmount  (ActorCommonData *this, const int64 nAmount, const CurrencyType eCurrencyType, const GoldModifiedReason eReason, const BOOL bForceNoSound)
 SETUP_FUNC_PTR(ACD_SetCurrencyAmount);     // void ActorCommonData::SetCurrencyAmount     (ActorCommonData *this, int64 nAmount, const CurrencyType eCurrencyType, const GoldModifiedReason eReason)
 SETUP_FUNC_PTR(FastAttribGetValueInt);     // __int64 FastAttribGetValueInt(const FastAttribGroup *ptAttribGroup, FastAttribKey tKey)
 SETUP_FUNC_PTR(FastAttribGetValueFloat);   // float FastAttribGetValueFloat(const FastAttribGroup *ptAttribGroup, FastAttribKey tKey
