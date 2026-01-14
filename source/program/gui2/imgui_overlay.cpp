@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <cmath>
@@ -13,6 +14,7 @@
 #include "lib/util/sys/mem_layout.hpp"
 #include "nn/fs.hpp"
 #include "nn/hid.hpp"
+#include "nn/os.hpp"
 #include "program/romfs_assets.hpp"
 #include "program/gui2/ui/overlay.hpp"
 #include "program/gui2/ui/windows/notifications_window.hpp"
@@ -175,13 +177,33 @@ namespace d3::imgui_overlay {
 
         float             g_overlay_toggle_hold_s = 0.0f;
         bool              g_overlay_toggle_armed  = true;
-        std::atomic<bool> g_block_gamepad_input_to_game {false};
-        bool              g_hid_hooks_installed         = false;
-        bool              g_hid_passthrough_for_overlay = false;
+        std::atomic<bool>      g_block_gamepad_input_to_game {false};
+        bool                   g_hid_hooks_installed         = false;
+        std::atomic<int>       g_hid_passthrough_depth       {0};
+        std::atomic<uintptr_t> g_hid_passthrough_thread      {0};
+
+        static uintptr_t GetCurrentThreadToken() {
+            const auto *thread = nn::os::GetCurrentThread();
+            return reinterpret_cast<uintptr_t>(thread);
+        }
 
         struct ScopedHidPassthroughForOverlay {
-            ScopedHidPassthroughForOverlay() { g_hid_passthrough_for_overlay = true; }
-            ~ScopedHidPassthroughForOverlay() { g_hid_passthrough_for_overlay = false; }
+            ScopedHidPassthroughForOverlay() {
+                const int prev = g_hid_passthrough_depth.fetch_add(1, std::memory_order_acq_rel);
+                if (prev == 0) {
+                    const auto token = GetCurrentThreadToken();
+                    if (token != 0) {
+                        g_hid_passthrough_thread.store(token, std::memory_order_release);
+                    }
+                }
+            }
+            ~ScopedHidPassthroughForOverlay() {
+                const int prev = g_hid_passthrough_depth.fetch_sub(1, std::memory_order_acq_rel);
+                if (prev <= 1) {
+                    g_hid_passthrough_depth.store(0, std::memory_order_relaxed);
+                    g_hid_passthrough_thread.store(0, std::memory_order_release);
+                }
+            }
         };
 
         template<typename TState>
@@ -213,7 +235,20 @@ namespace d3::imgui_overlay {
         }
 
         static bool ShouldBlockGamepadInput() {
-            return g_block_gamepad_input_to_game.load(std::memory_order_relaxed) && !g_hid_passthrough_for_overlay;
+            if (!g_block_gamepad_input_to_game.load(std::memory_order_relaxed)) {
+                return false;
+            }
+
+            if (g_hid_passthrough_depth.load(std::memory_order_relaxed) <= 0) {
+                return true;
+            }
+
+            const auto passthrough_thread = g_hid_passthrough_thread.load(std::memory_order_acquire);
+            if (passthrough_thread != 0 && passthrough_thread == GetCurrentThreadToken()) {
+                return false;
+            }
+
+            return true;
         }
 
         struct NpadCombinedState {
@@ -979,7 +1014,9 @@ namespace d3::imgui_overlay {
         font_cfg.Name[1] = '3';
         font_cfg.Name[2] = '\0';
         // Build for docked readability (we apply a runtime scale for 720p).
-        font_cfg.SizePixels = 18.0f;
+        font_cfg.SizePixels = 16.0f;
+        font_cfg.OversampleH = 1;
+        font_cfg.OversampleV = 1;
         static ImVector<ImWchar> s_font_ranges;
         static bool              s_font_ranges_built = false;
         if (!s_font_ranges_built) {

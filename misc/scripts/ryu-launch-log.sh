@@ -14,7 +14,7 @@ if [[ -z "${NAME:-}" ]]; then
     exit 1
 fi
 
-PY="${PYTHON:-python}"
+PY="${PYTHON:-python3}"
 
 # Support two dev envs.
 if [[ "${OSTYPE:-}" == "darwin"* ]]; then

@@ -22,7 +22,7 @@ fi
 CONFIG_JSON="${RYU_CONFIG_JSON:-$HOME/Library/Application Support/Ryujinx/Config.json}"
 HOTKEY="${RYU_SCREENSHOT_KEY:-}"
 if [[ -z "$HOTKEY" && -f "$CONFIG_JSON" ]]; then
-    HOTKEY="$(python -c 'import json,sys; d=json.load(open(sys.argv[1])); print((d.get("hotkeys") or {}).get("screenshot",""))' "$CONFIG_JSON" 2>/dev/null || true)"
+    HOTKEY="$(python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print((d.get("hotkeys") or {}).get("screenshot",""))' "$CONFIG_JSON" 2>/dev/null || true)"
 fi
 HOTKEY="${HOTKEY:-F8}"
 
@@ -295,11 +295,11 @@ wait_for_png_newer_than() {
     local timeout="$2"
     if [[ "$timeout" == *.* ]]; then
         local end
-        end="$(python -c 'import sys,time; print(time.time()+float(sys.argv[1]))' "$timeout" 2>/dev/null || true)"
+        end="$(python3 -c 'import sys,time; print(time.time()+float(sys.argv[1]))' "$timeout" 2>/dev/null || true)"
         if [[ -z "$end" ]]; then
             return 1
         fi
-        while python -c 'import sys,time; sys.exit(0 if time.time() < float(sys.argv[1]) else 1)' "$end" >/dev/null 2>&1; do
+        while python3 -c 'import sys,time; sys.exit(0 if time.time() < float(sys.argv[1]) else 1)' "$end" >/dev/null 2>&1; do
             local newest
             newest="$(find "$SCREENSHOTS_DIR" -maxdepth 1 -type f -name '*.png' -newer "$marker" -print0 2>/dev/null | xargs -0 ls -t 2>/dev/null | head -n 1 || true)"
             if [[ -n "$newest" ]]; then
