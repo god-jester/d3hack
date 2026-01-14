@@ -63,4 +63,25 @@ FUNC_PTR(blz_make_stringfb,                blz::string (*)(void *,...));
 // Localization helpers (2.7.6):
 // - Game locale is stored in "unicode_text_current_locale" (XLocale).
 // - XLocaleToString converts XLocale -> locale string (e.g. "enUS").
+// Observed XLocaleToString values (scan 0-50):
+//   0  Invalid
+//   1  Global
+//   2  enUS
+//   3  enGB
+//   4  enSG
+//   5  esES
+//   6  esMX
+//   7  frFR
+//   8  itIT
+//   9  deDE
+//   10 koKR
+//   11 ptBR
+//   12 ruRU
+//   13 zhCN
+//   14 zhTW
+//   15 trTR
+//   16 plPL
+//   17 ptPT
+//   18 jpJP
+//   19 ztCN
 FUNC_PTR(XLocaleToString,                         LPCSTR (*)(uint32));

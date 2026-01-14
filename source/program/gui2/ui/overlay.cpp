@@ -27,7 +27,26 @@ namespace d3::gui2::ui {
                 }
             }
 
+            if (out == "jp") {
+                return "ja";
+            }
+            if (out == "zt") {
+                return "zh";
+            }
             return out;
+        }
+
+        static std::string NormalizeLocale(std::string_view locale) {
+            if (locale == "Invalid" || locale == "Global") {
+                return {};
+            }
+            if (locale == "jpJP") {
+                return "ja";
+            }
+            if (locale == "ztCN") {
+                return "zh";
+            }
+            return NormalizeLang(locale);
         }
 
         static std::string ResolveGameLang() {
@@ -46,7 +65,7 @@ namespace d3::gui2::ui {
                 return {};
             }
 
-            return NormalizeLang(locale_str);
+            return NormalizeLocale(locale_str);
         }
 
         static void FlattenTomlStrings(const toml::node &node, std::string &prefix, std::unordered_map<std::string, std::string> &out) {
