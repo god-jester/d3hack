@@ -57,7 +57,6 @@ using GlobalSNO              = int32;
 using SGameID                = int32;
 using SSceneID               = int32;
 using Act                    = int32;
-
 using bdUInt                 = int32;
 using bdUInt32               = int32;
 using bdTitleID              = int32;

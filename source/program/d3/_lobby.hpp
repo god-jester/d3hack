@@ -66,7 +66,8 @@ namespace d3 {
     }
 
     void UnbindACD(ActorCommonData *tACD) {
-        if (!_HOSTCHK) return;
+        if (!_HOSTCHK)
+            return;
         _SERVERCODE_ON
         SetRecipient(tACD, -1);
         SetBindingLevel(tACD, IBL_ACCOUNT_PICKUP);
@@ -102,7 +103,8 @@ namespace d3 {
     }
 
     void UnlockAll() {
-        if (!_HOSTCHK) return;
+        if (!_HOSTCHK)
+            return;
         // _SERVERCODE_ON
         ActorCommonData *ptACDCurPlayer = nullptr;
         Actor           *ptActorPlayer  = nullptr;
@@ -249,16 +251,19 @@ namespace d3 {
     }
 
     void CreateFlippy(ActorCommonData *tACDPlayer, ActorCommonData *tACDNewItem) {
-        if (!_HOSTCHK) return;
+        if (!_HOSTCHK)
+            return;
         _SERVERCODE_ON
         WorldPlace tPlace;  // SACDInventoryPickupOrSpillOntoGround(tACDPlayer, tACDNewItem, 0, 0LL, 1);
-        if (tACDNewItem && FlippyFindLandingLocation(tACDPlayer, tACDNewItem->snoActor, &tPlace, PlayerGetByACD(tACDPlayer->id), nullptr, ACDID_INVALID))
+        if (tACDNewItem &&
+            FlippyFindLandingLocation(tACDPlayer, tACDNewItem->snoActor, &tPlace, PlayerGetByACD(tACDPlayer->id), nullptr, ACDID_INVALID))
             FlippyDropCreateOnActor(tACDPlayer->id, tACDNewItem->id, &tPlace);
         _SERVERCODE_OFF
     }
 
     auto DupeItem(ActorCommonData *tACDPlayer, ActorCommonData *tACDItem, bool bCreateFlippy = false) -> ActorCommonData * {
-        if (!_HOSTCHK || ItemHasLabel(tACDItem->hGB.gbid, 114)) return nullptr;
+        if (!_HOSTCHK || ItemHasLabel(tACDItem->hGB.gbid, 114))
+            return nullptr;
         D3::Items::Generator tGenerator;
         ItemsGenerator_ctor(&tGenerator);
         auto tRareItemName = *FollowPtr<RareItemName, 0x138>(tACDItem);

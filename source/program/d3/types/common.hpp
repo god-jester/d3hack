@@ -327,7 +327,10 @@ struct FileReference {
     char                   szPath[4096];
 
     FileReference() :
-        nRefcount(0), dwAccessFlags(2u), tStream(0LL), szPath("\0") {}
+        nRefcount(0),
+        dwAccessFlags(2u),
+        tStream(0LL),
+        szPath("\0") {}
 };
 
 using SNOArray = XGrowableArray<int, int>;
@@ -618,8 +621,8 @@ struct AppGlobals {
     uintptr_t                *ptGameDebugGlobals;       // GameDebugGlobals
     FontGlobals              *ptFontGlobals;
     ItemAppGlobals           *ptItemAppGlobals;
-    uintptr_t                *ptPrefetchGlobals;        // DefinitionPrefetchData
-    uintptr_t                *ptGlobalDefAppGlobals;    // GlobalDefinitionAppGlobals
+    uintptr_t                *ptPrefetchGlobals;      // DefinitionPrefetchData
+    uintptr_t                *ptGlobalDefAppGlobals;  // GlobalDefinitionAppGlobals
     SNOArray                 *ptScriptDefsPurged;
     SNOArray                 *ptConversationDefsPurged;
     SNOArray                 *ptPowerDefsPurged;
@@ -1923,37 +1926,35 @@ struct LootSpecifier {
 
 typedef int32 ItemLabel;
 
-struct ItemSpecifierData
-{
-  GBID gbidItem;
-  int32 nNumAffixes;
-  GBID gbidAffixes[6];
-  int32 nAdditionalRandomAffixes;
-  int32 nAdditionalRandomAffixesDelta;
-  int32 nMinLegendaryAffixes;
-  BOOL bAccountBound;
-  int32 nAdditionalMajorAffixes;
-  int32 nAdditionalMinorAffixes;
+struct ItemSpecifierData {
+    GBID  gbidItem;
+    int32 nNumAffixes;
+    GBID  gbidAffixes[6];
+    int32 nAdditionalRandomAffixes;
+    int32 nAdditionalRandomAffixesDelta;
+    int32 nMinLegendaryAffixes;
+    BOOL  bAccountBound;
+    int32 nAdditionalMajorAffixes;
+    int32 nAdditionalMinorAffixes;
 };
 
-struct LootDropModifier
-{
-  LootDropType eDropType;
-  SNO snoSubTreasureClass;
-  float flChance;
-  int32 nWeight;
-  GBID gbidQualityClass;
-  ItemLabel nItemLabel;
-  ItemLabel nItemLabel2;
-  SNO snoCondition;
-  ItemSpecifierData tSpecificItem;
-  int32 nQuantity;
-  int32 nQuantityDelta;
-  uint32 dwItemLabelMask[5];
-  BOOL bTryStack;
-  BOOL bBossSpecificDrop;
-  float flGoldMultiplier;
-  BOOL bIgnoreGoldRanges;
+struct LootDropModifier {
+    LootDropType      eDropType;
+    SNO               snoSubTreasureClass;
+    float             flChance;
+    int32             nWeight;
+    GBID              gbidQualityClass;
+    ItemLabel         nItemLabel;
+    ItemLabel         nItemLabel2;
+    SNO               snoCondition;
+    ItemSpecifierData tSpecificItem;
+    int32             nQuantity;
+    int32             nQuantityDelta;
+    uint32            dwItemLabelMask[5];
+    BOOL              bTryStack;
+    BOOL              bBossSpecificDrop;
+    float             flGoldMultiplier;
+    BOOL              bIgnoreGoldRanges;
 };
 
 struct Quaternion {

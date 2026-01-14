@@ -8,14 +8,15 @@
 
 namespace d3 {
     namespace {
-        constexpr uint32 kInternalClampDim = 2048;
         [[maybe_unused]] constexpr SNO    kSwapchainDetachDepthSno = -6115;  // Empirically: clamped swapchain depth (avoid inventory depth bugs).
         [[maybe_unused]] constexpr uint32 kCompareUnknown          = 0;
         [[maybe_unused]] constexpr uint32 kCompareAlways           = 8;
         [[maybe_unused]] constexpr uint32 kRENDERLAYER_OPAQUE      = 5;
-        constexpr uint32                  kRenderLayerUI           = 10;
-        constexpr uint32                  kRenderLayerBnetUI       = 18;
-        constexpr uint32                  kRenderLayerUIOverlay    = 19;
+
+        constexpr uint32 kInternalClampDim     = 2048;
+        constexpr uint32 kRenderLayerUI        = 10;
+        constexpr uint32 kRenderLayerBnetUI    = 18;
+        constexpr uint32 kRenderLayerUIOverlay = 19;
 
         struct ResolutionRTView {
             SNO   snoRTTex;
@@ -177,7 +178,7 @@ namespace d3 {
 
         inline bool ShouldDetachSwapchainDepth(SNO snoDepth) {
             // return snoDepth == kSwapchainDetachDepthSno;
-            return true; // being too picky can make clipping inconsistent
+            return true;  // being too picky can make clipping inconsistent
         }
 
         struct SwapchainDepthGateState {

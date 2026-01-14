@@ -25,6 +25,7 @@ namespace exl::reloc {
     //    entries that change for the new version.
     //
     // NOTE: Resolution hack offsets/logic are intentionally excluded from this table.
+    // clang-format off
     using UserTableSet = TableSet<VersionType,
         /* DEFAULT is bound to D3CLIENT_VER via DetermineUserVersion(). */
         UserTableType<VersionType::DEFAULT,
@@ -245,4 +246,5 @@ namespace exl::reloc {
             { util::ModuleIndex::Main, 0x6B5384, "hook_debug_print_saved_attribs_006b5384" }  // unused
         >
     >;
-}
+    // clang-format on
+}  // namespace exl::reloc

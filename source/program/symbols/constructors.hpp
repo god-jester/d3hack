@@ -131,7 +131,8 @@ XPooledList<T1, T2>::~XPooledList() {
         p_m_pHeadAlloc = &m_ptNodeAllocator->m_tAlloc.m_pHeadAlloc;
         while (1) {
             m_pMemBlocks = (unsigned __int64)m_pHeadAlloc->tAlloc.m_pMemBlocks;
-            if (m_pMemBlocks <= (unsigned __int64)m_pHead && m_pMemBlocks + m_pHeadAlloc->tAlloc.m_nBlockSize * (__int64)m_pHeadAlloc->tAlloc.m_nBlockCount > (unsigned __int64)m_pHead) {
+            if (m_pMemBlocks <= (unsigned __int64)m_pHead &&
+                m_pMemBlocks + m_pHeadAlloc->tAlloc.m_nBlockSize * (__int64)m_pHeadAlloc->tAlloc.m_nBlockCount > (unsigned __int64)m_pHead) {
                 break;
             }
             p_m_pHeadAlloc = &m_pHeadAlloc->pNext;

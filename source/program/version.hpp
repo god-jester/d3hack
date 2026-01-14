@@ -35,5 +35,5 @@ namespace exl::util {
                 return UserVersion::DEFAULT;
             return UserVersion::UNKNOWN;
         }
-    }
-}
+    }  // namespace impl
+}  // namespace exl::util

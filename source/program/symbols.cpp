@@ -90,41 +90,39 @@ SETUP_FUNC_PTR(blz_make_stringf);
 SETUP_FUNC_PTR(XLocaleToString);
 // items.hpp
 #include "symbols/items.hpp"
-SETUP_FUNC_PTR(sGetItemTypeString);                         // void  sGetItemTypeString(GBID a1@<W0>, CRefString *a2@<X8>)
-SETUP_FUNC_PTR(GBIDToStringAll);                            // void GBIDToString(unsigned int *a1@<X0>, CRefString *a2@<X8>)
-SETUP_FUNC_PTR(GBIDToString);                               // CRefString *GBIDToString(CRefString *retstr, GBID gbid, GameBalanceType eGBType, const BOOL fUsedForXMLFields)
-    // void AttribParamToString(unsigned int a1@<W0>, int a2@<W1>, CRefString *a3@<X8>)
-    // void AttribParamToString(CRefString *a1@<X8>, unsigned int a2@<W0>, unsigned int a3@<W1>)
-SETUP_FUNC_PTR(AttribParamToString);                        // ^
-SETUP_FUNC_PTR(FastAttribToString);                         // void FastAttribToString(CRefString *retstr@<X8>, const FastAttribKey tKey@<0:W0>
-SETUP_FUNC_PTR(AttribStringToParam);                        // int32 AttribStringToParam(Attrib eAttrib, LPCSTR szParam)
-SETUP_FUNC_PTR(StringListFetchLPCSTR);                      // LPCSTR StringListFetchLPCSTR(const SNO snoStringList, LPCSTR szLabel)
-SETUP_FUNC_PTR(ClearAssignedHero);                          // ActorCommonData::ClearAssignedHero(ActorCommonData *this)
+SETUP_FUNC_PTR(sGetItemTypeString);                     // void  sGetItemTypeString(GBID a1@<W0>, CRefString *a2@<X8>)
+SETUP_FUNC_PTR(GBIDToStringAll);                        // void GBIDToString(unsigned int *a1@<X0>, CRefString *a2@<X8>)
+SETUP_FUNC_PTR(GBIDToString);                           // CRefString *GBIDToString(CRefString *retstr, GBID gbid, GameBalanceType eGBType, const BOOL fUsedForXMLFields)
+SETUP_FUNC_PTR(AttribParamToString);                    // AttribParamToString(unsigned int attrib@<W0>, int param@<W1>, CRefString *a3@<X8>)
+SETUP_FUNC_PTR(FastAttribToString);                     // void FastAttribToString(CRefString *retstr@<X8>, const FastAttribKey tKey@<0:W0>
+SETUP_FUNC_PTR(AttribStringToParam);                    // int32 AttribStringToParam(Attrib eAttrib, LPCSTR szParam)
+SETUP_FUNC_PTR(StringListFetchLPCSTR);                  // LPCSTR StringListFetchLPCSTR(const SNO snoStringList, LPCSTR szLabel)
+SETUP_FUNC_PTR(ClearAssignedHero);                      // ActorCommonData::ClearAssignedHero(ActorCommonData *this)
 SETUP_FUNC_PTR(ACDInventoryItemAllowedInSlot);
-SETUP_FUNC_PTR(ACDAddToInventory);                          // void ACDAddToInventory(ActorCommonData *tACDItem, const InventoryLocation *tLocation, const BOOL bMarkItemAsDirty, InventorySlotType eCameFrom)
+SETUP_FUNC_PTR(ACDAddToInventory);                      // void ACDAddToInventory(ActorCommonData *tACDItem, const InventoryLocation *tLocation, const BOOL bMarkItemAsDirty, InventorySlotType eCameFrom)
 SETUP_FUNC_PTR(ItemHasLabel);
-SETUP_FUNC_PTR(SetBindingLevel);                            // ItemSetBindingLevel(ActorCommonData *tACD, const ItemBindingLevel eBindingType)
-SETUP_FUNC_PTR(SetRecipient);                               // ItemSetPlayerRecipient(ActorCommonData *tACDItem, int32 nPlayerIndex)
-SETUP_FUNC_PTR(PopulateGenerator);                          // ItemGeneratorPopulateFromACDID
-SETUP_FUNC_PTR(CItemGenerate);                              // ACDID CItemGenerate(ACDNetworkName ann, const D3::Items::Generator *tGenerator, ItemAffixFastAttribMap *arAffixSpecificAttributes)
-SETUP_FUNC_PTR(ItemsGenerator_ctor);                        // D3::Items::Generator::Generator (D3::Items::Generator *this)
-SETUP_FUNC_PTR(ItemsGenerator_dtor);                        // D3::Items::Generator::~Generator (D3::Items::Generator *this)
-SETUP_FUNC_PTR(AddItemToInventory);                         // SPlayerAddMailItemToInventory
-SETUP_FUNC_PTR(GetCosmeticItemType);                        // CosmeticItemType CosmeticItems_GetCosmeticItemTypeFromGBID(GBID gbidItem)
-SETUP_FUNC_PTR(ItemIsCosmeticItem);                         // BOOL ItemIsCosmeticItem(const GBID gbidItem)
-SETUP_FUNC_PTR(SetCraftLevel);                              // void SetCraftLevel(const CrafterType eType, Player *tPlayer, const int32 nLevel)
+SETUP_FUNC_PTR(SetBindingLevel);                        // ItemSetBindingLevel(ActorCommonData *tACD, const ItemBindingLevel eBindingType)
+SETUP_FUNC_PTR(SetRecipient);                           // ItemSetPlayerRecipient(ActorCommonData *tACDItem, int32 nPlayerIndex)
+SETUP_FUNC_PTR(PopulateGenerator);                      // ItemGeneratorPopulateFromACDID
+SETUP_FUNC_PTR(CItemGenerate);                          // ACDID CItemGenerate(ACDNetworkName ann, const D3::Items::Generator *tGenerator, ItemAffixFastAttribMap *arAffixSpecificAttributes)
+SETUP_FUNC_PTR(ItemsGenerator_ctor);                    // D3::Items::Generator::Generator (D3::Items::Generator *this)
+SETUP_FUNC_PTR(ItemsGenerator_dtor);                    // D3::Items::Generator::~Generator (D3::Items::Generator *this)
+SETUP_FUNC_PTR(AddItemToInventory);                     // SPlayerAddMailItemToInventory
+SETUP_FUNC_PTR(GetCosmeticItemType);                    // CosmeticItemType CosmeticItems_GetCosmeticItemTypeFromGBID(GBID gbidItem)
+SETUP_FUNC_PTR(ItemIsCosmeticItem);                     // BOOL ItemIsCosmeticItem(const GBID gbidItem)
+SETUP_FUNC_PTR(SetCraftLevel);                          // void SetCraftLevel(const CrafterType eType, Player *tPlayer, const int32 nLevel)
 SETUP_FUNC_PTR(Crafting_GetTransmogSlot);               // InventorySlotType ItemCrafting_GetTransmogSlot(GBID gbidItem)
-SETUP_FUNC_PTR(SCosmeticItems_LearnCosmeticItem);           // BOOL SCosmeticItems_LearnCosmeticItem(const ACDID idACDPlayer, const GBID gbidItem, CosmeticItemType eType, bool bPurchased)
-SETUP_FUNC_PTR(SCosmeticItems_LearnPet);                    // BOOL SCosmeticItems_LearnPet(const ACDID idACDPlayer, const GBID gbidItem, bool bPurchased)
-SETUP_FUNC_PTR(SItemPlayerExtractLegendaryPower);           // BOOL SItemPlayerExtractLegendaryPower(Player *tPlayer, GBID gbidItem, GameError *eGameError)
-SETUP_FUNC_PTR(SItemCrafting_TryUnlockTransmog);            // BOOL SItemCrafting_TryUnlockTransmog(GBID gbidTransmog, Player *tPlayer, BOOL bMustBeInInventory, BOOL bSendFullUpdate)
+SETUP_FUNC_PTR(SCosmeticItems_LearnCosmeticItem);       // BOOL SCosmeticItems_LearnCosmeticItem(const ACDID idACDPlayer, const GBID gbidItem, CosmeticItemType eType, bool bPurchased)
+SETUP_FUNC_PTR(SCosmeticItems_LearnPet);                // BOOL SCosmeticItems_LearnPet(const ACDID idACDPlayer, const GBID gbidItem, bool bPurchased)
+SETUP_FUNC_PTR(SItemPlayerExtractLegendaryPower);       // BOOL SItemPlayerExtractLegendaryPower(Player *tPlayer, GBID gbidItem, GameError *eGameError)
+SETUP_FUNC_PTR(SItemCrafting_TryUnlockTransmog);        // BOOL SItemCrafting_TryUnlockTransmog(GBID gbidTransmog, Player *tPlayer, BOOL bMustBeInInventory, BOOL bSendFullUpdate)
 SETUP_FUNC_PTR(SItemCrafting_TryUnlockSecondaryTmogs);  // BOOL SItemCrafting_TryUnlockSecondaryTransmogs(GBID gbidTransmog, Player *tPlayer)
-SETUP_FUNC_PTR(SCrafterIncrementLevel);                     // BOOL SCrafterIncrementLevel(Player *tPlayer, CrafterType eType, uint32 nLevels)
-SETUP_FUNC_PTR(SItemCrafting_LearnRecipe);                  // void SItemCrafting_LearnRecipe(const ACDID idACDPlayer, const GBID gbidRecipe)
-SETUP_FUNC_PTR(sCrafterOnLevelUp);                          // void sCrafterOnLevelUp(const Player *tPlayer, CrafterType eType, const BOOL fChangedRank, const BOOL fSendToClient)
-SETUP_FUNC_PTR(LootRollForAncientLegendary);                // void LootRollForAncientLegendary(LootSpecifier *tSpecifier, const ACDID idACDLooter)
+SETUP_FUNC_PTR(SCrafterIncrementLevel);                 // BOOL SCrafterIncrementLevel(Player *tPlayer, CrafterType eType, uint32 nLevels)
+SETUP_FUNC_PTR(SItemCrafting_LearnRecipe);              // void SItemCrafting_LearnRecipe(const ACDID idACDPlayer, const GBID gbidRecipe)
+SETUP_FUNC_PTR(sCrafterOnLevelUp);                      // void sCrafterOnLevelUp(const Player *tPlayer, CrafterType eType, const BOOL fChangedRank, const BOOL fSendToClient)
+SETUP_FUNC_PTR(LootRollForAncientLegendary);            // void LootRollForAncientLegendary(LootSpecifier *tSpecifier, const ACDID idACDLooter)
 // SETUP_FUNC_PTR(GlobalSNOGet);                            // SNO GlobalSNOGet(const GlobalSNO eGlobalSNO)
-SETUP_FUNC_PTR(GBEnumerate);                                // void GBEnumerate(GameBalanceType eType, GBHandleList *listResults)
+SETUP_FUNC_PTR(GBEnumerate);                            // void GBEnumerate(GameBalanceType eType, GBHandleList *listResults)
 SETUP_FUNC_PTR(GBGetHandlePool);
 // SETUP_FUNC_PTR(ItemGetAttributeFromInventorySlot);
 SETUP_FUNC_PTR(SNOToString);
@@ -146,21 +144,21 @@ SETUP_FUNC_PTR(PlayerListGetSingle);
 SETUP_FUNC_PTR(PlayerListGetAllInGame);
 SETUP_FUNC_PTR(MessageSendToClient);
 SETUP_FUNC_PTR(ACDTryToGet);
-SETUP_FUNC_PTR(ACD_AttributesGetInt);    // __int64 ActorCommonData::AttributesGetInt(const ActorCommonData *this, FastAttribKey tKey)
-SETUP_FUNC_PTR(ACD_AttributesSetInt);    // void ActorCommonData::AttributesSetInt(ActorCommonData *this, FastAttribKey tKey, int32 nValue)
-SETUP_FUNC_PTR(ACD_AttributesGetFloat);  // float ActorCommonData::AttributesGetFloat(const ActorCommonData *this, FastAttribKey tKey)
-SETUP_FUNC_PTR(ACD_AttributesSetFloat);  // float ActorCommonData::AttributesSetFloat(ActorCommonData *this, FastAttribKey tKey, float flValue)
+SETUP_FUNC_PTR(ACD_AttributesGetInt);      // __int64 ActorCommonData::AttributesGetInt(const ActorCommonData *this, FastAttribKey tKey)
+SETUP_FUNC_PTR(ACD_AttributesSetInt);      // void ActorCommonData::AttributesSetInt(ActorCommonData *this, FastAttribKey tKey, int32 nValue)
+SETUP_FUNC_PTR(ACD_AttributesGetFloat);    // float ActorCommonData::AttributesGetFloat(const ActorCommonData *this, FastAttribKey tKey)
+SETUP_FUNC_PTR(ACD_AttributesSetFloat);    // float ActorCommonData::AttributesSetFloat(ActorCommonData *this, FastAttribKey tKey, float flValue)
 // SETUP_FUNC_PTR(ACD_ModifyCurrencyAmount);                   // BOOL ActorCommonData::ModifyCurrencyAmount  (ActorCommonData *this, const int64 nAmount, const CurrencyType eCurrencyType, const GoldModifiedReason eReason, const BOOL bForceNoSound)
-SETUP_FUNC_PTR(ACD_SetCurrencyAmount);    //       void ActorCommonData::SetCurrencyAmount     (ActorCommonData *this, int64 nAmount, const CurrencyType eCurrencyType, const GoldModifiedReason eReason)
-SETUP_FUNC_PTR(FastAttribGetValueInt);    // __int64 FastAttribGetValueInt(const FastAttribGroup *ptAttribGroup, FastAttribKey tKey)
-SETUP_FUNC_PTR(FastAttribGetValueFloat);  // float FastAttribGetValueFloat(const FastAttribGroup *ptAttribGroup, FastAttribKey tKey
-SETUP_FUNC_PTR(KeyGetDataType);           // __int64 KeyGetDataType(FastAttribKey tKey)
-SETUP_FUNC_PTR(KeyGetParamType);          // __int64 KeyGetParamType(FastAttribKey tKey)
-SETUP_FUNC_PTR(LocalPlayerGet);           // LocalPlayerGet
-SETUP_FUNC_PTR(PlayerGetByACD);           // Player* PlayerGetByACD(const ACDID idACD)
+SETUP_FUNC_PTR(ACD_SetCurrencyAmount);     // void ActorCommonData::SetCurrencyAmount     (ActorCommonData *this, int64 nAmount, const CurrencyType eCurrencyType, const GoldModifiedReason eReason)
+SETUP_FUNC_PTR(FastAttribGetValueInt);     // __int64 FastAttribGetValueInt(const FastAttribGroup *ptAttribGroup, FastAttribKey tKey)
+SETUP_FUNC_PTR(FastAttribGetValueFloat);   // float FastAttribGetValueFloat(const FastAttribGroup *ptAttribGroup, FastAttribKey tKey
+SETUP_FUNC_PTR(KeyGetDataType);            // __int64 KeyGetDataType(FastAttribKey tKey)
+SETUP_FUNC_PTR(KeyGetParamType);           // __int64 KeyGetParamType(FastAttribKey tKey)
+SETUP_FUNC_PTR(LocalPlayerGet);            // LocalPlayerGet
+SETUP_FUNC_PTR(PlayerGetByACD);            // Player* PlayerGetByACD(const ACDID idACD)
 SETUP_FUNC_PTR(GetPrimaryPlayerForGameConnection);
-SETUP_FUNC_PTR(ActorGet);                 // Actor* ActorGet(ActorID idActor)
-SETUP_FUNC_PTR(ActorFlagSet);             // void ActorFlagSet(const ActorID idActor, const ActorFlag eFlag, const BOOL bValue)
+SETUP_FUNC_PTR(ActorGet);                  // Actor* ActorGet(ActorID idActor)
+SETUP_FUNC_PTR(ActorFlagSet);              // void ActorFlagSet(const ActorID idActor, const ActorFlag eFlag, const BOOL bValue)
 SETUP_FUNC_PTR(PlayerGetFirstAll);
 SETUP_FUNC_PTR(PlayerGetNextAll);
 SETUP_FUNC_PTR(SPlayerIsLocal);

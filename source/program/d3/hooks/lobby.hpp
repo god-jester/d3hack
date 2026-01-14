@@ -268,10 +268,10 @@ namespace d3 {
             InstallAtSymbol("sym_specifiers_from_modifier");
         EvalMod::
             InstallAtSymbol("sym_eval_mod");
-        DupeDroppedItem::               // The primary hack trigger and functionality is here, when the host drops an item
+        DupeDroppedItem::                         // The primary hack trigger and functionality is here, when the host drops an item
             InstallAtFuncPtr(dupe_dropped_item);  // FuncPtr(InventoryDropRequest); /* BOOL SACDInventoryProcessDropRequest(const ACDID idACDWantingToDrop, const ACDID idACDItem, const BOOL bCheckAlive) */
 
-        RequestDropItemHook::          // The primary hack trigger and functionality is here, when the host drops an item
+        RequestDropItemHook::                     // The primary hack trigger and functionality is here, when the host drops an item
             InstallAtFuncPtr(request_drop_item);  // @ void CACDInventoryRequestDrop(ActorCommonData *ptACD, const ACDID idACDOwner)
 
         FastAttribGetIntValue::

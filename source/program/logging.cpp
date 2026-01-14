@@ -29,4 +29,4 @@ namespace exl::log {
         PrintV(fmt, vl);
         va_end(vl);
     }
-}
+}  // namespace exl::log

@@ -6,14 +6,13 @@
 struct CRefString;
 namespace mod = exl::util::modules;
 
-#define CRS_PTR(name, ...)                                         \
-    namespace crefstring_ptrs {                                    \
-        using APPEND(name, _t) = __VA_ARGS__;                      \
+#define CRS_PTR(name, ...)                    \
+    namespace crefstring_ptrs {               \
+        using APPEND(name, _t) = __VA_ARGS__; \
     }
 
-#define SETUP_CRS_PTR(name)                               \
-    crefstring_ptrs::APPEND(name, _t) CRefString::name =  \
-        reinterpret_cast<crefstring_ptrs::APPEND(name, _t)>(GameOffsetFromTable("sym_" #name))
+#define SETUP_CRS_PTR(name) \
+    crefstring_ptrs::APPEND(name, _t) CRefString::name = reinterpret_cast<crefstring_ptrs::APPEND(name, _t)>(GameOffsetFromTable("sym_" #name))
 
 CRS_PTR(CRefString_ctor_default,          void (*)(CRefString * const ));
 CRS_PTR(CRefString_ctor_int,              void (*)(CRefString *, int));
@@ -40,8 +39,7 @@ CRS_PTR(CRefString_Append,                void (*)(CRefString*, const char*));
 #undef CRS_PTR
 
 static inline TRefStringDataBuffer *GetRefStringDataBufferNil() {
-    static TRefStringDataBuffer *s_nil =
-        reinterpret_cast<TRefStringDataBuffer *>(GameOffsetFromTable("refstring_data_buffer_nil"));
+    static TRefStringDataBuffer *s_nil = reinterpret_cast<TRefStringDataBuffer *>(GameOffsetFromTable("refstring_data_buffer_nil"));
     return s_nil;
 }
 

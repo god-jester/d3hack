@@ -27,7 +27,8 @@
 
 namespace d3 {
     void PopulatePlayerList(PlayerList *pList, const Player *tTarget = nullptr) {
-        if (!_HOSTCHK) return;
+        if (!_HOSTCHK)
+            return;
         TPlayerPointerPool *ElementPool = PlayerListGetElementPool();
         PlayerList_ctor(pList, ElementPool);
         if (tTarget == nullptr)
@@ -38,7 +39,8 @@ namespace d3 {
     }
 
     void ShowError(const Player *tTarget, int32 eError) {
-        if (!_HOSTCHK) return;
+        if (!_HOSTCHK)
+            return;
         PlayerList     pList;
         IntDataMessage _pMessage {};
         size_t         nMsgSize = sizeof(IntDataMessage);
@@ -51,7 +53,8 @@ namespace d3 {
     }
 
     void SyncFlags(const Player *tTarget, uint32 DigestFlags) {
-        if (!_HOSTCHK) return;
+        if (!_HOSTCHK)
+            return;
         PlayerList       pList;
         DWordDataMessage _pMessage {};
         size_t           nMsgSize = sizeof(DWordDataMessage);

@@ -66,7 +66,6 @@ namespace d3 {
     auto &s_varSeasonState            = **reinterpret_cast<uintptr_t **const>(GameOffsetFromTable("xvar_season_state_ptr"));
     auto &s_varMaxParagonLevel        = **reinterpret_cast<uintptr_t **const>(GameOffsetFromTable("xvar_max_paragon_level_ptr"));
     auto &s_varExperimentalScheduling = **reinterpret_cast<uintptr_t **const>(GameOffsetFromTable("xvar_experimental_scheduling_ptr"));
-
     auto &s_varDoubleRiftKeystones    = *reinterpret_cast<uintptr_t *const>(GameOffsetFromTable("event_double_keystones"));
     auto &s_varDoubleBloodShards      = *reinterpret_cast<uintptr_t *const>(GameOffsetFromTable("event_double_blood_shards"));
     auto &s_varDoubleTreasureGoblins  = *reinterpret_cast<uintptr_t *const>(GameOffsetFromTable("event_double_goblins"));
@@ -193,15 +192,18 @@ namespace d3 {
     }
 
     auto SPlayerGetHostOld() -> Player * {
-        if (!_HOSTCHK) return nullptr;
+        if (!_HOSTCHK)
+            return nullptr;
         _SERVERCODE_ON
         Player *ret             = nullptr;
         auto    tSGameGlobals   = SGameGlobalsGet();
         auto    sGameConnection = ServerGetOnlyGameConnection();
         auto    sGameCurID      = AppServerGetOnlyGame();
         auto    ptPrimary       = GetPrimaryPlayerForGameConnection(sGameConnection);
-        PRINT("NEW SPlayerGetHostDbg! (SGame: %x | Connection: %x | Primary for connection: %p->%lx) %s %s", sGameCurID, sGameConnection, ptPrimary, ptPrimary->uHeroId, tSGameGlobals->uszCreatorAccountName, tSGameGlobals->uszCreatorHeroName)
-
+        PRINT(
+            "NEW SPlayerGetHostDbg! (SGame: %x | Connection: %x | Primary for connection: %p->%lx) %s %s",
+            sGameCurID, sGameConnection, ptPrimary, ptPrimary->uHeroId, tSGameGlobals->uszCreatorAccountName, tSGameGlobals->uszCreatorHeroName
+        );
         for (auto j = PlayerGetFirstAll(); j; j = PlayerGetNextAll(j)) {
             PRINT_EXPR("PlayerGet: %p->%lx | %i", j, j->uHeroId, SPlayerIsLocal(j))
             if (SPlayerIsLocal(j))
@@ -304,8 +306,7 @@ namespace d3 {
 
             PRINT(
                 "%s eAttrib = 0x%x (%i) | eKeyAttrib = 0x%x (%i) | Int = %i | nValue = %i\n\teParam = %li szParam = %s eStrToParam = %i\n---",
-                szAttrib, eAttrib, eAttrib, eKeyAttrib, eKeyAttrib, tValue._anon_0.nValue,
-                tKey.nValue, eParam, szParam, eStrToParam
+                szAttrib, eAttrib, eAttrib, eKeyAttrib, eKeyAttrib, tValue._anon_0.nValue, tKey.nValue, eParam, szParam, eStrToParam
             );
         }
         // PRINT("eAttrib = 0x%x (%i) | eKeyAttrib = 0x%x (%i) | nValue = %i", eAttrib, eAttrib, eKeyAttrib, eKeyAttrib, tKey.nValue)
@@ -314,7 +315,8 @@ namespace d3 {
     void CheckStringList(int gid, LPCSTR szLabel, bool bSkipDef = false) {
         return;  // NOLINT
         for (auto &idx : AllStringListSnoEnum) {
-            if (bSkipDef && (idx == 52006 || idx == 52008 || idx == 87075)) continue;
+            if (bSkipDef && (idx == 52006 || idx == 52008 || idx == 87075))
+                continue;
             auto fetch = StringListFetchLPCSTR(idx, szLabel);
             if (fetch) {
                 char *pch = strstr(fetch, "!!Missing!!");
@@ -403,15 +405,15 @@ namespace d3 {
             return false;
         };
 
-        const u32 nMin = global_config.challenge_rifts.range_start;
-        const u32 nMax = global_config.challenge_rifts.range_end;
+        const u32 nMin  = global_config.challenge_rifts.range_start;
+        const u32 nMax  = global_config.challenge_rifts.range_end;
         const u32 nPick = global_config.challenge_rifts.random
-            ? static_cast<u32>(GameRandRangeInt(static_cast<int>(nMin), static_cast<int>(nMax)))
-            : nMin;
+                              ? static_cast<u32>(GameRandRangeInt(static_cast<int>(nMin), static_cast<int>(nMax)))
+                              : nMin;
 
         auto  szFormat = "/rift_data/challengerift_%02d.dat";
-        auto dwSize   = BITSIZEOF(szFormat) + 10;
-        auto *lpBuf   = static_cast<char *>(alloca(dwSize));
+        auto  dwSize   = BITSIZEOF(szFormat) + 10;
+        auto *lpBuf    = static_cast<char *>(alloca(dwSize));
         snprintf(lpBuf, dwSize + 1, szFormat, nPick);
 
         const auto config_ok = PopulateData(&ptChalConf, g_szBaseDir + "/rift_data/challengerift_config.dat");

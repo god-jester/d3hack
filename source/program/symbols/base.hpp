@@ -9,10 +9,10 @@
 
 #define _FUNC_KEY(name)    "sym_" #name
 
-#define FUNC_PTR(name, ...)                                        \
-    namespace dut::func_ptrs {                                     \
-        using APPEND(name, _t) = __VA_ARGS__;                      \
-    }                                                              \
+#define FUNC_PTR(name, ...)                   \
+    namespace dut::func_ptrs {                \
+        using APPEND(name, _t) = __VA_ARGS__; \
+    }                                         \
     extern _FUNC_TYPE(name) name
 
 #define SETUP_FUNC_PTR(name) \

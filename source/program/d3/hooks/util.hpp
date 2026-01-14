@@ -56,7 +56,8 @@ namespace d3 {
         "-nofpslimit",
         "-usepageflip",
         "-debugd3d",
-        "-overridelogfolder", "sd:/config/d3hack-nx/",
+        "-overridelogfolder",
+        "sd:/config/d3hack-nx/",
         // "-overridefmodemergencymem",
         // "-nod4license"
     };
@@ -262,8 +263,8 @@ namespace d3 {
             // XVarBool_Set(&s_varExperimentalScheduling, true, 3u);
             // sg_tAppGlobals->eDebugDisplayMode = DDM_CONVERSATIONS // DDM_SOUND_STATUS // DDM_FPS_SIMPLE; // DDM_FPS_QA // DDM_FPS_PROGRAMMER
             // sg_tAppGlobals.eDebugDisplayMode = DDM_LOOT_REST_BONUS;
-            sg_tAppGlobals.eDebugFadeMode    = DFM_FADE_NEVER;
-            sg_tAppGlobals.eDebugSoundMode   = DSM_FULL;
+            sg_tAppGlobals.eDebugFadeMode  = DFM_FADE_NEVER;
+            sg_tAppGlobals.eDebugSoundMode = DSM_FULL;
             // sg_tAppGlobals.flDebugDrawRadius = 0.4f;
             // sg_tAppGlobals.eStringDebugMode  = STRINGDEBUG_LABEL;
             // AppDrawFlagSet(APP_DRAW_VARIABLE_RES_DEBUG_BIT, 1);

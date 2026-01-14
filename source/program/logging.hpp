@@ -7,4 +7,4 @@ namespace exl::log {
     void PrintV(const char *fmt, std::va_list vl);
     void LogFmt(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
     void PrintFmt(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
-}
+}  // namespace exl::log

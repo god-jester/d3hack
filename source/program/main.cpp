@@ -112,9 +112,9 @@ namespace d3 {
     HOOK_DEFINE_TRAMPOLINE(sInitializeWorld){
         static void Callback(SNO snoWorld, uintptr_t *ptSWorld) {
             Orig(snoWorld, ptSWorld);
-            auto tSGameGlobals   = SGameGlobalsGet();
-            auto sGameCurID      = AppServerGetOnlyGame();
-            gs_idGameConnection  = ServerGetOnlyGameConnection();
+            auto tSGameGlobals  = SGameGlobalsGet();
+            auto sGameCurID     = AppServerGetOnlyGame();
+            gs_idGameConnection = ServerGetOnlyGameConnection();
             PRINT("NEW sInitializeWorld! (SGame: %x | Connection: %x | Primary for connection: %p) %s %s", sGameCurID, gs_idGameConnection, GetPrimaryPlayerForGameConnection(gs_idGameConnection), tSGameGlobals->uszCreatorAccountName, tSGameGlobals->uszCreatorHeroName);
         }
     };
@@ -161,9 +161,7 @@ namespace d3 {
         }
     };
     HOOK_DEFINE_TRAMPOLINE(StubCopyright) {
-        static void Callback(bool enabled) {
-            Orig(false);
-        }
+        static void Callback(bool enabled) { Orig(false); }
     };
 
     extern "C" void exl_main(void * /*x0*/, void * /*x1*/) {
@@ -184,18 +182,18 @@ namespace d3 {
         // StubCopyright::InstallAtFuncPtr(nn::oe::SetCopyrightVisibility);
     }
 
-    void ApplyPatchConfigRuntime(const PatchConfig& config, RuntimeApplyResult* out) {
-        RuntimeApplyResult result{};
+    void ApplyPatchConfigRuntime(const PatchConfig &config, RuntimeApplyResult *out) {
+        RuntimeApplyResult result {};
 
-        const PatchConfig prev = global_config;
-        global_config = config;
-        global_config.initialized = true;
+        const PatchConfig prev      = global_config;
+        global_config               = config;
+        global_config.initialized   = true;
         global_config.defaults_only = false;
 
         // Safe, per-frame-gated features should apply immediately just by updating global_config.
         // For enable-only static patches, re-run patch entrypoints when turning them on.
 
-        auto append_note = [&](const char* text) {
+        auto append_note = [&](const char *text) {
             if (text == nullptr || text[0] == '\0') {
                 return;
             }
@@ -226,13 +224,11 @@ namespace d3 {
             result.restart_required = true;
         }
 
-        if (global_config.overlays.active && global_config.overlays.ddm_labels &&
-            !(prev.overlays.active && prev.overlays.ddm_labels)) {
+        if (global_config.overlays.active && global_config.overlays.ddm_labels && !(prev.overlays.active && prev.overlays.ddm_labels)) {
             PatchDDMLabels();
             result.applied_enable_only = true;
             append_note("DDM labels");
-        } else if ((prev.overlays.active && prev.overlays.ddm_labels) &&
-                   !(global_config.overlays.active && global_config.overlays.ddm_labels)) {
+        } else if ((prev.overlays.active && prev.overlays.ddm_labels) && !(global_config.overlays.active && global_config.overlays.ddm_labels)) {
             result.restart_required = true;
         }
 

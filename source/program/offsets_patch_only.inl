@@ -1,5 +1,6 @@
 // Patch-only offset entries included by `source/program/offsets.hpp`.
 // This file is intentionally included inside a template parameter list; keep entry lines comma-terminated.
+// clang-format off
 
     /* Patch/event flags (main module). */
     {util::ModuleIndex::Main, 0x114ACB8, "event_buff_start"},

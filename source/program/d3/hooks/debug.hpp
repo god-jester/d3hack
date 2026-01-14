@@ -793,9 +793,9 @@ namespace d3 {
             auto length            = static_cast<bdUInt>(ctx->W[24]);
             if (!PublisherFileData)
                 return;
-            auto bytes             = PublisherFileData->m_elements;
-            auto usize             = static_cast<uint32>(PublisherFileData->m_size);
-            auto m_size            = LODWORD(usize);
+            auto bytes  = PublisherFileData->m_elements;
+            auto usize  = static_cast<uint32>(PublisherFileData->m_size);
+            auto m_size = LODWORD(usize);
 
             PRINT("PublisherFileDataHex blz::basic_string (filesize: %d | stringsize: %d)", length, m_size)
             auto        dump_path     = blz_make_stringf("%s/dumps/dmp_%u.dat", g_szBaseDir.c_str(), length);

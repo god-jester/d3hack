@@ -11,11 +11,9 @@ namespace d3 {
 
     constinit const char      c_szTraceStat[]         = "sd:/config/d3hack-nx/debug.txt";
     constinit const char      c_szVariableResString[] = "Output %4dp (Scaled %4dp)";
-    constinit const Signature c_tSignature {
-        "   " D3HACK_VER CRLF D3HACK_WEB CRLF " ", "Diablo III v", 2, 7, 6
-    };
-    const RGBAColor c_rgbaText       = crgbaUIGold;
-    const RGBAColor c_rgbaDropShadow = crgbaWatermarkShadow;
+    constinit const Signature c_tSignature {"   " D3HACK_VER CRLF D3HACK_WEB CRLF " ", "Diablo III v", 2, 7, 6};
+    const RGBAColor           c_rgbaText       = crgbaUIGold;
+    const RGBAColor           c_rgbaDropShadow = crgbaWatermarkShadow;
 
     namespace armv8 = exl::armv8;
     namespace patch = exl::patch;
@@ -24,17 +22,12 @@ namespace d3 {
 
     using dword = std::array<std::byte, 0x4>;
 
-    inline uintptr_t PatchTable(const char *name) {
-        return GameOffsetFromTable(name) - exl::util::modules::GetTargetStart();
-    }
+    inline uintptr_t PatchTable(const char *name) { return GameOffsetFromTable(name) - exl::util::modules::GetTargetStart(); }
 
     void MakeAdrlPatch(const int32 main_addr, uintptr_t adrp_target, const exl::armv8::reg::Register register_target) {
         auto      jest       = patch::RandomAccessPatcher();
         uintptr_t AdrpOffset = main_addr;
-        auto      diff       = Adrp::GetDifference(
-            GameOffset(AdrpOffset),
-            adrp_target
-        );
+        auto      diff       = Adrp::GetDifference(GameOffset(AdrpOffset), adrp_target);
         jest.Patch<Adrp>(AdrpOffset, register_target, diff.m_Page);
         jest.Patch<AddImmediate>(AdrpOffset + 4, register_target, register_target, diff.m_Offset);
     }
@@ -261,6 +254,7 @@ namespace d3 {
         if (!global_config.rare_cheats.active)
             return;
         auto jest = patch::RandomAccessPatcher();
+
         const auto &cheats = global_config.rare_cheats;
         /* Restore debug display of allocation errors */
         jest.Patch<Movz>(PatchTable("patch_cheat_alloc_errors_01_movz"), W8, 0);

@@ -7,9 +7,9 @@ namespace d3 {
     constinit int8 g_nCrafters = 4;
 
     struct GameBalanceTable {
-        const LPCSTR          name;
-        const int32           eType;
-        const std::size_t     maxElements;
+        const LPCSTR      name;
+        const int32       eType;
+        const std::size_t maxElements;
     } g_tGBTableUnshifted[NUM_GBTYPES + 2] {
         {"GB_KEYWORD", -2},          // 0xFFFFFFFE
         {"GB_INVALID", -1},          // 0xFFFFFFFF
