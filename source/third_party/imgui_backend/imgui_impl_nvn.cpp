@@ -10,7 +10,6 @@
 #include "lib/diag/assert.hpp"
 #include "program/d3/setting.hpp"
 #include "program/romfs_assets.hpp"
-#include "imgui_bin.h"
 
 #define UBOSIZE 0x1000
 
@@ -252,22 +251,17 @@ namespace ImguiNvnBackend {
                 PRINT("[imgui_backend] Using romfs imgui.bin (%lu bytes)",
                       static_cast<unsigned long>(s_romfs_imgui_bin.size()));
             } else {
-                PRINT_LINE("[imgui_backend] romfs imgui.bin not found; using built-in imgui.bin");
+                PRINT_LINE("[imgui_backend] ERROR: romfs imgui.bin not found");
             }
         }
 
-        if (s_romfs_loaded && !s_romfs_imgui_bin.empty()) {
-            bd->imguiShaderBinary.size = static_cast<ulong>(s_romfs_imgui_bin.size());
-            bd->imguiShaderBinary.ptr = reinterpret_cast<u8*>(s_romfs_imgui_bin.data());
-        } else {
-            bd->imguiShaderBinary.size = imgui_bin_size;
-            bd->imguiShaderBinary.ptr = (u8*)&imgui_bin;
-        }
-
-        if (bd->imguiShaderBinary.size == 0) {
+        if (!s_romfs_loaded || s_romfs_imgui_bin.empty()) {
             PRINT_LINE("[imgui_backend] ERROR: imgui.bin is empty");
             return false;
         }
+
+        bd->imguiShaderBinary.size = static_cast<ulong>(s_romfs_imgui_bin.size());
+        bd->imguiShaderBinary.ptr = reinterpret_cast<u8*>(s_romfs_imgui_bin.data());
 
         return true;
     }
