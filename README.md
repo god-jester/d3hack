@@ -7,8 +7,6 @@ Seasons offline. Challenge Rifts without servers. Community events on demand. Lo
 Want the full toggle list? Start with the example config: [`examples/config/d3hack-nx/config.toml`](examples/config/d3hack-nx/config.toml).
 New: [1080p+ Output & Resolution Hack breakdown](#1080p-output--resolution-hack) (how the patches + hooks work, and why depth detachment is required at 1152p+).
 
-> This project is for research, modding, and offline experimentation. Respect the game, other players, and applicable laws/ToS.
-
 ---
 
 ## Highlights (Current)
@@ -177,4 +175,13 @@ Outputs land in `deploy/` as `subsdk9` and `main.npdm`.
 
 ## Credits
 
-Created by: **jester** (also behind [D3StudioFork](https://github.com/god-jester/D3StudioFork) and well-known D3 cheat releases) and built on [exlaunch](https://github.com/shadowninja108/exlaunch).
+- D3Hack created by **jester** (also behind [D3StudioFork](https://github.com/god-jester/D3StudioFork) and well-known D3 cheat releases) 
+- [exlaunch](https://github.com/shadowninja108/exlaunch) created by **Shadow**.
+- [ImGui](https://github.com/ocornut/imgui)
+
+### Inspiration & References
+
+- [TeamLumi/Luminescent_ExLaunch](https://github.com/TeamLumi/Luminescent_ExLaunch)
+- [RedBoxing/Starlight](https://github.com/RedBoxing/Starlight)
+- [Amethyst-szs/smo-lunakit](https://github.com/Amethyst-szs/smo-lunakit)
+- [Martmists-GH/BDSP_Rombase](https://github.com/Martmists-GH/BDSP_Rombase)
