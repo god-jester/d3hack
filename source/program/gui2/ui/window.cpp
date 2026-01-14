@@ -2,103 +2,103 @@
 
 namespace d3::gui2::ui {
 
-Window::Window(std::string title, bool enabled_default)
-    : title_(std::move(title)), enabled_(enabled_default) {
-}
-
-bool Window::Render() {
-    if (!enabled_) {
-        return false;
+    Window::Window(std::string title, bool enabled_default) :
+        title_(std::move(title)), enabled_(enabled_default) {
     }
 
-    bool* open = GetOpenFlag();
-    if (open != nullptr && !*open) {
-        return false;
+    bool Window::Render() {
+        if (!enabled_) {
+            return false;
+        }
+
+        bool *open = GetOpenFlag();
+        if (open != nullptr && !*open) {
+            return false;
+        }
+
+        if (has_default_pos_) {
+            ImGui::SetNextWindowPos(default_pos_, default_pos_cond_);
+        }
+        if (has_default_size_) {
+            ImGui::SetNextWindowSize(default_size_, default_size_cond_);
+        }
+
+        BeforeBegin();
+
+        const bool window_visible = ImGui::Begin(title_.c_str(), open, flags_);
+        if (window_visible) {
+            RenderContents();
+        }
+
+        // Always end the window even if Begin() returned false.
+        ImGui::End();
+
+        AfterEnd();
+
+        return window_visible;
     }
 
-    if (has_default_pos_) {
-        ImGui::SetNextWindowPos(default_pos_, default_pos_cond_);
-    }
-    if (has_default_size_) {
-        ImGui::SetNextWindowSize(default_size_, default_size_cond_);
+    bool Window::IsEnabled() const {
+        return enabled_;
     }
 
-    BeforeBegin();
+    void Window::SetEnabled(bool enabled) {
+        if (enabled_ == enabled) {
+            return;
+        }
 
-    const bool window_visible = ImGui::Begin(title_.c_str(), open, flags_);
-    if (window_visible) {
-        RenderContents();
+        enabled_ = enabled;
+
+        if (enabled_) {
+            OnEnable();
+        } else {
+            OnDisable();
+        }
     }
 
-    // Always end the window even if Begin() returned false.
-    ImGui::End();
-
-    AfterEnd();
-
-    return window_visible;
-}
-
-bool Window::IsEnabled() const {
-    return enabled_;
-}
-
-void Window::SetEnabled(bool enabled) {
-    if (enabled_ == enabled) {
-        return;
+    bool Window::IsOpen() const {
+        const bool *open = const_cast<Window *>(this)->GetOpenFlag();
+        return (open == nullptr) || *open;
     }
 
-    enabled_ = enabled;
-
-    if (enabled_) {
-        OnEnable();
-    } else {
-        OnDisable();
+    const std::string &Window::GetTitle() const {
+        return title_;
     }
-}
 
-bool Window::IsOpen() const {
-    const bool* open = const_cast<Window*>(this)->GetOpenFlag();
-    return (open == nullptr) || *open;
-}
+    void Window::SetTitle(std::string title) {
+        title_ = std::move(title);
+    }
 
-const std::string& Window::GetTitle() const {
-    return title_;
-}
+    void Window::SetDefaultPos(ImVec2 pos, ImGuiCond cond) {
+        default_pos_      = pos;
+        default_pos_cond_ = cond;
+        has_default_pos_  = true;
+    }
 
-void Window::SetTitle(std::string title) {
-    title_ = std::move(title);
-}
+    void Window::ClearDefaultPos() {
+        has_default_pos_ = false;
+    }
 
-void Window::SetDefaultPos(ImVec2 pos, ImGuiCond cond) {
-    default_pos_ = pos;
-    default_pos_cond_ = cond;
-    has_default_pos_ = true;
-}
+    void Window::SetDefaultSize(ImVec2 size, ImGuiCond cond) {
+        default_size_      = size;
+        default_size_cond_ = cond;
+        has_default_size_  = true;
+    }
 
-void Window::ClearDefaultPos() {
-    has_default_pos_ = false;
-}
+    void Window::ClearDefaultSize() {
+        has_default_size_ = false;
+    }
 
-void Window::SetDefaultSize(ImVec2 size, ImGuiCond cond) {
-    default_size_ = size;
-    default_size_cond_ = cond;
-    has_default_size_ = true;
-}
+    ImGuiWindowFlags Window::GetFlags() const {
+        return flags_;
+    }
 
-void Window::ClearDefaultSize() {
-    has_default_size_ = false;
-}
+    void Window::SetFlags(ImGuiWindowFlags flags) {
+        flags_ = flags;
+    }
 
-ImGuiWindowFlags Window::GetFlags() const {
-    return flags_;
-}
-
-void Window::SetFlags(ImGuiWindowFlags flags) {
-    flags_ = flags;
-}
-
-bool* Window::GetOpenFlag() {
-    return nullptr;
-}
+    bool *Window::GetOpenFlag() {
+        return nullptr;
+    }
 
 }  // namespace d3::gui2::ui

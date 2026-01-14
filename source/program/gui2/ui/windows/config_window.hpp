@@ -8,20 +8,20 @@ namespace d3::gui2::ui {
 
 namespace d3::gui2::ui::windows {
 
-class ConfigWindow : public ui::Window {
-public:
-    explicit ConfigWindow(ui::Overlay& overlay);
+    class ConfigWindow : public ui::Window {
+       public:
+        explicit ConfigWindow(ui::Overlay &overlay);
 
-protected:
-    void AfterEnd() override;
-    void RenderContents() override;
+       protected:
+        void AfterEnd() override;
+        void RenderContents() override;
 
-private:
-    bool* GetOpenFlag() override;
+       private:
+        bool *GetOpenFlag() override;
 
-    bool show_metrics_ = false;
-    bool restart_required_ = false;
-    ui::Overlay& overlay_;
-};
+        bool         show_metrics_     = false;
+        bool         restart_required_ = false;
+        ui::Overlay &overlay_;
+    };
 
 }  // namespace d3::gui2::ui::windows

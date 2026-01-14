@@ -4,7 +4,7 @@
 #include <string>
 
 struct PatchConfig {
-    bool initialized = false;
+    bool initialized   = false;
     bool defaults_only = true;
 
     enum class SeasonEventMapMode : u8 {
@@ -40,36 +40,36 @@ struct PatchConfig {
     } seasons;
 
     struct {
-        bool active = false;
-        bool random = true;
+        bool active      = false;
+        bool random      = true;
         u32  range_start = 0;
-        u32  range_end = 20;
+        u32  range_end   = 20;
     } challenge_rifts;
 
     struct {
-        bool active = true;
-        SeasonEventMapMode SeasonMapMode = SeasonEventMapMode::Disabled;
-        bool IgrEnabled = false;
-        bool AnniversaryEnabled = false;
-        bool EasterEggWorldEnabled = false;
-        bool DoubleRiftKeystones = true;
-        bool DoubleBloodShards = true;
-        bool DoubleTreasureGoblins = true;
-        bool DoubleBountyBags = true;
-        bool RoyalGrandeur = false;
-        bool LegacyOfNightmares = false;
-        bool TriunesWill = false;
-        bool Pandemonium = false;
-        bool KanaiPowers = false;
-        bool TrialsOfTempests = false;
-        bool ShadowClones = false;
-        bool FourthKanaisCubeSlot = false;
-        bool EtherealItems = false;
-        bool SoulShards = false;
-        bool SwarmRifts = false;
-        bool SanctifiedItems = false;
-        bool DarkAlchemy = true;
-        bool NestingPortals = false;
+        bool               active                = true;
+        SeasonEventMapMode SeasonMapMode         = SeasonEventMapMode::Disabled;
+        bool               IgrEnabled            = false;
+        bool               AnniversaryEnabled    = false;
+        bool               EasterEggWorldEnabled = false;
+        bool               DoubleRiftKeystones   = true;
+        bool               DoubleBloodShards     = true;
+        bool               DoubleTreasureGoblins = true;
+        bool               DoubleBountyBags      = true;
+        bool               RoyalGrandeur         = false;
+        bool               LegacyOfNightmares    = false;
+        bool               TriunesWill           = false;
+        bool               Pandemonium           = false;
+        bool               KanaiPowers           = false;
+        bool               TrialsOfTempests      = false;
+        bool               ShadowClones          = false;
+        bool               FourthKanaisCubeSlot  = false;
+        bool               EtherealItems         = false;
+        bool               SoulShards            = false;
+        bool               SwarmRifts            = false;
+        bool               SanctifiedItems       = false;
+        bool               DarkAlchemy           = true;
+        bool               NestingPortals        = false;
     } events;
 
     struct {
@@ -97,41 +97,41 @@ struct PatchConfig {
     ResolutionHackConfig resolution_hack {};
 
     struct {
-        bool active = true;
+        bool active                = true;
         bool buildlocker_watermark = false;
-        bool ddm_labels = true;
-        bool fps_label = false;
-        bool var_res_label = true;
+        bool ddm_labels            = true;
+        bool fps_label             = false;
+        bool var_res_label         = true;
     } overlays;
 
     struct {
-        bool        active = false;
-        bool        DisableAncientDrops = false;
+        bool        active                    = false;
+        bool        DisableAncientDrops       = false;
         bool        DisablePrimalAncientDrops = false;
-        bool        DisableTormentDrops = false;
-        bool        DisableTormentCheck = false;
-        bool        SuppressGiftGeneration = true;
+        bool        DisableTormentDrops       = false;
+        bool        DisableTormentCheck       = false;
+        bool        SuppressGiftGeneration    = true;
         u32         ForcedILevel              = 0;
         u32         TieredLootRunLevel        = 0;
-        std::string AncientRank = "Primal";
-        int         AncientRankValue = 2;
+        std::string AncientRank               = "Primal";
+        int         AncientRankValue          = 2;
     } loot_modifiers;
 
     struct {
-        bool active = true;
-        bool enable_crashes = false;
+        bool active              = true;
+        bool enable_crashes      = false;
         bool enable_pubfile_dump = false;
         bool enable_error_traces = true;
-        bool enable_debug_flags = false;
+        bool enable_debug_flags  = false;
     } debug;
 
     struct {
-        bool enabled = true;  // render the ImGui UI (proof-of-life stays separate)
-        bool visible = true;  // window visible by default
-        std::string language_override{};  // optional; when set, overrides game locale for GUI translations (e.g. "zh")
+        bool        enabled = true;        // render the ImGui UI (proof-of-life stays separate)
+        bool        visible = true;        // window visible by default
+        std::string language_override {};  // optional; when set, overrides game locale for GUI translations (e.g. "zh")
     } gui;
 
-    void ApplyTable(const toml::table& table);
+    void ApplyTable(const toml::table &table);
 };
 
 extern PatchConfig global_config;
@@ -142,13 +142,13 @@ extern PatchConfig global_config;
 void LoadPatchConfig();
 
 // Normalize/clamp config using the same rules as TOML load.
-PatchConfig NormalizePatchConfig(const PatchConfig& config);
+PatchConfig NormalizePatchConfig(const PatchConfig &config);
 
 // Load config from a specific path into an output struct (does not mutate global_config).
-bool LoadPatchConfigFromPath(const char* path, PatchConfig& out, std::string& error_out);
+bool LoadPatchConfigFromPath(const char *path, PatchConfig &out, std::string &error_out);
 
 // Save config to TOML (best-effort). Writes to a temp file and renames into place.
-bool SavePatchConfigToPath(const char* path, const PatchConfig& config, std::string& error_out);
+bool SavePatchConfigToPath(const char *path, const PatchConfig &config, std::string &error_out);
 
 // Default path: sd:/config/d3hack-nx/config.toml
-bool SavePatchConfig(const PatchConfig& config);
+bool SavePatchConfig(const PatchConfig &config);

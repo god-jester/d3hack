@@ -5,17 +5,17 @@
 
 #include <sstream>
 
-PatchConfig global_config{};
+PatchConfig global_config {};
 
 namespace {
-    const toml::table* FindTable(const toml::table& root, std::string_view key) {
+    const toml::table *FindTable(const toml::table &root, std::string_view key) {
         if (auto node = root.get(key); node && node->is_table())
             return node->as_table();
         return nullptr;
     }
 
     template<typename T>
-    std::optional<T> ReadValue(const toml::table& table, std::initializer_list<std::string_view> keys) {
+    std::optional<T> ReadValue(const toml::table &table, std::initializer_list<std::string_view> keys) {
         for (auto key : keys) {
             if (auto node = table.get(key)) {
                 if (auto value = node->value<T>())
@@ -25,13 +25,13 @@ namespace {
         return std::nullopt;
     }
 
-    bool ReadBool(const toml::table& table, std::initializer_list<std::string_view> keys, bool fallback) {
+    bool ReadBool(const toml::table &table, std::initializer_list<std::string_view> keys, bool fallback) {
         if (auto value = ReadValue<bool>(table, keys))
             return *value;
         return fallback;
     }
 
-    std::optional<double> ReadNumber(const toml::table& table, std::initializer_list<std::string_view> keys) {
+    std::optional<double> ReadNumber(const toml::table &table, std::initializer_list<std::string_view> keys) {
         for (auto key : keys) {
             if (auto node = table.get(key)) {
                 if (auto value = node->value<double>())
@@ -43,7 +43,7 @@ namespace {
         return std::nullopt;
     }
 
-    u32 ReadU32(const toml::table& table, std::initializer_list<std::string_view> keys, u32 fallback, u32 min_value, u32 max_value) {
+    u32 ReadU32(const toml::table &table, std::initializer_list<std::string_view> keys, u32 fallback, u32 min_value, u32 max_value) {
         if (auto value = ReadNumber(table, keys)) {
             auto clamped = std::clamp(*value, static_cast<double>(min_value), static_cast<double>(max_value));
             return static_cast<u32>(clamped);
@@ -51,14 +51,14 @@ namespace {
         return fallback;
     }
 
-    double ReadDouble(const toml::table& table, std::initializer_list<std::string_view> keys, double fallback, double min_value, double max_value) {
+    double ReadDouble(const toml::table &table, std::initializer_list<std::string_view> keys, double fallback, double min_value, double max_value) {
         if (auto value = ReadNumber(table, keys)) {
             return std::clamp(*value, min_value, max_value);
         }
         return fallback;
     }
 
-    std::string ReadString(const toml::table& table, std::initializer_list<std::string_view> keys, std::string fallback) {
+    std::string ReadString(const toml::table &table, std::initializer_list<std::string_view> keys, std::string fallback) {
         if (auto value = ReadValue<std::string>(table, keys))
             return *value;
         return fallback;
@@ -89,7 +89,7 @@ namespace {
         return fallback;
     }
 
-    PatchConfig::SeasonEventMapMode ReadSeasonEventMapMode(const toml::table& table, std::initializer_list<std::string_view> keys, PatchConfig::SeasonEventMapMode fallback) {
+    PatchConfig::SeasonEventMapMode ReadSeasonEventMapMode(const toml::table &table, std::initializer_list<std::string_view> keys, PatchConfig::SeasonEventMapMode fallback) {
         if (auto value = ReadValue<std::string>(table, keys))
             return ParseSeasonEventMapMode(*value, fallback);
         if (auto value = ReadValue<bool>(table, keys))
@@ -135,30 +135,30 @@ namespace {
     }
 
     struct SeasonEventFlags {
-        bool IgrEnabled = false;
-        bool AnniversaryEnabled = false;
+        bool IgrEnabled            = false;
+        bool AnniversaryEnabled    = false;
         bool EasterEggWorldEnabled = false;
-        bool DoubleRiftKeystones = false;
-        bool DoubleBloodShards = false;
+        bool DoubleRiftKeystones   = false;
+        bool DoubleBloodShards     = false;
         bool DoubleTreasureGoblins = false;
-        bool DoubleBountyBags = false;
-        bool RoyalGrandeur = false;
-        bool LegacyOfNightmares = false;
-        bool TriunesWill = false;
-        bool Pandemonium = false;
-        bool KanaiPowers = false;
-        bool TrialsOfTempests = false;
-        bool ShadowClones = false;
-        bool FourthKanaisCubeSlot = false;
-        bool EtherealItems = false;
-        bool SoulShards = false;
-        bool SwarmRifts = false;
-        bool SanctifiedItems = false;
-        bool DarkAlchemy = true;
-        bool NestingPortals = false;
+        bool DoubleBountyBags      = false;
+        bool RoyalGrandeur         = false;
+        bool LegacyOfNightmares    = false;
+        bool TriunesWill           = false;
+        bool Pandemonium           = false;
+        bool KanaiPowers           = false;
+        bool TrialsOfTempests      = false;
+        bool ShadowClones          = false;
+        bool FourthKanaisCubeSlot  = false;
+        bool EtherealItems         = false;
+        bool SoulShards            = false;
+        bool SwarmRifts            = false;
+        bool SanctifiedItems       = false;
+        bool DarkAlchemy           = true;
+        bool NestingPortals        = false;
     };
 
-    auto CaptureSeasonEventFlags(const PatchConfig& config) -> SeasonEventFlags {
+    auto CaptureSeasonEventFlags(const PatchConfig &config) -> SeasonEventFlags {
         return {
             config.events.IgrEnabled,
             config.events.AnniversaryEnabled,
@@ -184,31 +184,31 @@ namespace {
         };
     }
 
-    void ApplySeasonEventFlags(PatchConfig& config, const SeasonEventFlags& flags) {
-        config.events.IgrEnabled = flags.IgrEnabled;
-        config.events.AnniversaryEnabled = flags.AnniversaryEnabled;
+    void ApplySeasonEventFlags(PatchConfig &config, const SeasonEventFlags &flags) {
+        config.events.IgrEnabled            = flags.IgrEnabled;
+        config.events.AnniversaryEnabled    = flags.AnniversaryEnabled;
         config.events.EasterEggWorldEnabled = flags.EasterEggWorldEnabled;
-        config.events.DoubleRiftKeystones = flags.DoubleRiftKeystones;
-        config.events.DoubleBloodShards = flags.DoubleBloodShards;
+        config.events.DoubleRiftKeystones   = flags.DoubleRiftKeystones;
+        config.events.DoubleBloodShards     = flags.DoubleBloodShards;
         config.events.DoubleTreasureGoblins = flags.DoubleTreasureGoblins;
-        config.events.DoubleBountyBags = flags.DoubleBountyBags;
-        config.events.RoyalGrandeur = flags.RoyalGrandeur;
-        config.events.LegacyOfNightmares = flags.LegacyOfNightmares;
-        config.events.TriunesWill = flags.TriunesWill;
-        config.events.Pandemonium = flags.Pandemonium;
-        config.events.KanaiPowers = flags.KanaiPowers;
-        config.events.TrialsOfTempests = flags.TrialsOfTempests;
-        config.events.ShadowClones = flags.ShadowClones;
-        config.events.FourthKanaisCubeSlot = flags.FourthKanaisCubeSlot;
-        config.events.EtherealItems = flags.EtherealItems;
-        config.events.SoulShards = flags.SoulShards;
-        config.events.SwarmRifts = flags.SwarmRifts;
-        config.events.SanctifiedItems = flags.SanctifiedItems;
-        config.events.DarkAlchemy = flags.DarkAlchemy;
-        config.events.NestingPortals = flags.NestingPortals;
+        config.events.DoubleBountyBags      = flags.DoubleBountyBags;
+        config.events.RoyalGrandeur         = flags.RoyalGrandeur;
+        config.events.LegacyOfNightmares    = flags.LegacyOfNightmares;
+        config.events.TriunesWill           = flags.TriunesWill;
+        config.events.Pandemonium           = flags.Pandemonium;
+        config.events.KanaiPowers           = flags.KanaiPowers;
+        config.events.TrialsOfTempests      = flags.TrialsOfTempests;
+        config.events.ShadowClones          = flags.ShadowClones;
+        config.events.FourthKanaisCubeSlot  = flags.FourthKanaisCubeSlot;
+        config.events.EtherealItems         = flags.EtherealItems;
+        config.events.SoulShards            = flags.SoulShards;
+        config.events.SwarmRifts            = flags.SwarmRifts;
+        config.events.SanctifiedItems       = flags.SanctifiedItems;
+        config.events.DarkAlchemy           = flags.DarkAlchemy;
+        config.events.NestingPortals        = flags.NestingPortals;
     }
 
-    auto OverlaySeasonEventFlags(const SeasonEventFlags& map, const SeasonEventFlags& extra) -> SeasonEventFlags {
+    auto OverlaySeasonEventFlags(const SeasonEventFlags &map, const SeasonEventFlags &extra) -> SeasonEventFlags {
         SeasonEventFlags out = map;
         out.IgrEnabled |= extra.IgrEnabled;
         out.AnniversaryEnabled |= extra.AnniversaryEnabled;
@@ -234,8 +234,8 @@ namespace {
         return out;
     }
 
-    bool BuildSeasonEventMap(u32 season, SeasonEventFlags& out) {
-        out = SeasonEventFlags{};
+    bool BuildSeasonEventMap(u32 season, SeasonEventFlags &out) {
+        out = SeasonEventFlags {};
         switch (season) {
         case 14:
             out.DoubleTreasureGoblins = true;
@@ -262,7 +262,7 @@ namespace {
             out.TrialsOfTempests = true;
             return true;
         case 22:
-            out.ShadowClones = true;
+            out.ShadowClones         = true;
             out.FourthKanaisCubeSlot = true;
             return true;
         case 24:
@@ -293,7 +293,7 @@ namespace {
             out.EtherealItems = true;
             return true;
         case 33:
-            out.ShadowClones = true;
+            out.ShadowClones         = true;
             out.FourthKanaisCubeSlot = true;
             return true;
         case 34:
@@ -313,18 +313,18 @@ namespace {
         }
     }
 
-    void ApplySeasonEventMapIfNeeded(PatchConfig& config) {
+    void ApplySeasonEventMapIfNeeded(PatchConfig &config) {
         if (config.events.SeasonMapMode == PatchConfig::SeasonEventMapMode::Disabled)
             return;
         if (!config.seasons.active)
             return;
-        SeasonEventFlags map{};
+        SeasonEventFlags map {};
         if (!BuildSeasonEventMap(config.seasons.current_season, map))
             return;
         auto current = CaptureSeasonEventFlags(config);
-        auto merged = config.events.SeasonMapMode == PatchConfig::SeasonEventMapMode::OverlayConfig
-            ? OverlaySeasonEventFlags(map, current)
-            : map;
+        auto merged  = config.events.SeasonMapMode == PatchConfig::SeasonEventMapMode::OverlayConfig
+                           ? OverlaySeasonEventFlags(map, current)
+                           : map;
         ApplySeasonEventFlags(config, merged);
     }
 
@@ -352,21 +352,21 @@ namespace {
         }
     }
 
-    bool DoesFileExist(const char* path) {
-        nn::fs::DirectoryEntryType type{};
-        auto rc = nn::fs::GetEntryType(&type, path);
+    bool DoesFileExist(const char *path) {
+        nn::fs::DirectoryEntryType type {};
+        auto                       rc = nn::fs::GetEntryType(&type, path);
         return R_SUCCEEDED(rc) && type == nn::fs::DirectoryEntryType_File;
     }
 
-    bool ReadAll(const char* path, std::string& out) {
+    bool ReadAll(const char *path, std::string &out) {
         if (!DoesFileExist(path))
             return false;
-        nn::fs::FileHandle fh{};
-        auto rc = nn::fs::OpenFile(&fh, path, nn::fs::OpenMode_Read);
+        nn::fs::FileHandle fh {};
+        auto               rc = nn::fs::OpenFile(&fh, path, nn::fs::OpenMode_Read);
         EXL_ASSERT(R_SUCCEEDED(rc), "Failed to open file: %s", path);
 
         s64 size = 0;
-        rc = nn::fs::GetFileSize(&size, fh);
+        rc       = nn::fs::GetFileSize(&size, fh);
         if (R_FAILED(rc) || size <= 0) {
             nn::fs::CloseFile(fh);
             return false;
@@ -379,15 +379,15 @@ namespace {
         return true;
     }
 
-    bool LoadFromPath(const char* path, PatchConfig& out, std::string& error_out) {
+    bool LoadFromPath(const char *path, PatchConfig &out, std::string &error_out) {
         std::string text;
         if (!ReadAll(path, text))
             return false;
-        auto result = toml::parse(text, std::string_view{path});
+        auto result = toml::parse(text, std::string_view {path});
         if (!result) {
-            const auto& err = result.error();
-            auto pos = err.source().begin;
-            error_out = std::string(err.description());
+            const auto &err = result.error();
+            auto        pos = err.source().begin;
+            error_out       = std::string(err.description());
             if (pos) {
                 error_out += " (line ";
                 error_out += std::to_string(pos.line);
@@ -401,7 +401,7 @@ namespace {
         return true;
     }
 
-    const char* SeasonMapModeToString(PatchConfig::SeasonEventMapMode mode) {
+    const char *SeasonMapModeToString(PatchConfig::SeasonEventMapMode mode) {
         switch (mode) {
         case PatchConfig::SeasonEventMapMode::MapOnly:
             return "MapOnly";
@@ -414,7 +414,7 @@ namespace {
         }
     }
 
-    toml::table BuildPatchConfigTable(const PatchConfig& config) {
+    toml::table BuildPatchConfigTable(const PatchConfig &config) {
         toml::table root;
 
         {
@@ -544,18 +544,18 @@ namespace {
         return root;
     }
 
-    bool EnsureConfigDirectories(const char* path, std::string& error_out) {
+    bool EnsureConfigDirectories(const char *path, std::string &error_out) {
         // Currently only supports the standard config directory layout.
         // Path is expected to be: sd:/config/d3hack-nx/config.toml
         (void)path;
-        const char* root_dir = "sd:/config";
-        const char* hack_dir = "sd:/config/d3hack-nx";
+        const char *root_dir = "sd:/config";
+        const char *hack_dir = "sd:/config/d3hack-nx";
 
         (void)nn::fs::CreateDirectory(root_dir);
         (void)nn::fs::CreateDirectory(hack_dir);
 
-        nn::fs::DirectoryEntryType type{};
-        auto rc = nn::fs::GetEntryType(&type, hack_dir);
+        nn::fs::DirectoryEntryType type {};
+        auto                       rc = nn::fs::GetEntryType(&type, hack_dir);
         if (R_FAILED(rc)) {
             error_out = "Failed to ensure config directory exists";
             return false;
@@ -563,7 +563,7 @@ namespace {
         return true;
     }
 
-    bool WriteAllAtomic(const char* path, const std::string& text, std::string& error_out) {
+    bool WriteAllAtomic(const char *path, const std::string &text, std::string &error_out) {
         if (!EnsureConfigDirectories(path, error_out)) {
             return false;
         }
@@ -579,7 +579,7 @@ namespace {
             return false;
         }
 
-        nn::fs::FileHandle fh{};
+        nn::fs::FileHandle fh {};
         rc = nn::fs::OpenFile(&fh, tmp_path.c_str(), nn::fs::OpenMode_Write);
         if (R_FAILED(rc)) {
             (void)nn::fs::DeleteFile(tmp_path.c_str());
@@ -588,7 +588,7 @@ namespace {
         }
 
         const auto opt = nn::fs::WriteOption::CreateOption(nn::fs::WriteOptionFlag_Flush);
-        rc = nn::fs::WriteFile(fh, 0, text.data(), static_cast<u64>(text.size()), opt);
+        rc             = nn::fs::WriteFile(fh, 0, text.data(), static_cast<u64>(text.size()), opt);
         if (R_FAILED(rc)) {
             nn::fs::CloseFile(fh);
             (void)nn::fs::DeleteFile(tmp_path.c_str());
@@ -625,54 +625,54 @@ namespace {
 
         return true;
     }
-}
+}  // namespace
 
-void PatchConfig::ApplyTable(const toml::table& table) {
-    if (const auto* section = FindTable(table, "seasons")) {
-        seasons.active = ReadBool(*section, {"SectionEnabled", "Enabled", "Active"}, seasons.active);
-        seasons.allow_online = ReadBool(*section, {"AllowOnlinePlay", "AllowOnline"}, seasons.allow_online);
+void PatchConfig::ApplyTable(const toml::table &table) {
+    if (const auto *section = FindTable(table, "seasons")) {
+        seasons.active         = ReadBool(*section, {"SectionEnabled", "Enabled", "Active"}, seasons.active);
+        seasons.allow_online   = ReadBool(*section, {"AllowOnlinePlay", "AllowOnline"}, seasons.allow_online);
         seasons.current_season = ReadU32(*section, {"SeasonNumber", "Number", "Season"}, seasons.current_season, 1, 200);
         seasons.spoof_ptr      = ReadBool(*section, {"SpoofPtr", "SpoofPTR", "PtrSpoof"}, seasons.spoof_ptr);
     }
 
-    if (const auto* section = FindTable(table, "challenge_rifts")) {
-        challenge_rifts.active = ReadBool(*section, {"SectionEnabled", "Enabled", "Active"}, challenge_rifts.active);
-        challenge_rifts.random = ReadBool(*section, {"MakeRiftsRandom", "Random"}, challenge_rifts.random);
+    if (const auto *section = FindTable(table, "challenge_rifts")) {
+        challenge_rifts.active      = ReadBool(*section, {"SectionEnabled", "Enabled", "Active"}, challenge_rifts.active);
+        challenge_rifts.random      = ReadBool(*section, {"MakeRiftsRandom", "Random"}, challenge_rifts.random);
         challenge_rifts.range_start = ReadU32(*section, {"RiftRangeStart", "RangeStart", "RangeMin"}, challenge_rifts.range_start, 0, 999);
-        challenge_rifts.range_end = ReadU32(*section, {"RiftRangeEnd", "RangeEnd", "RangeMax"}, challenge_rifts.range_end, 0, 999);
+        challenge_rifts.range_end   = ReadU32(*section, {"RiftRangeEnd", "RangeEnd", "RangeMax"}, challenge_rifts.range_end, 0, 999);
         if (challenge_rifts.range_start > challenge_rifts.range_end)
             std::swap(challenge_rifts.range_start, challenge_rifts.range_end);
     }
 
-    if (const auto* section = FindTable(table, "events")) {
-        events.active = ReadBool(*section, {"SectionEnabled", "Enabled", "Active"}, events.active);
-        events.SeasonMapMode = ReadSeasonEventMapMode(*section, {"SeasonMapMode", "SeasonEventMapMode", "SeasonEventMap", "SeasonMap"}, events.SeasonMapMode);
-        events.IgrEnabled = ReadBool(*section, {"IgrEnabled"}, events.IgrEnabled);
-        events.AnniversaryEnabled = ReadBool(*section, {"AnniversaryEnabled"}, events.AnniversaryEnabled);
+    if (const auto *section = FindTable(table, "events")) {
+        events.active                = ReadBool(*section, {"SectionEnabled", "Enabled", "Active"}, events.active);
+        events.SeasonMapMode         = ReadSeasonEventMapMode(*section, {"SeasonMapMode", "SeasonEventMapMode", "SeasonEventMap", "SeasonMap"}, events.SeasonMapMode);
+        events.IgrEnabled            = ReadBool(*section, {"IgrEnabled"}, events.IgrEnabled);
+        events.AnniversaryEnabled    = ReadBool(*section, {"AnniversaryEnabled"}, events.AnniversaryEnabled);
         events.EasterEggWorldEnabled = ReadBool(*section, {"EasterEggWorldEnabled"}, events.EasterEggWorldEnabled);
-        events.DoubleRiftKeystones = ReadBool(*section, {"DoubleRiftKeystones"}, events.DoubleRiftKeystones);
-        events.DoubleBloodShards = ReadBool(*section, {"DoubleBloodShards"}, events.DoubleBloodShards);
+        events.DoubleRiftKeystones   = ReadBool(*section, {"DoubleRiftKeystones"}, events.DoubleRiftKeystones);
+        events.DoubleBloodShards     = ReadBool(*section, {"DoubleBloodShards"}, events.DoubleBloodShards);
         events.DoubleTreasureGoblins = ReadBool(*section, {"DoubleTreasureGoblins"}, events.DoubleTreasureGoblins);
-        events.DoubleBountyBags = ReadBool(*section, {"DoubleBountyBags"}, events.DoubleBountyBags);
-        events.RoyalGrandeur = ReadBool(*section, {"RoyalGrandeur"}, events.RoyalGrandeur);
-        events.LegacyOfNightmares = ReadBool(*section, {"LegacyOfNightmares"}, events.LegacyOfNightmares);
-        events.TriunesWill = ReadBool(*section, {"TriunesWill"}, events.TriunesWill);
-        events.Pandemonium = ReadBool(*section, {"Pandemonium"}, events.Pandemonium);
-        events.KanaiPowers = ReadBool(*section, {"KanaiPowers"}, events.KanaiPowers);
-        events.TrialsOfTempests = ReadBool(*section, {"TrialsOfTempests"}, events.TrialsOfTempests);
-        events.ShadowClones = ReadBool(*section, {"ShadowClones"}, events.ShadowClones);
-        events.FourthKanaisCubeSlot = ReadBool(*section, {"FourthKanaisCubeSlot"}, events.FourthKanaisCubeSlot);
-        events.EtherealItems = ReadBool(*section, {"EtherealItems", "EthrealItems"}, events.EtherealItems);
-        events.SoulShards = ReadBool(*section, {"SoulShards"}, events.SoulShards);
-        events.SwarmRifts = ReadBool(*section, {"SwarmRifts"}, events.SwarmRifts);
-        events.SanctifiedItems = ReadBool(*section, {"SanctifiedItems"}, events.SanctifiedItems);
-        events.DarkAlchemy = ReadBool(*section, {"DarkAlchemy"}, events.DarkAlchemy);
-        events.NestingPortals = ReadBool(*section, {"NestingPortals"}, events.NestingPortals);
+        events.DoubleBountyBags      = ReadBool(*section, {"DoubleBountyBags"}, events.DoubleBountyBags);
+        events.RoyalGrandeur         = ReadBool(*section, {"RoyalGrandeur"}, events.RoyalGrandeur);
+        events.LegacyOfNightmares    = ReadBool(*section, {"LegacyOfNightmares"}, events.LegacyOfNightmares);
+        events.TriunesWill           = ReadBool(*section, {"TriunesWill"}, events.TriunesWill);
+        events.Pandemonium           = ReadBool(*section, {"Pandemonium"}, events.Pandemonium);
+        events.KanaiPowers           = ReadBool(*section, {"KanaiPowers"}, events.KanaiPowers);
+        events.TrialsOfTempests      = ReadBool(*section, {"TrialsOfTempests"}, events.TrialsOfTempests);
+        events.ShadowClones          = ReadBool(*section, {"ShadowClones"}, events.ShadowClones);
+        events.FourthKanaisCubeSlot  = ReadBool(*section, {"FourthKanaisCubeSlot"}, events.FourthKanaisCubeSlot);
+        events.EtherealItems         = ReadBool(*section, {"EtherealItems", "EthrealItems"}, events.EtherealItems);
+        events.SoulShards            = ReadBool(*section, {"SoulShards"}, events.SoulShards);
+        events.SwarmRifts            = ReadBool(*section, {"SwarmRifts"}, events.SwarmRifts);
+        events.SanctifiedItems       = ReadBool(*section, {"SanctifiedItems"}, events.SanctifiedItems);
+        events.DarkAlchemy           = ReadBool(*section, {"DarkAlchemy"}, events.DarkAlchemy);
+        events.NestingPortals        = ReadBool(*section, {"NestingPortals"}, events.NestingPortals);
     }
 
     const auto *resolution_section = FindTable(table, "resolution_hack");
     if (resolution_section) {
-        resolution_hack.active = ReadBool(*resolution_section, {"SectionEnabled", "Enabled", "Active"}, resolution_hack.active);
+        resolution_hack.active       = ReadBool(*resolution_section, {"SectionEnabled", "Enabled", "Active"}, resolution_hack.active);
         const auto target_resolution = ReadResolutionHackOutputTarget(
             *resolution_section,
             {"OutputTarget", "OutputHeight", "Height", "OutputVertical", "Vertical", "OutputRes", "OutputResolution", "OutputWidth", "Width"},
@@ -698,19 +698,19 @@ void PatchConfig::ApplyTable(const toml::table& table) {
         resolution_hack.SetTargetRes(resolution_hack.target_resolution);
     }
 
-    if (const auto* section = FindTable(table, "rare_cheats")) {
-        rare_cheats.active = ReadBool(*section, {"SectionEnabled", "Enabled", "Active"}, rare_cheats.active);
-        rare_cheats.move_speed = ReadDouble(*section, {"MovementSpeedMultiplier", "MoveSpeedMultiplier"}, rare_cheats.move_speed, 0.1, 10.0);
+    if (const auto *section = FindTable(table, "rare_cheats")) {
+        rare_cheats.active                  = ReadBool(*section, {"SectionEnabled", "Enabled", "Active"}, rare_cheats.active);
+        rare_cheats.move_speed              = ReadDouble(*section, {"MovementSpeedMultiplier", "MoveSpeedMultiplier"}, rare_cheats.move_speed, 0.1, 10.0);
         rare_cheats.attack_speed            = ReadDouble(*section, {"AttackSpeedMultiplier", "AtkSpeedMultiplier", "AttackSpeed"}, rare_cheats.attack_speed, 0.1, 10.0);
         rare_cheats.floating_damage_color   = ReadBool(*section, {"FloatingDamageColor", "FloatingDamageColors", "FloatingDamage"}, rare_cheats.floating_damage_color);
-        rare_cheats.guaranteed_legendaries = ReadBool(*section, {"GuaranteedLegendaryChance"}, rare_cheats.guaranteed_legendaries);
-        rare_cheats.drop_anything = ReadBool(*section, {"DropAnyItems"}, rare_cheats.drop_anything);
-        rare_cheats.instant_portal = ReadBool(*section, {"InstantPortalAndBookOfCain"}, rare_cheats.instant_portal);
-        rare_cheats.no_cooldowns = ReadBool(*section, {"NoCooldowns"}, rare_cheats.no_cooldowns);
-        rare_cheats.instant_craft_actions = ReadBool(*section, {"InstantCubeAndCraftsAndEnchants"}, rare_cheats.instant_craft_actions);
-        rare_cheats.any_gem_any_slot = ReadBool(*section, {"SocketGemsToAnySlot"}, rare_cheats.any_gem_any_slot);
-        rare_cheats.auto_pickup = ReadBool(*section, {"AutoPickup"}, rare_cheats.auto_pickup);
-        rare_cheats.equip_any_slot = ReadBool(*section, {"EquipAnySlot", "EquipAnyItem"}, rare_cheats.equip_any_slot);
+        rare_cheats.guaranteed_legendaries  = ReadBool(*section, {"GuaranteedLegendaryChance"}, rare_cheats.guaranteed_legendaries);
+        rare_cheats.drop_anything           = ReadBool(*section, {"DropAnyItems"}, rare_cheats.drop_anything);
+        rare_cheats.instant_portal          = ReadBool(*section, {"InstantPortalAndBookOfCain"}, rare_cheats.instant_portal);
+        rare_cheats.no_cooldowns            = ReadBool(*section, {"NoCooldowns"}, rare_cheats.no_cooldowns);
+        rare_cheats.instant_craft_actions   = ReadBool(*section, {"InstantCubeAndCraftsAndEnchants"}, rare_cheats.instant_craft_actions);
+        rare_cheats.any_gem_any_slot        = ReadBool(*section, {"SocketGemsToAnySlot"}, rare_cheats.any_gem_any_slot);
+        rare_cheats.auto_pickup             = ReadBool(*section, {"AutoPickup"}, rare_cheats.auto_pickup);
+        rare_cheats.equip_any_slot          = ReadBool(*section, {"EquipAnySlot", "EquipAnyItem"}, rare_cheats.equip_any_slot);
         rare_cheats.unlock_all_difficulties = ReadBool(*section, {"UnlockAllDifficulties", "UnlockDifficulties"}, rare_cheats.unlock_all_difficulties);
         rare_cheats.easy_kill_damage        = ReadBool(*section, {"EasyKillDamage", "EasyKillBoost"}, rare_cheats.easy_kill_damage);
         rare_cheats.cube_no_consume         = ReadBool(*section, {"CubeNoConsumeMaterials", "CubeNoConsume", "KanaiCubeNoConsume"}, rare_cheats.cube_no_consume);
@@ -720,37 +720,37 @@ void PatchConfig::ApplyTable(const toml::table& table) {
         rare_cheats.equip_multi_legendary   = ReadBool(*section, {"EquipMultipleLegendaries", "EquipMultipleLegendaryItems", "EquipMultiLegendary"}, rare_cheats.equip_multi_legendary);
     }
 
-    if (const auto* section = FindTable(table, "overlays")) {
-        overlays.active = ReadBool(*section, {"SectionEnabled", "Enabled", "Active"}, overlays.active);
+    if (const auto *section = FindTable(table, "overlays")) {
+        overlays.active                = ReadBool(*section, {"SectionEnabled", "Enabled", "Active"}, overlays.active);
         overlays.buildlocker_watermark = ReadBool(*section, {"BuildlockerWatermark", "BuildLockerWatermark"}, overlays.buildlocker_watermark);
-        overlays.ddm_labels = ReadBool(*section, {"DDMLabels", "DebugLabels"}, overlays.ddm_labels);
-        overlays.fps_label = ReadBool(*section, {"FPSLabel", "DrawFPSLabel"}, overlays.fps_label);
-        overlays.var_res_label = ReadBool(*section, {"VariableResLabel", "VarResLabel", "DrawVariableResolutionLabel"}, overlays.var_res_label);
+        overlays.ddm_labels            = ReadBool(*section, {"DDMLabels", "DebugLabels"}, overlays.ddm_labels);
+        overlays.fps_label             = ReadBool(*section, {"FPSLabel", "DrawFPSLabel"}, overlays.fps_label);
+        overlays.var_res_label         = ReadBool(*section, {"VariableResLabel", "VarResLabel", "DrawVariableResolutionLabel"}, overlays.var_res_label);
     }
 
-    if (const auto* section = FindTable(table, "loot_modifiers")) {
-        loot_modifiers.active = ReadBool(*section, {"SectionEnabled", "Enabled", "Active"}, loot_modifiers.active);
-        loot_modifiers.DisableAncientDrops = ReadBool(*section, {"DisableAncientDrops"}, loot_modifiers.DisableAncientDrops);
+    if (const auto *section = FindTable(table, "loot_modifiers")) {
+        loot_modifiers.active                    = ReadBool(*section, {"SectionEnabled", "Enabled", "Active"}, loot_modifiers.active);
+        loot_modifiers.DisableAncientDrops       = ReadBool(*section, {"DisableAncientDrops"}, loot_modifiers.DisableAncientDrops);
         loot_modifiers.DisablePrimalAncientDrops = ReadBool(*section, {"DisablePrimalAncientDrops"}, loot_modifiers.DisablePrimalAncientDrops);
-        loot_modifiers.DisableTormentDrops = ReadBool(*section, {"DisableTormentDrops"}, loot_modifiers.DisableTormentDrops);
-        loot_modifiers.DisableTormentCheck = ReadBool(*section, {"DisableTormentCheck"}, loot_modifiers.DisableTormentCheck);
-        loot_modifiers.SuppressGiftGeneration = ReadBool(*section, {"SuppressGiftGeneration"}, loot_modifiers.SuppressGiftGeneration);
-        loot_modifiers.ForcedILevel = ReadU32(*section, {"ForcedILevel"}, loot_modifiers.ForcedILevel, 0, 70);
-        loot_modifiers.TieredLootRunLevel = ReadU32(*section, {"TieredLootRunLevel"}, loot_modifiers.TieredLootRunLevel, 0, 150);
-        loot_modifiers.AncientRank = ReadString(*section, {"AncientRank"}, loot_modifiers.AncientRank);
-        loot_modifiers.AncientRankValue = AncientRankToValue(loot_modifiers.AncientRank, loot_modifiers.AncientRankValue);
-        loot_modifiers.AncientRank = AncientRankCanonical(loot_modifiers.AncientRankValue, loot_modifiers.AncientRank);
+        loot_modifiers.DisableTormentDrops       = ReadBool(*section, {"DisableTormentDrops"}, loot_modifiers.DisableTormentDrops);
+        loot_modifiers.DisableTormentCheck       = ReadBool(*section, {"DisableTormentCheck"}, loot_modifiers.DisableTormentCheck);
+        loot_modifiers.SuppressGiftGeneration    = ReadBool(*section, {"SuppressGiftGeneration"}, loot_modifiers.SuppressGiftGeneration);
+        loot_modifiers.ForcedILevel              = ReadU32(*section, {"ForcedILevel"}, loot_modifiers.ForcedILevel, 0, 70);
+        loot_modifiers.TieredLootRunLevel        = ReadU32(*section, {"TieredLootRunLevel"}, loot_modifiers.TieredLootRunLevel, 0, 150);
+        loot_modifiers.AncientRank               = ReadString(*section, {"AncientRank"}, loot_modifiers.AncientRank);
+        loot_modifiers.AncientRankValue          = AncientRankToValue(loot_modifiers.AncientRank, loot_modifiers.AncientRankValue);
+        loot_modifiers.AncientRank               = AncientRankCanonical(loot_modifiers.AncientRankValue, loot_modifiers.AncientRank);
     }
 
-    if (const auto* section = FindTable(table, "debug")) {
-        debug.active = ReadBool(*section, {"SectionEnabled", "Enabled", "Active"}, debug.active);
-        debug.enable_crashes = ReadBool(*section, {"Acknowledge_god_jester"}, debug.enable_crashes);
+    if (const auto *section = FindTable(table, "debug")) {
+        debug.active              = ReadBool(*section, {"SectionEnabled", "Enabled", "Active"}, debug.active);
+        debug.enable_crashes      = ReadBool(*section, {"Acknowledge_god_jester"}, debug.enable_crashes);
         debug.enable_pubfile_dump = ReadBool(*section, {"EnablePubFileDump", "PubFileDump"}, debug.enable_pubfile_dump);
         debug.enable_error_traces = ReadBool(*section, {"EnableErrorTraces", "ErrorTraces"}, debug.enable_error_traces);
-        debug.enable_debug_flags = ReadBool(*section, {"EnableDebugFlags", "DebugFlags"}, debug.enable_debug_flags);
+        debug.enable_debug_flags  = ReadBool(*section, {"EnableDebugFlags", "DebugFlags"}, debug.enable_debug_flags);
     }
 
-    if (const auto* section = FindTable(table, "gui")) {
+    if (const auto *section = FindTable(table, "gui")) {
         gui.enabled = ReadBool(*section, {"Enabled", "SectionEnabled", "Active"}, gui.enabled);
         gui.visible = ReadBool(*section, {"Visible", "Show", "WindowVisible"}, gui.visible);
         if (auto value = ReadValue<std::string>(*section, {"Language", "Lang", "Locale"})) {
@@ -760,53 +760,53 @@ void PatchConfig::ApplyTable(const toml::table& table) {
 
     ApplySeasonEventMapIfNeeded(*this);
 
-    initialized = true;
+    initialized   = true;
     defaults_only = false;
 }
 
 void LoadPatchConfig() {
-    global_config = PatchConfig{};
-    const char* path = "sd:/config/d3hack-nx/config.toml";
+    global_config    = PatchConfig {};
+    const char *path = "sd:/config/d3hack-nx/config.toml";
     std::string error;
     if (LoadFromPath(path, global_config, error)) {
         PRINT("Loaded config: %s", path);
-        global_config.initialized = true;
+        global_config.initialized   = true;
         global_config.defaults_only = false;
         return;
     }
     if (!error.empty())
         PRINT("Config parse failed for %s: %s", path, error.c_str());
-    global_config.initialized = true;
+    global_config.initialized   = true;
     global_config.defaults_only = true;
     PRINT("Config not found; using built-in defaults%s", ".");
 }
 
-PatchConfig NormalizePatchConfig(const PatchConfig& config) {
+PatchConfig NormalizePatchConfig(const PatchConfig &config) {
     const toml::table root = BuildPatchConfigTable(config);
-    PatchConfig out{};
+    PatchConfig       out {};
     out.ApplyTable(root);
     return out;
 }
 
-bool LoadPatchConfigFromPath(const char* path, PatchConfig& out, std::string& error_out) {
-    out = PatchConfig{};
+bool LoadPatchConfigFromPath(const char *path, PatchConfig &out, std::string &error_out) {
+    out = PatchConfig {};
     if (LoadFromPath(path, out, error_out)) {
         return true;
     }
     return false;
 }
 
-bool SavePatchConfigToPath(const char* path, const PatchConfig& config, std::string& error_out) {
+bool SavePatchConfigToPath(const char *path, const PatchConfig &config, std::string &error_out) {
     const PatchConfig normalized = NormalizePatchConfig(config);
-    const toml::table root = BuildPatchConfigTable(normalized);
+    const toml::table root       = BuildPatchConfigTable(normalized);
 
     std::stringstream ss;
-    ss << toml::toml_formatter{root};
+    ss << toml::toml_formatter {root};
     return WriteAllAtomic(path, ss.str(), error_out);
 }
 
-bool SavePatchConfig(const PatchConfig& config) {
-    const char* path = "sd:/config/d3hack-nx/config.toml";
+bool SavePatchConfig(const PatchConfig &config) {
+    const char *path = "sd:/config/d3hack-nx/config.toml";
     std::string error;
     if (!SavePatchConfigToPath(path, config, error)) {
         if (!error.empty()) {
