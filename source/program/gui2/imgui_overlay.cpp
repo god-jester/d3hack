@@ -175,12 +175,12 @@ namespace d3::imgui_overlay {
         bool g_font_build_attempted   = false;
         bool g_font_build_in_progress = false;
 
-        float             g_overlay_toggle_hold_s = 0.0f;
-        bool              g_overlay_toggle_armed  = true;
+        float                  g_overlay_toggle_hold_s = 0.0f;
+        bool                   g_overlay_toggle_armed  = true;
         std::atomic<bool>      g_block_gamepad_input_to_game {false};
-        bool                   g_hid_hooks_installed         = false;
-        std::atomic<int>       g_hid_passthrough_depth       {0};
-        std::atomic<uintptr_t> g_hid_passthrough_thread      {0};
+        bool                   g_hid_hooks_installed = false;
+        std::atomic<int>       g_hid_passthrough_depth {0};
+        std::atomic<uintptr_t> g_hid_passthrough_thread {0};
 
         static uintptr_t GetCurrentThreadToken() {
             const auto *thread = nn::os::GetCurrentThread();
@@ -335,9 +335,9 @@ namespace d3::imgui_overlay {
 
         static float ComputeGuiScale(ImVec2 viewport_size) {
             constexpr float kMinViewportH = 720.0f;
-            constexpr float kMaxViewportH = 1080.0f;
-            constexpr float kMinScale     = 0.80f;
-            constexpr float kMaxScale     = 1.00f;
+            constexpr float kMaxViewportH = 1440.0f;
+            constexpr float kMinScale     = 1.10f;
+            constexpr float kMaxScale     = 1.50f;
 
             const float h = viewport_size.y;
             if (!(h > 0.0f)) {
@@ -1014,7 +1014,7 @@ namespace d3::imgui_overlay {
         font_cfg.Name[1] = '3';
         font_cfg.Name[2] = '\0';
         // Build for docked readability (we apply a runtime scale for 720p).
-        font_cfg.SizePixels = 16.0f;
+        font_cfg.SizePixels  = 18.0f;
         font_cfg.OversampleH = 1;
         font_cfg.OversampleV = 1;
         static ImVector<ImWchar> s_font_ranges;
@@ -1033,10 +1033,10 @@ namespace d3::imgui_overlay {
 
         ImFont *font = nullptr;
 
-        static unsigned char             *s_romfs_ttf_data  = nullptr;
-        static size_t                     s_romfs_ttf_size  = 0;
-        static std::string                s_romfs_ttf_path;
-        static bool                       s_romfs_ttf_tried = false;
+        static unsigned char *s_romfs_ttf_data = nullptr;
+        static size_t         s_romfs_ttf_size = 0;
+        static std::string    s_romfs_ttf_path;
+        static bool           s_romfs_ttf_tried = false;
 
         if (!s_romfs_ttf_tried) {
             s_romfs_ttf_tried = true;

@@ -12,7 +12,7 @@ namespace {
     constexpr size_t kBootAllocSize = 0x4000;
 
     alignas(kSigmaMinAlign) unsigned char s_boot_alloc[kBootAllocSize];
-    std::atomic<size_t>                  s_boot_offset {0};
+    std::atomic<size_t> s_boot_offset {0};
 
     size_t AlignUp(size_t value, size_t alignment) {
         return (value + (alignment - 1)) & ~(alignment - 1);

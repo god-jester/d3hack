@@ -52,11 +52,12 @@ namespace d3::gui2::ui::windows {
 
         PatchConfig &cfg = overlay_.ui_config();
 
-        ImGui::Text("Config source: %s", global_config.defaults_only ? "built-in defaults" : "sd:/config/d3hack-nx/config.toml");
+        const char *config_source = global_config.defaults_only ? overlay_.tr("gui.config_source_defaults", "built-in defaults") : "sd:/config/d3hack-nx/config.toml";
+        ImGui::Text(overlay_.tr("gui.config_source", "Config source: %s"), config_source);
         ImGui::Separator();
 
         const auto &dbg = overlay_.frame_debug();
-        ImGui::Text("Viewport: %.0fx%.0f | Crop: %dx%d | Swapchain: %d", dbg.viewport_size.x, dbg.viewport_size.y, dbg.crop_w, dbg.crop_h, dbg.swapchain_texture_count);
+        ImGui::Text(overlay_.tr("gui.viewport_info", "Viewport: %.0fx%.0f | Crop: %dx%d | Swapchain: %d"), dbg.viewport_size.x, dbg.viewport_size.y, dbg.crop_w, dbg.crop_h, dbg.swapchain_texture_count);
 
         if (overlay_.ui_dirty()) {
             ImGui::TextUnformatted(overlay_.tr("gui.ui_state_dirty", "UI state: UNSAVED changes"));
@@ -90,13 +91,13 @@ namespace d3::gui2::ui::windows {
             auto *notifications = overlay_.notifications_window();
             if (apply.restart_required) {
                 if (notifications != nullptr)
-                    notifications->AddNotification(ImVec4(1.0f, 0.75f, 0.2f, 1.0f), 6.0f, "Applied. Restart required.");
+                    notifications->AddNotification(ImVec4(1.0f, 0.75f, 0.2f, 1.0f), 6.0f, overlay_.tr("gui.notify_applied_restart", "Applied. Restart required."));
             } else if (apply.applied_enable_only || apply.note[0] != '\0') {
                 if (notifications != nullptr)
-                    notifications->AddNotification(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), 4.0f, "Applied (%s).", apply.note[0] ? apply.note : "runtime");
+                    notifications->AddNotification(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), 4.0f, overlay_.tr("gui.notify_applied_note", "Applied (%s)."), apply.note[0] ? apply.note : overlay_.tr("gui.note_runtime", "runtime"));
             } else {
                 if (notifications != nullptr)
-                    notifications->AddNotification(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), 4.0f, "Applied.");
+                    notifications->AddNotification(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), 4.0f, overlay_.tr("gui.notify_applied", "Applied."));
             }
         }
 
@@ -106,10 +107,10 @@ namespace d3::gui2::ui::windows {
             cfg.gui.visible = overlay_.overlay_visible();
             if (SavePatchConfigToPath("sd:/config/d3hack-nx/config.toml", cfg, error)) {
                 if (auto *notifications = overlay_.notifications_window())
-                    notifications->AddNotification(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), 4.0f, "Saved config.toml");
+                    notifications->AddNotification(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), 4.0f, overlay_.tr("gui.notify_saved", "Saved config.toml"));
             } else {
                 if (auto *notifications = overlay_.notifications_window())
-                    notifications->AddNotification(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), 8.0f, "Save failed: %s", error.empty() ? "unknown" : error.c_str());
+                    notifications->AddNotification(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), 8.0f, overlay_.tr("gui.notify_save_failed", "Save failed: %s"), error.empty() ? overlay_.tr("gui.error_unknown", "unknown") : error.c_str());
             }
         }
 
@@ -125,10 +126,10 @@ namespace d3::gui2::ui::windows {
                 overlay_.set_overlay_visible(global_config.gui.visible);
                 overlay_.set_ui_dirty(false);
                 if (auto *notifications = overlay_.notifications_window())
-                    notifications->AddNotification(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), 4.0f, "Reloaded config.toml");
+                    notifications->AddNotification(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), 4.0f, overlay_.tr("gui.notify_reloaded", "Reloaded config.toml"));
             } else {
                 if (auto *notifications = overlay_.notifications_window())
-                    notifications->AddNotification(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), 8.0f, "Reload failed: %s", error.empty() ? "not found" : error.c_str());
+                    notifications->AddNotification(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), 8.0f, overlay_.tr("gui.notify_reload_failed", "Reload failed: %s"), error.empty() ? overlay_.tr("gui.error_not_found", "not found") : error.c_str());
             }
         }
 
@@ -150,18 +151,18 @@ namespace d3::gui2::ui::windows {
                 }
             };
 
-            if (ImGui::BeginTabItem("Overlays")) {
-                mark_dirty(ImGui::Checkbox("Enabled##overlays", &cfg.overlays.active));
+            if (ImGui::BeginTabItem(overlay_.tr("gui.tab_overlays", "Overlays"))) {
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.overlays_enabled", "Enabled##overlays"), &cfg.overlays.active));
                 ImGui::BeginDisabled(!cfg.overlays.active);
-                mark_dirty(ImGui::Checkbox("Build locker watermark", &cfg.overlays.buildlocker_watermark));
-                mark_dirty(ImGui::Checkbox("DDM labels", &cfg.overlays.ddm_labels));
-                mark_dirty(ImGui::Checkbox("FPS label", &cfg.overlays.fps_label));
-                mark_dirty(ImGui::Checkbox("Variable resolution label", &cfg.overlays.var_res_label));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.overlays_buildlocker", "Build locker watermark"), &cfg.overlays.buildlocker_watermark));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.overlays_ddm", "DDM labels"), &cfg.overlays.ddm_labels));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.overlays_fps", "FPS label"), &cfg.overlays.fps_label));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.overlays_var_res", "Variable resolution label"), &cfg.overlays.var_res_label));
                 ImGui::EndDisabled();
                 ImGui::EndTabItem();
             }
 
-            if (ImGui::BeginTabItem("GUI")) {
+            if (ImGui::BeginTabItem(overlay_.tr("gui.tab_gui", "GUI"))) {
                 mark_dirty(ImGui::Checkbox(overlay_.tr("gui.enabled_persist", "Enabled (persist)"), &cfg.gui.enabled));
                 if (ImGui::Checkbox(overlay_.tr("gui.visible_persist", "Visible (persist)"), &cfg.gui.visible)) {
                     overlay_.set_overlay_visible_persist(cfg.gui.visible);
@@ -173,16 +174,16 @@ namespace d3::gui2::ui::windows {
                         const char *label;
                         const char *code;
                     };
-                    static constexpr Lang kLangs[] = {
-                        {"Auto (game)", ""},
-                        {"English", "en"},
-                        {"Deutsch", "de"},
-                        {"Francais", "fr"},
-                        {"Espanol", "es"},
-                        {"Italiano", "it"},
-                        {"Japanese", "ja"},
-                        {"Korean", "ko"},
-                        {"Chinese", "zh"},
+                    const Lang kLangs[] = {
+                        {overlay_.tr("gui.lang_auto", "Auto (game)"), ""},
+                        {overlay_.tr("gui.lang_en", "English"), "en"},
+                        {overlay_.tr("gui.lang_de", "Deutsch"), "de"},
+                        {overlay_.tr("gui.lang_fr", "Francais"), "fr"},
+                        {overlay_.tr("gui.lang_es", "Espanol"), "es"},
+                        {overlay_.tr("gui.lang_it", "Italiano"), "it"},
+                        {overlay_.tr("gui.lang_ja", "Japanese"), "ja"},
+                        {overlay_.tr("gui.lang_ko", "Korean"), "ko"},
+                        {overlay_.tr("gui.lang_zh", "Chinese"), "zh"},
                     };
 
                     for (const auto &lang : kLangs) {
@@ -198,52 +199,65 @@ namespace d3::gui2::ui::windows {
                     ImGui::EndCombo();
                 }
 
-                ImGui::TextUnformatted(overlay_.tr("gui.hotkey_toggle", "Hotkey: hold + and - (0.5s) to toggle visibility."));
+                ImGui::TextUnformatted(overlay_.tr("gui.hotkey_toggle", "Hold + and - (0.5s) to toggle overlay visibility."));
                 ImGui::EndTabItem();
             }
 
-            if (ImGui::BeginTabItem("Resolution")) {
-                mark_dirty(ImGui::Checkbox("Enabled##res", &cfg.resolution_hack.active));
+            if (ImGui::BeginTabItem(overlay_.tr("gui.tab_resolution", "Resolution"))) {
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.resolution_enabled", "Enabled##res"), &cfg.resolution_hack.active));
                 ImGui::BeginDisabled(!cfg.resolution_hack.active);
                 int target = static_cast<int>(cfg.resolution_hack.target_resolution);
-                if (ImGui::SliderInt("Output target (vertical)", &target, 720, 1440, "%dp")) {
+                if (ImGui::SliderInt(overlay_.tr("gui.resolution_output_target", "Output target (vertical)"), &target, 720, 1440, "%dp")) {
                     cfg.resolution_hack.SetTargetRes(static_cast<u32>(target));
                     overlay_.set_ui_dirty(true);
                 }
                 float min_scale = cfg.resolution_hack.min_res_scale;
-                if (ImGui::SliderFloat("Minimum resolution scale", &min_scale, 10.0f, 100.0f, "%.0f%%")) {
+                if (ImGui::SliderFloat(overlay_.tr("gui.resolution_min_scale", "Minimum resolution scale"), &min_scale, 10.0f, 100.0f, "%.0f%%")) {
                     cfg.resolution_hack.min_res_scale = min_scale;
                     overlay_.set_ui_dirty(true);
                 }
-                mark_dirty(ImGui::Checkbox("Clamp textures to 2048", &cfg.resolution_hack.clamp_textures_2048));
-                mark_dirty(ImGui::Checkbox("Experimental scheduler", &cfg.resolution_hack.exp_scheduler));
-                ImGui::Text("Output size: %ux%u", cfg.resolution_hack.OutputWidthPx(), cfg.resolution_hack.OutputHeightPx());
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.resolution_clamp_2048", "Clamp textures to 2048"), &cfg.resolution_hack.clamp_textures_2048));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.resolution_exp_scheduler", "Experimental scheduler"), &cfg.resolution_hack.exp_scheduler));
+                ImGui::Text(overlay_.tr("gui.resolution_output_size", "Output size: %ux%u"), cfg.resolution_hack.OutputWidthPx(), cfg.resolution_hack.OutputHeightPx());
                 ImGui::EndDisabled();
                 ImGui::EndTabItem();
             }
 
-            if (ImGui::BeginTabItem("Seasons")) {
-                mark_dirty(ImGui::Checkbox("Enabled##seasons", &cfg.seasons.active));
+            if (ImGui::BeginTabItem(overlay_.tr("gui.tab_seasons", "Seasons"))) {
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.seasons_enabled", "Enabled##seasons"), &cfg.seasons.active));
                 ImGui::BeginDisabled(!cfg.seasons.active);
-                mark_dirty(ImGui::Checkbox("Allow online play", &cfg.seasons.allow_online));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.seasons_allow_online", "Allow online play"), &cfg.seasons.allow_online));
                 int season = static_cast<int>(cfg.seasons.current_season);
-                if (ImGui::SliderInt("Current season", &season, 1, 200)) {
+                if (ImGui::SliderInt(overlay_.tr("gui.seasons_current", "Current season"), &season, 1, 200)) {
                     cfg.seasons.current_season = static_cast<u32>(season);
                     overlay_.set_ui_dirty(true);
                 }
-                mark_dirty(ImGui::Checkbox("Spoof PTR flag", &cfg.seasons.spoof_ptr));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.seasons_spoof_ptr", "Spoof PTR flag"), &cfg.seasons.spoof_ptr));
                 ImGui::EndDisabled();
                 ImGui::EndTabItem();
             }
 
-            if (ImGui::BeginTabItem("Events")) {
-                mark_dirty(ImGui::Checkbox("Enabled##events", &cfg.events.active));
+            if (ImGui::BeginTabItem(overlay_.tr("gui.tab_events", "Events"))) {
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_enabled", "Enabled##events"), &cfg.events.active));
 
-                const char *mode_label = SeasonMapModeToString(cfg.events.SeasonMapMode);
-                if (ImGui::BeginCombo("Season map mode", mode_label)) {
+                auto season_map_mode_label = [&](PatchConfig::SeasonEventMapMode mode) -> const char * {
+                    switch (mode) {
+                    case PatchConfig::SeasonEventMapMode::MapOnly:
+                        return overlay_.tr("gui.events_mode_map_only", SeasonMapModeToString(mode));
+                    case PatchConfig::SeasonEventMapMode::OverlayConfig:
+                        return overlay_.tr("gui.events_mode_overlay", SeasonMapModeToString(mode));
+                    case PatchConfig::SeasonEventMapMode::Disabled:
+                    default:
+                        return overlay_.tr("gui.events_mode_disabled", SeasonMapModeToString(mode));
+                    }
+                };
+
+                const char *mode_label = season_map_mode_label(cfg.events.SeasonMapMode);
+                if (ImGui::BeginCombo(overlay_.tr("gui.events_season_map_mode", "Season map mode"), mode_label)) {
                     auto selectable_mode = [&](PatchConfig::SeasonEventMapMode mode) {
-                        const bool is_selected = (cfg.events.SeasonMapMode == mode);
-                        if (ImGui::Selectable(SeasonMapModeToString(mode), is_selected)) {
+                        const char *label       = season_map_mode_label(mode);
+                        const bool  is_selected = (cfg.events.SeasonMapMode == mode);
+                        if (ImGui::Selectable(label, is_selected)) {
                             cfg.events.SeasonMapMode = mode;
                             overlay_.set_ui_dirty(true);
                         }
@@ -258,79 +272,79 @@ namespace d3::gui2::ui::windows {
                 }
 
                 ImGui::BeginDisabled(!cfg.events.active);
-                mark_dirty(ImGui::Checkbox("IGR enabled", &cfg.events.IgrEnabled));
-                mark_dirty(ImGui::Checkbox("Anniversary enabled", &cfg.events.AnniversaryEnabled));
-                mark_dirty(ImGui::Checkbox("Easter egg world enabled", &cfg.events.EasterEggWorldEnabled));
-                mark_dirty(ImGui::Checkbox("Double rift keystones", &cfg.events.DoubleRiftKeystones));
-                mark_dirty(ImGui::Checkbox("Double blood shards", &cfg.events.DoubleBloodShards));
-                mark_dirty(ImGui::Checkbox("Double treasure goblins", &cfg.events.DoubleTreasureGoblins));
-                mark_dirty(ImGui::Checkbox("Double bounty bags", &cfg.events.DoubleBountyBags));
-                mark_dirty(ImGui::Checkbox("Royal Grandeur", &cfg.events.RoyalGrandeur));
-                mark_dirty(ImGui::Checkbox("Legacy of Nightmares", &cfg.events.LegacyOfNightmares));
-                mark_dirty(ImGui::Checkbox("Triune's Will", &cfg.events.TriunesWill));
-                mark_dirty(ImGui::Checkbox("Pandemonium", &cfg.events.Pandemonium));
-                mark_dirty(ImGui::Checkbox("Kanai powers", &cfg.events.KanaiPowers));
-                mark_dirty(ImGui::Checkbox("Trials of Tempests", &cfg.events.TrialsOfTempests));
-                mark_dirty(ImGui::Checkbox("Shadow clones", &cfg.events.ShadowClones));
-                mark_dirty(ImGui::Checkbox("Fourth Kanai's Cube slot", &cfg.events.FourthKanaisCubeSlot));
-                mark_dirty(ImGui::Checkbox("Ethereal items", &cfg.events.EtherealItems));
-                mark_dirty(ImGui::Checkbox("Soul shards", &cfg.events.SoulShards));
-                mark_dirty(ImGui::Checkbox("Swarm rifts", &cfg.events.SwarmRifts));
-                mark_dirty(ImGui::Checkbox("Sanctified items", &cfg.events.SanctifiedItems));
-                mark_dirty(ImGui::Checkbox("Dark Alchemy", &cfg.events.DarkAlchemy));
-                mark_dirty(ImGui::Checkbox("Nesting portals", &cfg.events.NestingPortals));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_igr", "IGR enabled"), &cfg.events.IgrEnabled));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_anniversary", "Anniversary enabled"), &cfg.events.AnniversaryEnabled));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_easter_egg_world", "Easter egg world enabled"), &cfg.events.EasterEggWorldEnabled));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_double_keystones", "Double rift keystones"), &cfg.events.DoubleRiftKeystones));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_double_blood_shards", "Double blood shards"), &cfg.events.DoubleBloodShards));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_double_goblins", "Double treasure goblins"), &cfg.events.DoubleTreasureGoblins));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_double_bounty_bags", "Double bounty bags"), &cfg.events.DoubleBountyBags));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_royal_grandeur", "Royal Grandeur"), &cfg.events.RoyalGrandeur));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_legacy_of_nightmares", "Legacy of Nightmares"), &cfg.events.LegacyOfNightmares));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_triunes_will", "Triune's Will"), &cfg.events.TriunesWill));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_pandemonium", "Pandemonium"), &cfg.events.Pandemonium));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_kanai_powers", "Kanai powers"), &cfg.events.KanaiPowers));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_trials_of_tempests", "Trials of Tempests"), &cfg.events.TrialsOfTempests));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_shadow_clones", "Shadow clones"), &cfg.events.ShadowClones));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_fourth_kanais", "Fourth Kanai's Cube slot"), &cfg.events.FourthKanaisCubeSlot));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_ethereal_items", "Ethereal items"), &cfg.events.EtherealItems));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_soul_shards", "Soul shards"), &cfg.events.SoulShards));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_swarm_rifts", "Swarm rifts"), &cfg.events.SwarmRifts));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_sanctified_items", "Sanctified items"), &cfg.events.SanctifiedItems));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_dark_alchemy", "Dark Alchemy"), &cfg.events.DarkAlchemy));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_nesting_portals", "Nesting portals"), &cfg.events.NestingPortals));
                 ImGui::EndDisabled();
 
                 ImGui::EndTabItem();
             }
 
-            if (ImGui::BeginTabItem("Rare cheats")) {
-                mark_dirty(ImGui::Checkbox("Enabled##rare_cheats", &cfg.rare_cheats.active));
+            if (ImGui::BeginTabItem(overlay_.tr("gui.tab_rare_cheats", "Rare cheats"))) {
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_enabled", "Enabled##rare_cheats"), &cfg.rare_cheats.active));
                 ImGui::BeginDisabled(!cfg.rare_cheats.active);
 
                 float move_speed = static_cast<float>(cfg.rare_cheats.move_speed);
-                if (ImGui::SliderFloat("Move speed multiplier", &move_speed, 0.1f, 10.0f, "%.2fx")) {
+                if (ImGui::SliderFloat(overlay_.tr("gui.rare_cheats_move_speed", "Move speed multiplier"), &move_speed, 0.1f, 10.0f, "%.2fx")) {
                     cfg.rare_cheats.move_speed = static_cast<double>(move_speed);
                     overlay_.set_ui_dirty(true);
                 }
                 float attack_speed = static_cast<float>(cfg.rare_cheats.attack_speed);
-                if (ImGui::SliderFloat("Attack speed multiplier", &attack_speed, 0.1f, 10.0f, "%.2fx")) {
+                if (ImGui::SliderFloat(overlay_.tr("gui.rare_cheats_attack_speed", "Attack speed multiplier"), &attack_speed, 0.1f, 10.0f, "%.2fx")) {
                     cfg.rare_cheats.attack_speed = static_cast<double>(attack_speed);
                     overlay_.set_ui_dirty(true);
                 }
 
-                mark_dirty(ImGui::Checkbox("Floating damage color", &cfg.rare_cheats.floating_damage_color));
-                mark_dirty(ImGui::Checkbox("Guaranteed legendaries", &cfg.rare_cheats.guaranteed_legendaries));
-                mark_dirty(ImGui::Checkbox("Drop anything", &cfg.rare_cheats.drop_anything));
-                mark_dirty(ImGui::Checkbox("Instant portal", &cfg.rare_cheats.instant_portal));
-                mark_dirty(ImGui::Checkbox("No cooldowns", &cfg.rare_cheats.no_cooldowns));
-                mark_dirty(ImGui::Checkbox("Instant craft actions", &cfg.rare_cheats.instant_craft_actions));
-                mark_dirty(ImGui::Checkbox("Any gem any slot", &cfg.rare_cheats.any_gem_any_slot));
-                mark_dirty(ImGui::Checkbox("Auto pickup", &cfg.rare_cheats.auto_pickup));
-                mark_dirty(ImGui::Checkbox("Equip any slot", &cfg.rare_cheats.equip_any_slot));
-                mark_dirty(ImGui::Checkbox("Unlock all difficulties", &cfg.rare_cheats.unlock_all_difficulties));
-                mark_dirty(ImGui::Checkbox("Easy kill damage", &cfg.rare_cheats.easy_kill_damage));
-                mark_dirty(ImGui::Checkbox("Cube no consume", &cfg.rare_cheats.cube_no_consume));
-                mark_dirty(ImGui::Checkbox("Gem upgrade always", &cfg.rare_cheats.gem_upgrade_always));
-                mark_dirty(ImGui::Checkbox("Gem upgrade speed", &cfg.rare_cheats.gem_upgrade_speed));
-                mark_dirty(ImGui::Checkbox("Gem upgrade lvl150", &cfg.rare_cheats.gem_upgrade_lvl150));
-                mark_dirty(ImGui::Checkbox("Equip multi legendary", &cfg.rare_cheats.equip_multi_legendary));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_floating_damage", "Floating damage color"), &cfg.rare_cheats.floating_damage_color));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_guaranteed_legendaries", "Guaranteed legendaries"), &cfg.rare_cheats.guaranteed_legendaries));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_drop_anything", "Drop anything"), &cfg.rare_cheats.drop_anything));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_instant_portal", "Instant portal"), &cfg.rare_cheats.instant_portal));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_no_cooldowns", "No cooldowns"), &cfg.rare_cheats.no_cooldowns));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_instant_craft", "Instant craft actions"), &cfg.rare_cheats.instant_craft_actions));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_any_gem_any_slot", "Any gem any slot"), &cfg.rare_cheats.any_gem_any_slot));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_auto_pickup", "Auto pickup"), &cfg.rare_cheats.auto_pickup));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_equip_any_slot", "Equip any slot"), &cfg.rare_cheats.equip_any_slot));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_unlock_all_difficulties", "Unlock all difficulties"), &cfg.rare_cheats.unlock_all_difficulties));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_easy_kill", "Easy kill damage"), &cfg.rare_cheats.easy_kill_damage));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_cube_no_consume", "Cube no consume"), &cfg.rare_cheats.cube_no_consume));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_gem_upgrade_always", "Gem upgrade always"), &cfg.rare_cheats.gem_upgrade_always));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_gem_upgrade_speed", "Gem upgrade speed"), &cfg.rare_cheats.gem_upgrade_speed));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_gem_upgrade_lvl150", "Gem upgrade lvl150"), &cfg.rare_cheats.gem_upgrade_lvl150));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_equip_multi_legendary", "Equip multi legendary"), &cfg.rare_cheats.equip_multi_legendary));
 
                 ImGui::EndDisabled();
                 ImGui::EndTabItem();
             }
 
-            if (ImGui::BeginTabItem("Challenge rifts")) {
-                mark_dirty(ImGui::Checkbox("Enabled##cr", &cfg.challenge_rifts.active));
+            if (ImGui::BeginTabItem(overlay_.tr("gui.tab_challenge_rifts", "Challenge rifts"))) {
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.challenge_rifts_enabled", "Enabled##cr"), &cfg.challenge_rifts.active));
                 ImGui::BeginDisabled(!cfg.challenge_rifts.active);
-                mark_dirty(ImGui::Checkbox("Randomize within range", &cfg.challenge_rifts.random));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.challenge_rifts_random", "Randomize within range"), &cfg.challenge_rifts.random));
                 int start = static_cast<int>(cfg.challenge_rifts.range_start);
                 int end   = static_cast<int>(cfg.challenge_rifts.range_end);
-                if (ImGui::InputInt("Range start", &start)) {
+                if (ImGui::InputInt(overlay_.tr("gui.challenge_rifts_range_start", "Range start"), &start)) {
                     cfg.challenge_rifts.range_start = static_cast<u32>(std::max(0, start));
                     overlay_.set_ui_dirty(true);
                 }
-                if (ImGui::InputInt("Range end", &end)) {
+                if (ImGui::InputInt(overlay_.tr("gui.challenge_rifts_range_end", "Range end"), &end)) {
                     cfg.challenge_rifts.range_end = static_cast<u32>(std::max(0, end));
                     overlay_.set_ui_dirty(true);
                 }
@@ -338,29 +352,33 @@ namespace d3::gui2::ui::windows {
                 ImGui::EndTabItem();
             }
 
-            if (ImGui::BeginTabItem("Loot")) {
-                mark_dirty(ImGui::Checkbox("Enabled##loot", &cfg.loot_modifiers.active));
+            if (ImGui::BeginTabItem(overlay_.tr("gui.tab_loot", "Loot"))) {
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.loot_enabled", "Enabled##loot"), &cfg.loot_modifiers.active));
                 ImGui::BeginDisabled(!cfg.loot_modifiers.active);
-                mark_dirty(ImGui::Checkbox("Disable ancient drops", &cfg.loot_modifiers.DisableAncientDrops));
-                mark_dirty(ImGui::Checkbox("Disable primal ancient drops", &cfg.loot_modifiers.DisablePrimalAncientDrops));
-                mark_dirty(ImGui::Checkbox("Disable torment drops", &cfg.loot_modifiers.DisableTormentDrops));
-                mark_dirty(ImGui::Checkbox("Disable torment check", &cfg.loot_modifiers.DisableTormentCheck));
-                mark_dirty(ImGui::Checkbox("Suppress gift generation", &cfg.loot_modifiers.SuppressGiftGeneration));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.loot_disable_ancient", "Disable ancient drops"), &cfg.loot_modifiers.DisableAncientDrops));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.loot_disable_primal", "Disable primal ancient drops"), &cfg.loot_modifiers.DisablePrimalAncientDrops));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.loot_disable_torment", "Disable torment drops"), &cfg.loot_modifiers.DisableTormentDrops));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.loot_disable_torment_check", "Disable torment check"), &cfg.loot_modifiers.DisableTormentCheck));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.loot_suppress_gift", "Suppress gift generation"), &cfg.loot_modifiers.SuppressGiftGeneration));
 
                 int forced_ilevel = static_cast<int>(cfg.loot_modifiers.ForcedILevel);
-                if (ImGui::SliderInt("Forced iLevel", &forced_ilevel, 0, 70)) {
+                if (ImGui::SliderInt(overlay_.tr("gui.loot_forced_ilevel", "Forced iLevel"), &forced_ilevel, 0, 70)) {
                     cfg.loot_modifiers.ForcedILevel = static_cast<u32>(forced_ilevel);
                     overlay_.set_ui_dirty(true);
                 }
                 int tiered_level = static_cast<int>(cfg.loot_modifiers.TieredLootRunLevel);
-                if (ImGui::SliderInt("Tiered loot run level", &tiered_level, 0, 150)) {
+                if (ImGui::SliderInt(overlay_.tr("gui.loot_tiered_run_level", "Tiered loot run level"), &tiered_level, 0, 150)) {
                     cfg.loot_modifiers.TieredLootRunLevel = static_cast<u32>(tiered_level);
                     overlay_.set_ui_dirty(true);
                 }
 
-                static constexpr const char *ranks[]    = {"Normal", "Ancient", "Primal"};
-                int                          rank_value = cfg.loot_modifiers.AncientRankValue;
-                if (ImGui::Combo("Ancient rank", &rank_value, ranks, static_cast<int>(IM_ARRAYSIZE(ranks)))) {
+                const char *ranks[] = {
+                    overlay_.tr("gui.loot_rank_normal", "Normal"),
+                    overlay_.tr("gui.loot_rank_ancient", "Ancient"),
+                    overlay_.tr("gui.loot_rank_primal", "Primal"),
+                };
+                int rank_value = cfg.loot_modifiers.AncientRankValue;
+                if (ImGui::Combo(overlay_.tr("gui.loot_ancient_rank", "Ancient rank"), &rank_value, ranks, static_cast<int>(IM_ARRAYSIZE(ranks)))) {
                     cfg.loot_modifiers.AncientRankValue = rank_value;
                     overlay_.set_ui_dirty(true);
                 }
@@ -369,13 +387,13 @@ namespace d3::gui2::ui::windows {
                 ImGui::EndTabItem();
             }
 
-            if (ImGui::BeginTabItem("Debug")) {
-                mark_dirty(ImGui::Checkbox("Enabled##debug", &cfg.debug.active));
+            if (ImGui::BeginTabItem(overlay_.tr("gui.tab_debug", "Debug"))) {
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.debug_enabled", "Enabled##debug"), &cfg.debug.active));
                 ImGui::BeginDisabled(!cfg.debug.active);
-                mark_dirty(ImGui::Checkbox("Enable crashes (danger)", &cfg.debug.enable_crashes));
-                mark_dirty(ImGui::Checkbox("Enable pubfile dump", &cfg.debug.enable_pubfile_dump));
-                mark_dirty(ImGui::Checkbox("Enable error traces", &cfg.debug.enable_error_traces));
-                mark_dirty(ImGui::Checkbox("Enable debug flags", &cfg.debug.enable_debug_flags));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.debug_enable_crashes", "Enable crashes (danger)"), &cfg.debug.enable_crashes));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.debug_pubfile_dump", "Enable pubfile dump"), &cfg.debug.enable_pubfile_dump));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.debug_error_traces", "Enable error traces"), &cfg.debug.enable_error_traces));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.debug_debug_flags", "Enable debug flags"), &cfg.debug.enable_debug_flags));
                 ImGui::EndDisabled();
 
                 ImGui::Separator();
@@ -383,9 +401,9 @@ namespace d3::gui2::ui::windows {
                 // Note: we don't link imgui_demo.cpp, so ShowDemoWindow() would be an unresolved symbol at runtime.
                 bool show_demo = false;
                 ImGui::BeginDisabled();
-                ImGui::Checkbox("Show ImGui demo window (not linked)", &show_demo);
+                ImGui::Checkbox(overlay_.tr("gui.debug_show_demo", "Show ImGui demo window (not linked)"), &show_demo);
                 ImGui::EndDisabled();
-                ImGui::Checkbox("Show ImGui metrics", &show_metrics_);
+                ImGui::Checkbox(overlay_.tr("gui.debug_show_metrics", "Show ImGui metrics"), &show_metrics_);
 
                 ImGui::EndTabItem();
             }
