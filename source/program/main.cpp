@@ -131,11 +131,17 @@ namespace d3 {
             if (global_config.resolution_hack.active) {
                 const u32 out_w = global_config.resolution_hack.OutputWidthPx();
                 const u32 out_h = global_config.resolution_hack.OutputHeightPx();
+                const u32 clamp_h = global_config.resolution_hack.ClampTextureHeightPx();
+                const u32 clamp_w = global_config.resolution_hack.ClampTextureWidthPx();
                 PRINT(
-                    "ResolutionHack config: target=%u output=%ux%u min_scale=%.1f clamp_2048=%u defaults_only=%u",
-                    global_config.resolution_hack.target_resolution, out_w, out_h,
+                    "ResolutionHack config: target=%u output=%ux%u min_scale=%.1f clamp_h=%u clamp=%ux%u defaults_only=%u",
+                    global_config.resolution_hack.target_resolution,
+                    out_w,
+                    out_h,
                     global_config.resolution_hack.min_res_scale,
-                    static_cast<u32>(global_config.resolution_hack.clamp_textures_2048),
+                    clamp_h,
+                    clamp_w,
+                    clamp_h,
                     static_cast<u32>(global_config.defaults_only)
                 );
             } else {

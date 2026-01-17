@@ -21,4 +21,4 @@ ryu-tail:
 		$(MAKE) ryu-launch-log
 
 ryu-screenshot:
-	@$(SHELL) $(SCRIPTS_PATH)/ryu-screenshot.sh
+	@/bin/bash $(SCRIPTS_PATH)/ryu-screenshot.sh

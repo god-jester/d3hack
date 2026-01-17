@@ -24,9 +24,6 @@ namespace d3 {
 
             static_assert(offsetof(NVNTexInfo, bIsWindowTexture) == 0x5C);
 
-            constexpr uint32 kMaxTextureDim = 2048;
-            constexpr uint32 kMetalMaxDim   = 16384;
-
             constexpr bool ShouldClampNvntCreate(uintptr_t lr_offset) {
                 switch (lr_offset) {
                 case 0xE6988:
@@ -39,14 +36,28 @@ namespace d3 {
                 }
             }
 
-            inline float LocalCalcRenderScale(uint32 width, uint32 height, uint32 limit) {
+            inline bool ClampTexturesEnabled() {
+                return global_config.resolution_hack.active && global_config.resolution_hack.ClampTexturesEnabled();
+            }
+
+            inline bool GetClampDims(uint32 &limit_w, uint32 &limit_h) {
+                if (!ClampTexturesEnabled())
+                    return false;
+                limit_h = global_config.resolution_hack.ClampTextureHeightPx();
+                limit_w = global_config.resolution_hack.ClampTextureWidthPx();
+                if (limit_w == 0 || limit_h == 0)
+                    return false;
+                return true;
+            }
+
+            inline float LocalCalcRenderScale(uint32 width, uint32 height, uint32 limit_w, uint32 limit_h) {
                 if (width == 0 || height == 0)
                     return 1.0f;
                 float scale = 1.0f;
-                if (width > limit)
-                    scale = static_cast<float>(limit) / static_cast<float>(width);
-                if (height > limit) {
-                    const float hscale = static_cast<float>(limit) / static_cast<float>(height);
+                if (width > limit_w)
+                    scale = static_cast<float>(limit_w) / static_cast<float>(width);
+                if (height > limit_h) {
+                    const float hscale = static_cast<float>(limit_h) / static_cast<float>(height);
                     if (hscale < scale)
                         scale = hscale;
                 }
@@ -87,15 +98,16 @@ namespace d3 {
                     );
                 }
 
-                const uint32 limit = (global_config.resolution_hack.active && global_config.resolution_hack.clamp_textures_2048)
-                                         ? kMaxTextureDim
-                                         : kMetalMaxDim;
+                uint32 limit_w = 0;
+                uint32 limit_h = 0;
+                if (!GetClampDims(limit_w, limit_h))
+                    return;
 
-                const bool oversized     = (width > limit) || (height > limit) || (height == 0);
+                const bool oversized     = (width > limit_w) || (height > limit_h) || (height == 0);
                 const bool known_rt_path = ShouldClampNvntCreate(lr_offset);
 
                 if (oversized || known_rt_path) {
-                    const float scale = LocalCalcRenderScale(width ? width : 1u, height ? height : 1u, limit);
+                    const float scale = LocalCalcRenderScale(width ? width : 1u, height ? height : 1u, limit_w, limit_h);
 
                     if (scale < 1.0f || oversized) {
                         const uint32 new_w = LocalScaleDim(width ? width : 1u, scale);

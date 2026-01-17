@@ -422,7 +422,7 @@ namespace {
             t.insert("SectionEnabled", config.resolution_hack.active);
             t.insert("OutputTarget", static_cast<int64_t>(config.resolution_hack.target_resolution));
             t.insert("MinResScale", static_cast<double>(config.resolution_hack.min_res_scale));
-            t.insert("ClampTextures2048", config.resolution_hack.clamp_textures_2048);
+            t.insert("ClampTextureResolution", static_cast<int64_t>(config.resolution_hack.clamp_texture_resolution));
             t.insert("ExperimentalScheduler", config.resolution_hack.exp_scheduler);
             root.insert("resolution_hack", std::move(t));
         }
@@ -684,11 +684,29 @@ void PatchConfig::ApplyTable(const toml::table &table) {
             {"MinScale", "MinimumScale", "MinResScale", "MinimumResScale", "MinResolutionScale", "MinimumResolutionScale"},
             resolution_hack.min_res_scale, 10.0, 100.0
         );
-        resolution_hack.clamp_textures_2048 = ReadBool(
-            *resolution_section,
-            {"ClampTextures2048", "ClampTexturesTo2048", "ClampTextures", "ClampTex2048", "ClampTex"},
-            resolution_hack.clamp_textures_2048
-        );
+        const u32 default_clamp = resolution_hack.clamp_texture_resolution;
+        u32       fallback_clamp = default_clamp;
+        if (auto legacy = ReadValue<bool>(
+                *resolution_section,
+                {"ClampTextures2048", "ClampTexturesTo2048", "ClampTextures", "ClampTex2048", "ClampTex"})) {
+            fallback_clamp = *legacy ? PatchConfig::ResolutionHackConfig::kClampTextureResolutionDefault : 0u;
+        }
+        u32 clamp_value = fallback_clamp;
+        if (auto value = ReadNumber(
+                *resolution_section,
+                {"ClampTextureResolution", "ClampTextureHeight", "ClampTexture", "ClampTextureRes"})) {
+            if (*value <= 0.0) {
+                clamp_value = 0u;
+            } else {
+                const double clamped = std::clamp(
+                    *value,
+                    static_cast<double>(PatchConfig::ResolutionHackConfig::kClampTextureResolutionMin),
+                    static_cast<double>(PatchConfig::ResolutionHackConfig::kClampTextureResolutionMax)
+                );
+                clamp_value = static_cast<u32>(clamped);
+            }
+        }
+        resolution_hack.clamp_texture_resolution = clamp_value;
         resolution_hack.exp_scheduler = ReadBool(
             *resolution_section,
             {"ExperimentalScheduler", "ExpScheduler", "ExperimentalScheduling", "ExpScheduling"},

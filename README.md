@@ -25,7 +25,7 @@ This path makes **1920x1080** (and optional **2560x1440**) swapchain output prac
 
 Breakdown:
 
-- **Config**: `[resolution_hack]` in `config.toml` sets `OutputHeight` (`1080`/`1440`/`2160`), `fixed_res`, and `clamp_textures_2048` (recommended; 4K output is unstable).
+- **Config**: `[resolution_hack]` in `config.toml` sets `OutputTarget` (`1080`/`1440`/`2160`), `MinResScale`, and `ClampTextureResolution` (0=off, 100-9999; default 1152, i.e. 2048x1152).
 - **Patches**: `PatchResolutionTargets()` in `source/program/d3/patches.hpp` rewrites the default display mode pair, forces docked/perf checks, and nudges font point sizes for high-res output.
 - **Hooks (shipping path)**: `source/program/d3/hooks/resolution.hpp` installs `PostFXInitClampDims` (internal RT clamp) plus `GfxViewportSetSwapchainDepthGate` + `GfxSetDepthTargetSwapchainFix` (detach the clamped swapchain depth target to prevent the hard-clip, without breaking inventory depth). These only install when output exceeds the internal clamp, so 1080p skips them.
 - **Known issue (main menu text flicker)**: when label overlays are enabled and FPS or res scale fluctuates, the main menu text can flicker white as the text layer is re-created. This is how the engine works, and Blizzard never cared to fix it (the overlays were meant only for debug). **Fix: disable the label overlays** (FPS, resolution, etc.) in `config.toml` if it bothers you.

@@ -216,7 +216,16 @@ namespace d3::gui2::ui::windows {
                     cfg.resolution_hack.min_res_scale = min_scale;
                     overlay_.set_ui_dirty(true);
                 }
-                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.resolution_clamp_2048", "Clamp textures to 2048"), &cfg.resolution_hack.clamp_textures_2048));
+                int clamp_height = static_cast<int>(cfg.resolution_hack.clamp_texture_resolution);
+                if (ImGui::InputInt(overlay_.tr("gui.resolution_clamp_2048", "Clamp texture height (0=off, 100-9999)"), &clamp_height)) {
+                    clamp_height = std::max(clamp_height, 0);
+                    if (clamp_height != 0 && clamp_height < 100)
+                        clamp_height = 100;
+                    if (clamp_height > 9999)
+                        clamp_height = 9999;
+                    cfg.resolution_hack.clamp_texture_resolution = static_cast<u32>(clamp_height);
+                    overlay_.set_ui_dirty(true);
+                }
                 mark_dirty(ImGui::Checkbox(overlay_.tr("gui.resolution_exp_scheduler", "Experimental scheduler"), &cfg.resolution_hack.exp_scheduler));
                 ImGui::Text(overlay_.tr("gui.resolution_output_size", "Output size: %ux%u"), cfg.resolution_hack.OutputWidthPx(), cfg.resolution_hack.OutputHeightPx());
                 ImGui::EndDisabled();

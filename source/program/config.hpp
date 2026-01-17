@@ -17,7 +17,10 @@ struct PatchConfig {
         bool  active              = true;
         u32   target_resolution   = 1080;   // boosted docked resolution
         float min_res_scale       = 85.0f;  // boosted; default is 70%
-        bool  clamp_textures_2048 = false;
+        static constexpr u32 kClampTextureResolutionDefault = 1152;
+        static constexpr u32 kClampTextureResolutionMin     = 100;
+        static constexpr u32 kClampTextureResolutionMax     = 9999;
+        u32                  clamp_texture_resolution       = kClampTextureResolutionDefault;
         bool  exp_scheduler       = false;
 
         static constexpr float kAspectRatio = 16.0f / 9.0f;
@@ -33,6 +36,10 @@ struct PatchConfig {
 
         constexpr u32 OutputWidthPx() const { return AlignDownPow2(WidthForHeight(OutputHeightPx()), 32u); }
         constexpr u32 OutputHeightPx() const { return AlignEven(target_resolution); }
+
+        constexpr bool ClampTexturesEnabled() const { return clamp_texture_resolution != 0; }
+        constexpr u32  ClampTextureHeightPx() const { return clamp_texture_resolution; }
+        constexpr u32  ClampTextureWidthPx() const { return WidthForHeight(ClampTextureHeightPx()); }
     };
 
     struct {

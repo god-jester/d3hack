@@ -11,8 +11,8 @@ SectionEnabled = true
 OutputTarget = 1080
 # Minimum resolution scale (percentage) to apply. 100% = locked resolution.
 MinResScale = 85
-# MUST be enabled for higher resolutions to avoid crashes above 1152p (2048x1152)!
-ClampTextures2048 = true
+# Clamp internal texture height (0=off, 100-9999). Default 1152 = 2048x1152.
+ClampTextureResolution = 1152
 # Use Blizzard's experimental scheduler; can improve performance.
 ExperimentalScheduler = false
 

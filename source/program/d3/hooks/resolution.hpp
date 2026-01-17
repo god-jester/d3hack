@@ -13,7 +13,6 @@ namespace d3 {
         [[maybe_unused]] constexpr uint32 kCompareAlways           = 8;
         [[maybe_unused]] constexpr uint32 kRENDERLAYER_OPAQUE      = 5;
 
-        constexpr uint32 kInternalClampDim     = 2048;
         constexpr uint32 kRenderLayerUI        = 10;
         constexpr uint32 kRenderLayerBnetUI    = 18;
         constexpr uint32 kRenderLayerUIOverlay = 19;
@@ -73,14 +72,28 @@ namespace d3 {
         static_assert(offsetof(UIWindowLite, m_rectClipping) == 0x160);
         static_assert(offsetof(UIWindowLite, m_rectStoredClipping) == 0x1A0);
 
-        inline float CalcRenderScale(uint32 width, uint32 height) {
+        inline bool ClampTexturesEnabled() {
+            return global_config.resolution_hack.active && global_config.resolution_hack.ClampTexturesEnabled();
+        }
+
+        inline bool GetClampDims(uint32 &limit_w, uint32 &limit_h) {
+            if (!ClampTexturesEnabled())
+                return false;
+            limit_h = global_config.resolution_hack.ClampTextureHeightPx();
+            limit_w = global_config.resolution_hack.ClampTextureWidthPx();
+            if (limit_w == 0 || limit_h == 0)
+                return false;
+            return true;
+        }
+
+        inline float CalcRenderScale(uint32 width, uint32 height, uint32 limit_w, uint32 limit_h) {
             if (width == 0 || height == 0)
                 return 1.0f;
             float scale = 1.0f;
-            if (width > kInternalClampDim)
-                scale = static_cast<float>(kInternalClampDim) / static_cast<float>(width);
-            if (height > kInternalClampDim) {
-                const float hscale = static_cast<float>(kInternalClampDim) / static_cast<float>(height);
+            if (width > limit_w)
+                scale = static_cast<float>(limit_w) / static_cast<float>(width);
+            if (height > limit_h) {
+                const float hscale = static_cast<float>(limit_h) / static_cast<float>(height);
                 if (hscale < scale)
                     scale = hscale;
             }
@@ -119,7 +132,11 @@ namespace d3 {
         }
 
         inline bool GetInternalDims(uint32 out_w, uint32 out_h, uint32 &int_w, uint32 &int_h, float &scale) {
-            scale = CalcRenderScale(out_w, out_h);
+            uint32 clamp_w = 0;
+            uint32 clamp_h = 0;
+            if (!GetClampDims(clamp_w, clamp_h))
+                return false;
+            scale = CalcRenderScale(out_w, out_h, clamp_w, clamp_h);
             if (scale >= 1.0f)
                 return false;
             int_w = ScaleDim(out_w, scale);
@@ -128,7 +145,7 @@ namespace d3 {
         }
 
         inline bool ShouldLogSwapchainClip(uint32 &out_w, uint32 &out_h, uint32 &int_w, uint32 &int_h) {
-            if (!global_config.resolution_hack.active || !global_config.resolution_hack.clamp_textures_2048 || !g_ptGfxData)
+            if (!ClampTexturesEnabled() || !g_ptGfxData)
                 return false;
 
             ResolutionRTView rt0 {};
@@ -239,12 +256,14 @@ namespace d3 {
 
     HOOK_DEFINE_INLINE(PostFXInitClampDims) {
         // @ 0x12F218: after GetPixelDimensions, before GfxGetMSAALevel.
-        // Clamp internal RT dimensions to <= 2048 when output > 2048 to avoid NVN/Metal crashes.
+        // Clamp internal RT dimensions to the configured limit when output exceeds it.
         static void Callback(exl::hook::InlineCtx *ctx) {
             // PRINT_EXPR("PostFXInitClampDims called");
             if (!g_ptGfxData)
                 return;
-            if (!global_config.resolution_hack.active || !global_config.resolution_hack.clamp_textures_2048)
+            uint32 clamp_w = 0;
+            uint32 clamp_h = 0;
+            if (!GetClampDims(clamp_w, clamp_h))
                 return;
 
             // PostFXGfxInit packs dimensions into X22 (high32=height, low32=width) and also stores height in X23.
@@ -252,7 +271,7 @@ namespace d3 {
             const uint64 packed = ctx->X[22];
             const auto   width  = static_cast<uint32>(packed & 0xFFFFFFFFu);
             const auto   height = static_cast<uint32>(ctx->X[23]);
-            const float  scale  = CalcRenderScale(width, height);
+            const float  scale  = CalcRenderScale(width, height, clamp_w, clamp_h);
 
             if (scale >= 1.0f)
                 return;
@@ -284,7 +303,7 @@ namespace d3 {
         // This prevents the 2048x1152 depth attachment from clamping the swapchain render area at 1152p+ output.
         static void Callback(const SNO snoDepth) {
             // PRINT_EXPR("GfxSetDepthTargetSwapchainFix called");
-            if (!global_config.resolution_hack.active || !global_config.resolution_hack.clamp_textures_2048 || !g_ptGfxData) {
+            if (!ClampTexturesEnabled() || !g_ptGfxData) {
                 Orig(snoDepth);
                 return;
             }
@@ -361,7 +380,7 @@ namespace d3 {
         // @ 0x29C670: GfxSetRenderAndDepthTarget(SNO color, SNO depth)
         // Detach the clamped swapchain depth target.
         static void Callback(const SNO snoColor, const SNO snoDepth) {
-            if (!global_config.resolution_hack.active || !global_config.resolution_hack.clamp_textures_2048 || !g_ptGfxData) {
+            if (!ClampTexturesEnabled() || !g_ptGfxData) {
                 Orig(snoColor, snoDepth);
                 return;
             }
@@ -413,7 +432,7 @@ namespace d3 {
     HOOK_DEFINE_TRAMPOLINE(DisplayListDrawRenderLayerSwapchainGate) {
         // @ 0x157294: DisplayList::DrawRenderLayer(RenderLayer)
         static void Callback(void *self, const uint32 layer) {
-            if (!global_config.resolution_hack.active || !global_config.resolution_hack.clamp_textures_2048 || !g_ptGfxData) {
+            if (!ClampTexturesEnabled() || !g_ptGfxData) {
                 ClearSwapchainLayerGate();
                 Orig(self, layer);
                 return;
@@ -747,7 +766,7 @@ namespace d3 {
                 return;
             }
 
-            if (!global_config.resolution_hack.active || !global_config.resolution_hack.clamp_textures_2048 || !g_ptGfxData) {
+            if (!ClampTexturesEnabled() || !g_ptGfxData) {
                 Orig(self, rectViewport);
                 return;
             }
@@ -864,11 +883,14 @@ namespace d3 {
             UITreeFolderDrawHook::InstallAtOffset(0x3B07A0);
         }
 
-        const uint32 out_w                = global_config.resolution_hack.OutputWidthPx();
-        const uint32 out_h                = global_config.resolution_hack.OutputHeightPx();
-        const bool   needs_internal_clamp = (out_w > kInternalClampDim) || (out_h > kInternalClampDim);
-        // 1080p output stays <= 2048, so the 1152p+ clip path never triggers; no hooks needed.
-        if (needs_internal_clamp && (global_config.resolution_hack.clamp_textures_2048 || !global_config.initialized)) {
+        const uint32 out_w = global_config.resolution_hack.OutputWidthPx();
+        const uint32 out_h = global_config.resolution_hack.OutputHeightPx();
+        uint32       clamp_w = 0;
+        uint32       clamp_h = 0;
+        const bool   clamp_enabled = GetClampDims(clamp_w, clamp_h);
+        const bool   needs_internal_clamp = clamp_enabled && ((out_w > clamp_w) || (out_h > clamp_h));
+        // 1080p output stays <= 2048x1152, so the 1152p+ clip path never triggers; no hooks needed.
+        if (needs_internal_clamp) {
             PostFXInitClampDims::InstallAtOffset(0x12F218);
         }
     }

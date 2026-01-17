@@ -1,4 +1,7 @@
 #!/bin/bash
+if [ -z "${BASH_VERSION:-}" ]; then
+    exec /bin/bash "$0" "$@"
+fi
 set -euo pipefail
 
 # Trigger a Ryujinx screenshot hotkey via `ryu-post-key.sh`, then move/copy the resulting

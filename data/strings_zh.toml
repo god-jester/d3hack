@@ -107,8 +107,8 @@ resolution_enabled = "启用##res"
 resolution_output_target = "输出目标(垂直)"
 # Minimum resolution scale
 resolution_min_scale = "最小分辨率缩放"
-# Clamp textures to 2048
-resolution_clamp_2048 = "纹理限制为 2048"
+# Clamp texture height (0=off, 100-9999)
+resolution_clamp_2048 = "纹理限制高度(0=关闭)"
 # Experimental scheduler
 resolution_exp_scheduler = "实验性调度器"
 # Output size: %ux%u
