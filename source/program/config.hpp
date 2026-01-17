@@ -28,8 +28,11 @@ struct PatchConfig {
 
         constexpr void SetTargetRes(u32 height) { target_resolution = height; }
 
-        constexpr u32 OutputWidthPx() const { return WidthForHeight(target_resolution); }
-        constexpr u32 OutputHeightPx() const { return target_resolution; }
+        static constexpr u32 AlignEven(u32 value) { return value & ~1u; }
+        static constexpr u32 AlignDownPow2(u32 value, u32 alignment) { return value & ~(alignment - 1u); }
+
+        constexpr u32 OutputWidthPx() const { return AlignDownPow2(WidthForHeight(OutputHeightPx()), 32u); }
+        constexpr u32 OutputHeightPx() const { return AlignEven(target_resolution); }
     };
 
     struct {

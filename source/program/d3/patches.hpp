@@ -10,7 +10,7 @@ namespace d3 {
     constinit const char c_szHackVerStart[]     = CRLF D3HACK_FULLVER CRLF CRLF CRLF;
 
     constinit const char      c_szTraceStat[]         = "sd:/config/d3hack-nx/debug.txt";
-    constinit const char      c_szVariableResString[] = "Output %4dp (Scaled %4dp)";
+    constinit const char      c_szVariableResString[] = "%4dp Output (Variable: %4dp)";
     constinit const Signature c_tSignature {"   " D3HACK_VER CRLF D3HACK_WEB CRLF " ", "Diablo III v", 2, 7, 6};
     const RGBAColor           c_rgbaText       = crgbaUIGold;
     const RGBAColor           c_rgbaDropShadow = crgbaWatermarkShadow;

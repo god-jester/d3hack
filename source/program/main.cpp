@@ -128,6 +128,19 @@ namespace d3 {
             // Require our SD to be mounted before running nnMain()
             R_ABORT_UNLESS(nn::fs::MountSdCardForDebug("sd"));
             LoadPatchConfig();
+            if (global_config.resolution_hack.active) {
+                const u32 out_w = global_config.resolution_hack.OutputWidthPx();
+                const u32 out_h = global_config.resolution_hack.OutputHeightPx();
+                PRINT(
+                    "ResolutionHack config: target=%u output=%ux%u min_scale=%.1f clamp_2048=%u defaults_only=%u",
+                    global_config.resolution_hack.target_resolution, out_w, out_h,
+                    global_config.resolution_hack.min_res_scale,
+                    static_cast<u32>(global_config.resolution_hack.clamp_textures_2048),
+                    static_cast<u32>(global_config.defaults_only)
+                );
+            } else {
+                PRINT_LINE("ResolutionHack config: inactive");
+            }
 
             // Apply patches based on config
             if (!g_config_hooks_installed) {
@@ -153,7 +166,7 @@ namespace d3 {
                 PatchResolutionTargets();
             PatchBase();
 
-            // GUI bringup (render-only): installs NVN hooks to draw a proof-of-life marker.
+            // GUI bringup
             d3::imgui_overlay::Initialize();
 
             // Allow game loop to start

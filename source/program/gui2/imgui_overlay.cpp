@@ -336,8 +336,8 @@ namespace d3::imgui_overlay {
         static float ComputeGuiScale(ImVec2 viewport_size) {
             constexpr float kMinViewportH = 720.0f;
             constexpr float kMaxViewportH = 1440.0f;
-            constexpr float kMinScale     = 1.10f;
-            constexpr float kMaxScale     = 1.50f;
+            constexpr float kMinScale     = 0.9f;
+            constexpr float kMaxScale     = 1.3f;
 
             const float h = viewport_size.y;
             if (!(h > 0.0f)) {
@@ -1014,9 +1014,9 @@ namespace d3::imgui_overlay {
         font_cfg.Name[1] = '3';
         font_cfg.Name[2] = '\0';
         // Build for docked readability (we apply a runtime scale for 720p).
-        font_cfg.SizePixels  = 18.0f;
-        font_cfg.OversampleH = 1;
-        font_cfg.OversampleV = 1;
+        font_cfg.SizePixels  = 16.0f;
+        font_cfg.OversampleH = 2;
+        font_cfg.OversampleV = 2;
         static ImVector<ImWchar> s_font_ranges;
         static bool              s_font_ranges_built = false;
         if (!s_font_ranges_built) {

@@ -49,13 +49,6 @@ MOD_PATH="${RYU_PATH}/mods/contents/${PROGRAM_ID}/${NAME}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 FILTER_LOCAL="${SCRIPT_DIR}/ryu_filter_logs.py"
 
-# Prefer resolving via the *common git dir* so this works from git-worktrees even if the
-# worktree itself doesn't have a `.codex/` directory.
-D3HACK_MAIN_ROOT="$(
-    cd "$(dirname "$(git rev-parse --git-common-dir 2>/dev/null)")" && pwd
-)"
-FILTER_CODEX="${D3HACK_MAIN_ROOT}/.codex/skills/launch-game-and-log/scripts/ryu_filter_logs.py"
-
 ENABLE_SCRIPT="${SCRIPT_DIR}/ryu_enable_only_mod.py"
 if [[ ! -f "$ENABLE_SCRIPT" ]]; then
     echo "Missing enable script: $ENABLE_SCRIPT"
@@ -87,9 +80,7 @@ export RYU_PIDFILE="$PIDFILE"
 
 FILTER=()
 if [[ -f "$FILTER_LOCAL" ]]; then
-    FILTER=("$PY" "$FILTER_LOCAL")
-elif [[ -f "$FILTER_CODEX" ]]; then
-    FILTER=("$PY" "$FILTER_CODEX")
+    FILTER=("$PY" "$FILTER_LOCAL" "--expected-mod" "$NAME")
 else
     FILTER=("cat")
 fi
