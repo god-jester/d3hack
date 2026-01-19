@@ -882,33 +882,7 @@ namespace d3 {
             Print_ErrorStringFinal::
                 InstallAtSymbol("sym_print_error_string_final");
         }
-        if (global_config.debug.active) {
-            // GfxWindowChangeDisplayModeHook::
-            //     InstallAtPtr(reinterpret_cast<uintptr_t>(GfxWindowChangeDisplayMode));
-            // RejectInvalidModes::
-            //     InstallAtOffset(0x298A20);
-            // GfxNX64NVNGetValidDisplayModesWidth::
-            //     InstallAtOffset(0xEA1A8);
-            // GfxNX64NVNGetValidDisplayModesHeight::
-            //     InstallAtOffset(0xEA1BC);
-        }
-        if (global_config.resolution_hack.active) {
-            // GfxWindowChangeDisplayModeHook::
-            //     InstallAtPtr(reinterpret_cast<uintptr_t>(GfxWindowChangeDisplayMode));
-            // GfxViewportSetHook::
-            //     InstallAtPtr(reinterpret_cast<uintptr_t>(GfxViewportSet));
-            // GfxStencilBufferEnableHook::
-            //     InstallAtOffset(0x0EFCD0);
-            // if (global_config.debug.active) {
-            //     GfxStencilBufferSetParamsHook::
-            //         InstallAtOffset(0x0EFE60);
-            //     PRINT_LINE("GfxStencilBufferSetParamsHook installed");
-            // }
-            // Phase 1 rollback: disable NVN texture mutation hook to isolate mosaic issues.
-            // (Keep display-mode logging enabled for visibility.)
-            // nvn::NVNTexInfoCreateHook::
-            //     InstallAtOffset(0xE6B20);
-        }
+
         // BDPublish::
         //     InstallAtFuncPtr(bdLogSubscriber_publish);
         // CountCosmetics::

@@ -684,17 +684,19 @@ void PatchConfig::ApplyTable(const toml::table &table) {
             {"MinScale", "MinimumScale", "MinResScale", "MinimumResScale", "MinResolutionScale", "MinimumResolutionScale"},
             resolution_hack.min_res_scale, 10.0, 100.0
         );
-        const u32 default_clamp = resolution_hack.clamp_texture_resolution;
+        const u32 default_clamp  = resolution_hack.clamp_texture_resolution;
         u32       fallback_clamp = default_clamp;
         if (auto legacy = ReadValue<bool>(
                 *resolution_section,
-                {"ClampTextures2048", "ClampTexturesTo2048", "ClampTextures", "ClampTex2048", "ClampTex"})) {
+                {"ClampTextures2048", "ClampTexturesTo2048", "ClampTextures", "ClampTex2048", "ClampTex"}
+            )) {
             fallback_clamp = *legacy ? PatchConfig::ResolutionHackConfig::kClampTextureResolutionDefault : 0u;
         }
         u32 clamp_value = fallback_clamp;
         if (auto value = ReadNumber(
                 *resolution_section,
-                {"ClampTextureResolution", "ClampTextureHeight", "ClampTexture", "ClampTextureRes"})) {
+                {"ClampTextureResolution", "ClampTextureHeight", "ClampTexture", "ClampTextureRes"}
+            )) {
             if (*value <= 0.0) {
                 clamp_value = 0u;
             } else {
@@ -706,12 +708,12 @@ void PatchConfig::ApplyTable(const toml::table &table) {
                 clamp_value = static_cast<u32>(clamped);
             }
         }
-        resolution_hack.clamp_texture_resolution = clamp_value;
         resolution_hack.exp_scheduler = ReadBool(
             *resolution_section,
             {"ExperimentalScheduler", "ExpScheduler", "ExperimentalScheduling", "ExpScheduling"},
             resolution_hack.exp_scheduler
         );
+        resolution_hack.clamp_texture_resolution = clamp_value;
     } else {
         resolution_hack.SetTargetRes(resolution_hack.target_resolution);
     }

@@ -53,6 +53,7 @@ namespace d3 {
     GameCommonData          *g_ptGCData;
     GfxInternalData         *g_ptGfxData;
     RWindow                 *g_ptMainRWindow;
+    VariableResRWindowData  *g_ptRWindowData;
     void                    *g_ptLobbyServiceInternal;
     GameConnectionID         gs_idGameConnection;
     constinit bool           g_request_seasons_load = false;

@@ -14,14 +14,15 @@ struct PatchConfig {
     };
 
     struct ResolutionHackConfig {
-        bool  active              = true;
-        u32   target_resolution   = 1080;   // boosted docked resolution
-        float min_res_scale       = 85.0f;  // boosted; default is 70%
+        bool  active            = true;
+        u32   target_resolution = 1080;   // boosted docked resolution
+        float min_res_scale     = 85.0f;  // boosted; default is 70%
+        bool  exp_scheduler     = true;
+
         static constexpr u32 kClampTextureResolutionDefault = 1152;
         static constexpr u32 kClampTextureResolutionMin     = 100;
         static constexpr u32 kClampTextureResolutionMax     = 9999;
         u32                  clamp_texture_resolution       = kClampTextureResolutionDefault;
-        bool  exp_scheduler       = false;
 
         static constexpr float kAspectRatio = 16.0f / 9.0f;
 

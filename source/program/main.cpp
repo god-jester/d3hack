@@ -129,8 +129,8 @@ namespace d3 {
             R_ABORT_UNLESS(nn::fs::MountSdCardForDebug("sd"));
             LoadPatchConfig();
             if (global_config.resolution_hack.active) {
-                const u32 out_w = global_config.resolution_hack.OutputWidthPx();
-                const u32 out_h = global_config.resolution_hack.OutputHeightPx();
+                const u32 out_w   = global_config.resolution_hack.OutputWidthPx();
+                const u32 out_h   = global_config.resolution_hack.OutputHeightPx();
                 const u32 clamp_h = global_config.resolution_hack.ClampTextureHeightPx();
                 const u32 clamp_w = global_config.resolution_hack.ClampTextureWidthPx();
                 PRINT(
@@ -187,6 +187,8 @@ namespace d3 {
         /* Setup hooking environment. */
         exl::hook::Initialize();
         PRINT_LINE("Compiled at " __DATE__ " " __TIME__);
+
+        PatchGraphicsPersistentHeapEarly();
 
         MainInit::InstallAtFuncPtr(main_init);
         GfxInit::InstallAtFuncPtr(gfx_init);

@@ -85,6 +85,15 @@ namespace d3 {
         // AppDrawFlagSet(APP_DRAW_VARIABLE_RES_DEBUG_BIT, 1);     // Must be run each frame in another hook
     }
 
+    void PatchGraphicsPersistentHeapEarly() {
+        auto jest = patch::RandomAccessPatcher();
+        // SigmaMemoryInit (sSigmaMemoryInit, 0xA36A50): gptGraphicsPersistentMemoryHeap size.
+        // 0xA36B34: MOV W19, #0x17400000
+        // Bump graphics persistent heap (XRemoteHeap) to reduce alloc failures.
+        const u32 gfx_persistent_heap_size = 0x27400000;  // +0x10000000 (256 MB)
+        jest.Patch<Movz>(0xA36B34, W19, (gfx_persistent_heap_size >> 16), ShiftValue_16);
+    }
+
     /* String swap and formatting for APP_DRAW_FPS_BIT */
     void PatchReleaseFPSLabel() {
         auto jest = patch::RandomAccessPatcher();
@@ -130,13 +139,68 @@ namespace d3 {
     }
 
     void PatchResolutionTargets() {
+        auto jest = patch::RandomAccessPatcher();
+        /* FontDefinition::GetPointSizeData (0x276A60/0x276A6C). */
+        /* 0x276A60: MOV W9, #8   | 0x276A6C: MOV W8, #0x10 */
+        jest.Patch<Movz>(PatchTable("patch_resolution_targets_08_movz"), W9, 32);
+        jest.Patch<Movz>(PatchTable("patch_resolution_targets_09_movz"), W8, 32);
+
+        // ShellInitialize (0x6678B8): BL nn::oe::GetOperationMode
+        // ShellEventLoop (0x667AE8): BL nn::oe::GetOperationMode
+        // jest.Patch<Movz>(PatchTable("patch_resolution_targets_10_movz"), W0, 0);  // 0 = "Docked"
+        // jest.Patch<Movz>(PatchTable("patch_resolution_targets_11_movz"), W0, 0);  // 0 = "Docked"
+        // ShellInitialize (0x6678C8): BL nn::oe::GetPerformanceMode
+        // ShellEventLoop (0x667B04): BL nn::oe::GetPerformanceMode
+        // jest.Patch<Movz>(PatchTable("patch_resolution_targets_12_movz"), W0, 1);  // 1 = "Boost"
+        // jest.Patch<Movz>(PatchTable("patch_resolution_targets_13_movz"), W0, 1);  // 1 = "Boost"
         if (!(global_config.resolution_hack.active))
             return;
 
-        auto jest = patch::RandomAccessPatcher();
-
         const u32 out_w = global_config.resolution_hack.OutputWidthPx();
         const u32 out_h = global_config.resolution_hack.OutputHeightPx();
+
+        // NX64NVNHeap::EarlyInit (0x0E7770): uMaxSize/Preallocate size.
+        // 0x0E7770: MOV W19, #0x49C00000
+        // NX64NVNHeap::EarlyInit (0x0E77A0): largest pool max_alloc.
+        // 0x0E77A0: MOV W3, #0x8000000
+        // Increase heap headroom + largest pool max_alloc for >1280p output.
+        if (out_h > 1280) {
+            const u32 heap_size = 0x59C00000;  // +0x10000000 (256 MB)
+            const u32 max_alloc = 0x10000000;  // +0x08000000 (128 MB)
+            jest.Patch<Movz>(0x0E7770, W19, (heap_size >> 16), ShiftValue_16);
+            jest.Patch<Movz>(0x0E77A0, W3, (max_alloc >> 16), ShiftValue_16);
+        }
+
+        // Force "GfxGetSystemID == 1?" branch to match ours (7) to apply resolution defaults
+        // GfxValidateDisplayMode() | 0x29A4F8: CMP W15, #1
+        jest.Patch<CmpImmediate>(0x29A4F8, W15, 7);
+        // Override resolution defaults (DisplayMode table @ 0xEB6D64 in 2.7.6).
+        const u32 mode_flags   = 10;
+        const u32 window_mode  = 0;
+        const u32 win_left     = 0;
+        const u32 win_top      = 0;
+        const u32 win_w        = out_w;
+        const u32 win_h        = out_h;
+        const u32 ui_w         = out_w;
+        const u32 ui_h         = out_h;
+        const u32 refresh_hz   = 60;
+        const u32 color_depth  = 24;
+        const u32 msaa_level   = 2;
+        const u32 msaa_quality = 2;
+        jest.Patch<u32>(0xEB6D64, mode_flags);    // dwFlags
+        jest.Patch<u32>(0xEB6D68, window_mode);   // dwWindowMode
+        jest.Patch<u32>(0xEB6D6C, win_left);      // nWinLeft
+        jest.Patch<u32>(0xEB6D70, win_top);       // nWinTop
+        jest.Patch<u32>(0xEB6D74, win_w);         // nWinWidth
+        jest.Patch<u32>(0xEB6D78, win_h);         // nWinHeight
+        jest.Patch<u32>(0xEB6D7C, ui_w);          // dwUIOptWidth
+        jest.Patch<u32>(0xEB6D80, ui_h);          // dwUIOptHeight
+        jest.Patch<u32>(0xEB6D84, out_w);         // dwWidth
+        jest.Patch<u32>(0xEB6D88, out_h);         // dwHeight
+        jest.Patch<u32>(0xEB6D8C, refresh_hz);    // nRefreshRate
+        jest.Patch<u32>(0xEB6D90, color_depth);   // dwColorDepth
+        jest.Patch<u32>(0xEB6D94, msaa_level);    // dwMSAALevel
+        jest.Patch<u32>(0xEB6D98, msaa_quality);  // dwMSAAQuality (paired)
 
         // Display mode pair (full). GFXNX64NVN::Init (0x0E7850).
         // 0x0E7858: MOV X8, #1600
@@ -147,33 +211,20 @@ namespace d3 {
         // Fallback/base scale mode (same block).
         // 0x0E785C: MOV X9, #1280
         // 0x0E7864: MOVK X9, #720, LSL#32
-        jest.Patch<Movz>(PatchTable("patch_resolution_targets_03_movz"), X9, out_w);
-        jest.Patch<Movk>(PatchTable("patch_resolution_targets_04_movk"), X9, out_h, ShiftValue_32);
+        // jest.Patch<Movz>(PatchTable("patch_resolution_targets_03_movz"), X9, out_w);
+        // jest.Patch<Movk>(PatchTable("patch_resolution_targets_04_movk"), X9, out_h, ShiftValue_32);
 
-        if (global_config.resolution_hack.min_res_scale >= 100.0f) {
-            /* VariableResRWindowData->flMinPercent = 0.70f - 0x03CBBC: MOVK X9, #0x3F33, LSL#48 (CGameVariableResInitializeForRWindow) */
-            jest.Patch<Movk>(PatchTable("patch_resolution_targets_05_movk"), X9, 0x3F80, ShiftValue_48);  // 100% (1.0f) minimum resolution scale
-        }
+        // if (global_config.resolution_hack.min_res_scale >= 100.0f) {
+        // Too late to patch cdecl defaults at this point, and prefer the hook
+        //     /* VariableResRWindowData->flMinPercent = 0.70f - 0x03CBBC: MOVK X9, #0x3F33, LSL#48 (CGameVariableResInitializeForRWindow) */
+        //     jest.Patch<Movk>(PatchTable("patch_resolution_targets_05_movk"), X9, 0x3F80, ShiftValue_48);  // 100% (1.0f) minimum resolution scale
+        // }
 
         /* VariableResRWindowData->flMaxPercent = 1.00f - 0x03CBCC: MOV W8, #0x3F800000 */
         // jest.Patch<Movz>(PatchTable("patch_resolution_targets_06_movz"), W8, 0x3FA0, ShiftValue_16);  // 125% (1.25f) maximum resolution scale (>1.0f breaks rendering)
 
         /* VariableResRWindowData->flPercentIncr = 0.05f - 0x03CBD4: MOVK X9, #0x3D4C, LSL#48 */
-        jest.Patch<Movk>(PatchTable("patch_resolution_targets_07_movk"), X9, 0x3CF5, ShiftValue_48);  // 3% (0.03f) resolution adjust percentage
-
-        /* FontDefinition::GetPointSizeData (0x276A60/0x276A6C). */
-        /* 0x276A60: MOV W9, #8   | 0x276A6C: MOV W8, #0x10 */
-        jest.Patch<Movz>(PatchTable("patch_resolution_targets_08_movz"), W9, 32);
-        jest.Patch<Movz>(PatchTable("patch_resolution_targets_09_movz"), W8, 32);
-
-        // ShellInitialize (0x6678B8): BL nn::oe::GetOperationMode
-        // ShellEventLoop (0x667AE8): BL nn::oe::GetOperationMode
-        jest.Patch<Movz>(PatchTable("patch_resolution_targets_10_movz"), W0, 0);  // 0 = "Docked"
-        jest.Patch<Movz>(PatchTable("patch_resolution_targets_11_movz"), W0, 0);  // 0 = "Docked"
-        // ShellInitialize (0x6678C8): BL nn::oe::GetPerformanceMode
-        // ShellEventLoop (0x667B04): BL nn::oe::GetPerformanceMode
-        jest.Patch<Movz>(PatchTable("patch_resolution_targets_12_movz"), W0, 1);  // 1 = "Boost"
-        jest.Patch<Movz>(PatchTable("patch_resolution_targets_13_movz"), W0, 1);  // 1 = "Boost"
+        // jest.Patch<Movk>(PatchTable("patch_resolution_targets_07_movk"), X9, 0x3CF5, ShiftValue_48);  // 3% (0.03f) resolution adjust percentage
     }
 
     void PatchDynamicSeasonal() {
