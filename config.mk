@@ -6,7 +6,7 @@
 # How you're loading your module. Used to determine how to find the target module. (AsRtld/Module/Kip)
 LOAD_KIND := Module
 
-# Program you're targetting. Used to determine where to deploy your files.
+# Program you're targeting. Used to determine where to deploy your files.
 PROGRAM_ID := 01001b300b9be000
 
 # Optional path to copy the final ELF to, for convenience.

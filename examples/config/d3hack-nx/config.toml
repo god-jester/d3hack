@@ -7,7 +7,8 @@ SectionEnabled = true
 # Output target vertical resolution; can be numeric or aliases:
 # - 900 -> 1600x900  (aliases "900p" | "default" | "unchanged")
 # - 1080 -> 1920x1080 (aliases "1080p" | "FHD")
-# - 1440 -> 2560x1440 (aliases "1440p" | "2K" | "QHD")
+# - 1440 -> 2560x1440 (aliases "1440p" | "QHD")
+# - 2160 -> 3840x2160 (aliases "2160p" | "4K" | "UHD")
 OutputTarget = 1080
 # Minimum resolution scale (percentage) to apply. 100% = locked resolution.
 MinResScale = 85
@@ -17,7 +18,7 @@ ClampTextureResolution = 1152
 ExperimentalScheduler = false
 
 [seasons]
-# Enable season overrides (SeasonNumber + SeasonMapMode).
+# Enable season overrides (SeasonNumber; SeasonMapMode lives under [events]).
 SectionEnabled = true
 # Allow online play (true keeps "Connect to Diablo Servers" visible).
 AllowOnlinePlay = false
@@ -39,7 +40,7 @@ RiftRangeEnd = 28
 # Enable event flags + seasonal map overlays.
 SectionEnabled = true
 # Season map modes: "MapOnly" | "OverlayConfig" | "Disabled"
-# - MapOnly: apply the season's mapped theme (Seasons 14-37 only), ignore flags below.
+# - MapOnly: apply the season's mapped theme (Seasons 14-22 and 24-37), ignore flags below.
 # - OverlayConfig: apply map, plus add any event flags below.
 # - Disabled: ignore the map and use flags below as-is.
 SeasonMapMode = "OverlayConfig"
@@ -171,3 +172,5 @@ EnableDebugFlags = false
 # Hotkey: hold + and - (0.5s) to toggle visibility.
 Enabled = true
 Visible = true
+# Optional GUI language override (e.g. "zh"). Leave empty to use game locale.
+Language = ""

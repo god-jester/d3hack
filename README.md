@@ -4,6 +4,8 @@
 
 Seasons offline. Challenge Rifts without servers. Community events on demand. Loot table tweaks, instant crafting, and quality-of-life tools. All running inside the game process via native C++ hooks.
 
+**Current version: D3Hack v3.0**
+
 Want the full toggle list? Start with the example config: `examples/config/d3hack-nx/config.toml`.
 New: [Resolution Hack (ResHack) overview](#resolution-hack-reshack).
 
@@ -13,10 +15,11 @@ New: [Resolution Hack (ResHack) overview](#resolution-hack-reshack).
 
 - **Seasons + events via XVars**: season number/state and event flags are applied with native XVar setters after config load.
 - **Optional publisher file overrides**: Config/Seasons/Blacklist retrieval hooks can replace online files for offline play or testing.
-- **Season event map**: one switch to auto-enable the correct seasonal theme flags for Seasons 14-37.
+- **Season event map**: one switch to auto-enable the correct seasonal theme flags for Seasons 14-22 and 24-37.
 - **Challenge Rifts offline fix**: SD card protobufs now parse at full size (previous blz::string ctor issue resolved).
 - **Safer offline UX**: hides "Connect to Diablo Servers" and network hints when AllowOnlinePlay = false.
-- **Resolution Hack (ResHack)**: 1080p output is stable; 1440 output is supported with an internal clamp and extra heap headroom.
+- **Resolution Hack (ResHack)**: 1080p/1440p/2160p output is stable with internal RT clamping and extra heap headroom.
+- **CMake build**: CMake presets mirror the Makefile pipeline for devkitA64.
 
 ---
 
@@ -24,14 +27,14 @@ New: [Resolution Hack (ResHack) overview](#resolution-hack-reshack).
 
 ResHack keeps the swapchain output at your chosen size while clamping internal render targets (RTs) for stability. It is designed for true high-res output, not UI-only scaling.
 
-Current baseline (2026-01-19)
-- OutputTarget = 1440 (2560x1440).
-- ClampTextureResolution = 1026 (1824x1026 internal).
-- Graphics persistent heap bumped early (+256 MB).
+Current baseline (2026-01-20)
+- OutputTarget = 2160 (3840x2160).
+- ClampTextureResolution = 1152 (2048x1152 internal).
+- Graphics persistent heap bumped early (+256 MB, always on).
 - NX64NVNHeap EarlyInit headroom and largest pool max_alloc bumped when output height > 1280.
 
 How it works
-- **Config**: `[resolution_hack]` in `config.toml` sets OutputTarget, MinResScale, and ClampTextureResolution (0=off, 100-9999).
+- **Config**: `[resolution_hack]` in `config.toml` sets OutputTarget, MinResScale, ClampTextureResolution (0=off, 100-9999), and ExperimentalScheduler.
 - **Patches**: PatchResolutionTargets rewrites the display mode table to match OutputTarget and applies NVN heap headroom when output height > 1280.
 - **Hooks**: NVNTexInfoCreateHook clamps oversized internal textures while keeping swapchain textures output-sized.
 - **Early heap**: PatchGraphicsPersistentHeapEarly bumps the graphics persistent heap before NVN init.
@@ -40,14 +43,14 @@ Recommended settings (ResHack)
 ```
 [resolution_hack]
 SectionEnabled = true
-OutputTarget = 1440
-ClampTextureResolution = 1026
+OutputTarget = 2160
+ClampTextureResolution = 1152
 # MinResScale: keep your normal value (85 is a safe starting point).
 ```
 
 Notes
 - 1080 output stays at or below 2048x1152, so the clamp path is mostly inactive.
-- If you raise the clamp above 1026 at 1440 output, the old crash signature returns (DisplayInternalError + InvalidMemoryRegionException).
+- If you raise the clamp too high at 1440/2160 output, the old crash signature can return (DisplayInternalError + InvalidMemoryRegionException).
 - Label overlays (FPS/resolution/DDM) can flicker white in the main menu; disable overlays if it bothers you.
 
 ---
@@ -59,7 +62,7 @@ d3hack-nx is an exlaunch-based module that hooks D3 at runtime. It modifies game
 | Category | Highlights & Technical Notes |
 |----------|------------------------------|
 | **Offline Seasons** | Set season number/state via XVar updates + seasonal UI patches; optional seasons file override for offline parity. |
-| **Season Theme Map** | SeasonMapMode can apply the official theme flags for Seasons 14-37, optionally OR'd with your custom flags. |
+| **Season Theme Map** | SeasonMapMode can apply the official theme flags for Seasons 14-22 and 24-37, optionally OR'd with your custom flags. |
 | **Challenge Rifts** | Hooks the challenge rift callback and injects protobuf blobs from SD (`rift_data`). |
 | **Community Events** | Toggle 20+ flags (Ethereals, Soul Shards, Fourth Cube Slot, etc.) via runtime XVar updates. |
 | **Loot Research** | Control Ancient/Primal drops, GR tier logic, and item level forcing for drop-table experiments. |
@@ -74,28 +77,36 @@ d3hack-nx is an exlaunch-based module that hooks D3 at runtime. It modifies game
 ### 1) Install
 
 - Grab the latest release archive.
-- Copy `subsdk9` and `main.npdm` to:
-  - **Atmosphere**: `atmosphere/contents/01001b300b9be000/exefs/`
-  - **Ryujinx/Yuzu**:
-    - Windows: `%AppData%\yuzu\load\01001B300B9BE000\d3hack\exefs\`
-    - macOS: `~/Library/Application Support/Ryujinx/mods/contents/01001b300b9be000/d3hack/exefs`
+- Copy `subsdk9` and `main.npdm` to the `exefs/` folder, and copy the `romfs/` folder (contains `d3gui/imgui.bin`, fonts, and translations).
+- Atmosphere exefs: `atmosphere/contents/01001b300b9be000/exefs/`
+- Atmosphere romfs: `atmosphere/contents/01001b300b9be000/romfs/`
+- Ryujinx (Windows) exefs: `%AppData%\Ryujinx\mods\contents\01001B300B9BE000\d3hack\exefs\`
+- Ryujinx (Windows) romfs: `%AppData%\Ryujinx\mods\contents\01001B300B9BE000\d3hack\romfs\`
+- Ryujinx (macOS) exefs: `~/Library/Application Support/Ryujinx/mods/contents/01001b300b9be000/d3hack/exefs`
+- Ryujinx (macOS) romfs: `~/Library/Application Support/Ryujinx/mods/contents/01001b300b9be000/d3hack/romfs`
+- Yuzu (Windows) exefs: `%AppData%\yuzu\load\01001B300B9BE000\d3hack\exefs\`
+- Yuzu (Windows) romfs: `%AppData%\yuzu\load\01001B300B9BE000\d3hack\romfs\`
+- Yuzu (macOS) exefs: `~/Library/Application Support/yuzu/load/01001b300b9be000/d3hack/exefs`
+- Yuzu (macOS) romfs: `~/Library/Application Support/yuzu/load/01001b300b9be000/d3hack/romfs`
 
 ### 2) Configure
 
 Place `config.toml` at:
 
 - `sd:/config/d3hack-nx/config.toml` (hardware)
-- **Ryujinx/Yuzu**:
-  - Windows: `%AppData%\yuzu\sdmc\config\d3hack-nx\config.toml`
-  - macOS: `~/Library/Application Support/Ryujinx/sdcard/config/d3hack-nx/config.toml`
+- Ryujinx (Windows): `%AppData%\Ryujinx\sdcard\config\d3hack-nx\config.toml`
+- Ryujinx (macOS): `~/Library/Application Support/Ryujinx/sdcard/config/d3hack-nx/config.toml`
+- Yuzu (Windows): `%AppData%\yuzu\sdmc\config\d3hack-nx\config.toml`
+- Yuzu (macOS): `~/Library/Application Support/yuzu/sdmc/config/d3hack-nx/config.toml`
 
 Key sections:
 
-- `[resolution_hack]`: OutputTarget, ClampTextureResolution, MinResScale.
-- `[seasons]`: SeasonNumber, AllowOnlinePlay.
+- `[resolution_hack]`: OutputTarget, ClampTextureResolution, MinResScale, ExperimentalScheduler.
+- `[seasons]`: SeasonNumber, AllowOnlinePlay, SpoofPtr.
 - `[events]`: seasonal flags + SeasonMapMode (MapOnly, OverlayConfig, Disabled).
 - `[challenge_rifts]`: enable/disable, randomize, or define a range.
-- `[rare_cheats]`, `[overlays]`, `[debug]`, `[gui]`.
+- `[rare_cheats]`, `[overlays]`, `[debug]`.
+- `[gui]`: Enabled, Visible, Language (override).
 
 ### 3) (Optional) Challenge Rift data
 
@@ -118,7 +129,7 @@ Start D3 normally. The mod verifies build 2.7.6.90885, loads config, then applie
 
 ---
 
-## Season Theme Mapping (14-37)
+## Season Theme Mapping (14-22, 24-37)
 
 Set `[events].SeasonMapMode` to map the correct theme flags for a given season number:
 
@@ -132,11 +143,20 @@ Set `[events].SeasonMapMode` to map the correct theme flags for a given season n
 
 **Requirements**: devkitPro with devkitA64 + libnx (`$DEVKITPRO` set); Python 3 (optional `ftputil` for FTP deploys).
 
+Fetch submodules once:
+
+```bash
+git submodule update --init --recursive
+```
+
 Configure build/deploy in `config.mk` by setting the deploy targets you plan to use (FTP IP/port, `RYU_*`, `YUZU_PATH`).
+For CMake-only overrides, copy `config.cmake.template` to `config.cmake`.
 
 ```bash
 # Build
 make                    # or ./exlaunch.sh build
+cmake --preset switch
+cmake --build --preset switch
 
 # Deploy
 make deploy-ryu         # Ryujinx
@@ -148,7 +168,9 @@ make deploy-sd          # SD card (uses sudo mount)
 make clean
 ```
 
-Outputs land in `deploy/` as `subsdk9` and `main.npdm`.
+Outputs land in `deploy/`:
+- `exefs/subsdk9` and `exefs/main.npdm`
+- `romfs/d3gui/` assets (`imgui.bin`, fonts, translations)
 
 ---
 
@@ -162,8 +184,8 @@ Outputs land in `deploy/` as `subsdk9` and `main.npdm`.
 
 ## Known Limits
 
-- 1440 output is still experimental; internal RTs must be clamped for stability.
-- Clamp values above 1026 at 1440 output can trigger DisplayInternalError + InvalidMemoryRegionException.
+- 2160 output is stable with internal RT clamping enabled.
+- Raising the clamp too high at 1440/2160 output can trigger DisplayInternalError + InvalidMemoryRegionException.
 - Label overlays (FPS/resolution/DDM) can flicker in the main menu; disable overlays if it bothers you.
 - Use offline; do not take mods into online play.
 
@@ -172,9 +194,12 @@ Outputs land in `deploy/` as `subsdk9` and `main.npdm`.
 ## Project Structure
 
 - `source/` - gameplay/engine hooks and helpers (modules live here)
-- `include/` - public headers (vendored libs under `include/tomlplusplus/`)
+- `include/` - public headers (`include/tomlplusplus/` submodule)
+- `source/third_party/imgui/` - Dear ImGui submodule
+- `cmake/` - CMake toolchain and build helpers
+- `data/` - romfs assets (`imgui.bin`, fonts, translations)
 - `misc/scripts/` - build/deploy logic (Makefile includes these)
-- `deploy/` - post-build outputs (`subsdk9`, `main.npdm`)
+- `deploy/` - post-build outputs (`exefs/`, `romfs/`)
 - `config.mk` - local build/deploy settings
 
 ---
@@ -197,6 +222,7 @@ Outputs land in `deploy/` as `subsdk9` and `main.npdm`.
 - **Resolution hack (ResHack)**: `source/program/d3/hooks/resolution.hpp` + `source/program/d3/patches.hpp`.
 - **Overlays + watermark text**: `source/program/d3/patches.hpp` (PatchBuildlocker, PatchDDMLabels, PatchReleaseFPSLabel).
 - **Hook gating + boot flow**: `source/program/main.cpp` (MainInit, SetupSeasonEventHooks).
+- **ImGui romfs assets**: `data/` packaged to `deploy/romfs/d3gui/` by `misc/scripts/post-build.sh`.
 
 ---
 

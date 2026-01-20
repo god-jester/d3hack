@@ -3,7 +3,7 @@
 #
 # Note: if you want -DVAR=... on the command line to win, wrap overrides in:
 #   if(NOT DEFINED VAR)
-#     set(VAR "...") 
+#     set(VAR "...")
 #   endif()
 
 # set(LOAD_KIND "Module")

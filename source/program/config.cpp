@@ -112,7 +112,7 @@ namespace {
             return 1080;
         if (normalized == "1440" || normalized == "1440p" || normalized == "2k" || normalized == "qhd")
             return 1440;
-        if (normalized == "2160willcrash")
+        if (normalized == "2160" || normalized == "2160p" || normalized == "4k" || normalized == "uhd")
             return 2160;
 
         u32         value = 0;
