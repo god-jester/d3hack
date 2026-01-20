@@ -1,6 +1,7 @@
 #include "program/gui2/ui/overlay.hpp"
 
 #include <cctype>
+#include <string_view>
 
 #include "program/romfs_assets.hpp"
 #include "program/d3/setting.hpp"

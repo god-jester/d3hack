@@ -14,10 +14,10 @@ using uint16 = uint16_t;
 using int32_t = int;
 using uint8_t = __uint8_t;
 
-#define __int64 __int64_t
-#define __int32 __int32_t
-#define __int16 __int16_t
-#define __int8 __int8_t
+#define __int64 long
+#define __int32 int
+#define __int16 short
+#define __int8 char
 
 using CHAR = char;
 using LPCSTR = const CHAR*;

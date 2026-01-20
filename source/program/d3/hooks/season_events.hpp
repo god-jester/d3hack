@@ -13,20 +13,20 @@ namespace d3 {
         }
 
         void ClearConfigRequestFlag() {
-            auto flag_ptr = reinterpret_cast<uint32_t **>(GameOffsetFromTable("season_config_request_flag_ptr"));
-            if (flag_ptr && *flag_ptr)
+            auto *flag_ptr = reinterpret_cast<uint32_t **>(GameOffsetFromTable("season_config_request_flag_ptr"));
+            if ((flag_ptr != nullptr) && (*flag_ptr != nullptr))
                 **flag_ptr = 0;
         }
 
         void ClearSeasonsRequestFlag() {
-            auto flag_ptr = reinterpret_cast<uint8_t **>(GameOffsetFromTable("season_seasons_request_flag_ptr"));
-            if (flag_ptr && *flag_ptr)
+            auto *flag_ptr = reinterpret_cast<uint8_t **>(GameOffsetFromTable("season_seasons_request_flag_ptr"));
+            if ((flag_ptr != nullptr) && (*flag_ptr != nullptr))
                 **flag_ptr = 0;
         }
 
         void ClearBlacklistRequestFlag() {
-            auto flag_ptr = reinterpret_cast<uint8_t **>(GameOffsetFromTable("season_blacklist_request_flag_ptr"));
-            if (flag_ptr && *flag_ptr)
+            auto *flag_ptr = reinterpret_cast<uint8_t **>(GameOffsetFromTable("season_blacklist_request_flag_ptr"));
+            if ((flag_ptr != nullptr) && (*flag_ptr != nullptr))
                 **flag_ptr = 0;
         }
 
@@ -46,7 +46,7 @@ namespace d3 {
                 dst.m_capacity_is_embedded = 0;
                 return;
             }
-            if (len && data)
+            if ((len != 0u) && (data != nullptr))
                 SigmaMemoryMove(buf, const_cast<char *>(data), len);
             buf[len]                   = '\0';
             dst.m_elements             = buf;
@@ -56,7 +56,7 @@ namespace d3 {
         }
 
         void ReplaceBlzString(blz::string &dst, const char *data) {
-            const char *safe_data = data ? data : "";
+            const char *safe_data = (data != nullptr) ? data : "";
             ReplaceBlzString(dst, safe_data, std::char_traits<char>::length(safe_data));
         }
 
@@ -65,14 +65,14 @@ namespace d3 {
             ReplaceBlzString(dst, safe_data, static_cast<size_t>(data.m_size));
         }
 
-        auto BuildSeasonSwapString(u32 season_number) -> blz::string {
+        auto BuildSeasonSwapString(u32 seasonNumber) -> blz::string {
             return blz_make_stringf(
                 "# Format for dates MUST be: \" ? ? ? , DD MMM YYYY hh : mm:ss UTC\"\n"
                 "# The Day of Month(DD) MUST be 2 - digit; use either preceding zero or trailing space\n"
                 "[Season %u]\n"
                 "Start \"Sat, 09 Feb 2025 00:00:00 GMT\"\n"
                 "End \"Tue, 09 Feb 2036 01:00:00 GMT\"\n\n",
-                season_number
+                seasonNumber
             );
         }
 

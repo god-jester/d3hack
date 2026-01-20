@@ -5,31 +5,30 @@
 
 namespace d3 {
 
-    constinit const char c_szHackVerWatermark[] = D3HACK_VER D3HACK_BUILD;
-    constinit const char c_szHackVerAutosave[]  = CRLF D3HACK_FULLWWW CRLF CRLF CRLF;
-    constinit const char c_szHackVerStart[]     = CRLF D3HACK_FULLVER CRLF CRLF CRLF;
+    constinit const char g_szHackVerWatermark[] = D3HACK_VER D3HACK_BUILD;
+    constinit const char g_szHackVerAutosave[]  = CRLF D3HACK_FULLWWW CRLF CRLF CRLF;
+    constinit const char g_szHackVerStart[]     = CRLF D3HACK_FULLVER CRLF CRLF CRLF;
 
-    constinit const char      c_szTraceStat[]         = "sd:/config/d3hack-nx/debug.txt";
-    constinit const char      c_szVariableResString[] = "%4dp Output (Variable: %4dp)";
-    constinit const Signature c_tSignature {"   " D3HACK_VER CRLF D3HACK_WEB CRLF " ", "Diablo III v", 2, 7, 6};
-    const RGBAColor           c_rgbaText       = crgbaUIGold;
-    const RGBAColor           c_rgbaDropShadow = crgbaWatermarkShadow;
+    constinit const char      g_szTraceStat[]         = "sd:/config/d3hack-nx/debug.txt";
+    constinit const char      g_szVariableResString[] = "%4dp Output (Variable: %4dp)";
+    constinit const Signature g_tSignature {.szName = "   " D3HACK_VER CRLF D3HACK_WEB CRLF " ", .szComment = "Diablo III v", .nMonth = 2, .nDay = 7, .nYear = 6};
+    const RGBAColor           g_rgbaText       = crgbaUIGold;
+    const RGBAColor           g_rgbaDropShadow = crgbaWatermarkShadow;
 
-    namespace armv8 = exl::armv8;
     namespace patch = exl::patch;
     using namespace exl::armv8::reg;
     using namespace exl::armv8::inst;
 
     using dword = std::array<std::byte, 0x4>;
 
-    inline uintptr_t PatchTable(const char *name) { return GameOffsetFromTable(name) - exl::util::modules::GetTargetStart(); }
+    inline auto PatchTable(const char *name) -> uintptr_t { return GameOffsetFromTable(name) - exl::util::modules::GetTargetStart(); }
 
-    void MakeAdrlPatch(const int32 main_addr, uintptr_t adrp_target, const exl::armv8::reg::Register register_target) {
-        auto      jest       = patch::RandomAccessPatcher();
-        uintptr_t AdrpOffset = main_addr;
-        auto      diff       = Adrp::GetDifference(GameOffset(AdrpOffset), adrp_target);
-        jest.Patch<Adrp>(AdrpOffset, register_target, diff.m_Page);
-        jest.Patch<AddImmediate>(AdrpOffset + 4, register_target, register_target, diff.m_Offset);
+    void MakeAdrlPatch(const uintptr_t mainAddr, uintptr_t adrpTarget, const exl::armv8::reg::Register registerTarget) {
+        auto            jest       = patch::RandomAccessPatcher();
+        uintptr_t const adrpOffset = mainAddr;
+        auto            diff       = Adrp::GetDifference(GameOffset(adrpOffset), adrpTarget);
+        jest.Patch<Adrp>(adrpOffset, registerTarget, diff.m_Page);
+        jest.Patch<AddImmediate>(adrpOffset + 4, registerTarget, registerTarget, diff.m_Offset);
     }
 
     /* String swap and formatting for BuildLockerDrawWatermark() */
@@ -40,11 +39,11 @@ namespace d3 {
         /* Spoof the existence of a build signature so we can use the debug watermark (tSignature) */
         jest.Patch<Nop>(PatchTable("patch_buildlocker_01_nop"));
         jest.Patch<Movz>(PatchTable("patch_buildlocker_02_movz"), W20, (8 + GLOBALSNO_FONT_SCRIPT));
-        MakeAdrlPatch(PatchTable("patch_buildlocker_03_adrl"), reinterpret_cast<uintptr_t>(&c_tSignature), X2);
+        MakeAdrlPatch(PatchTable("patch_buildlocker_03_adrl"), reinterpret_cast<uintptr_t>(&g_tSignature), X2);
         MakeAdrlPatch(PatchTable("patch_buildlocker_04_adrl"), reinterpret_cast<uintptr_t>(&crgbaTan), X19);
-        MakeAdrlPatch(PatchTable("patch_buildlocker_05_adrl"), reinterpret_cast<uintptr_t>(&c_szHackVerWatermark), X1);
-        auto szBuildLockerFormat = reinterpret_cast<std::array<char, 21> *>(jest.RwFromAddr(PatchTable("data_build_locker_format_rw")));
-        *szBuildLockerFormat     = std::to_array("%s%s%d.%d.%d\0\0\0\0\0\0\0\0");
+        MakeAdrlPatch(PatchTable("patch_buildlocker_05_adrl"), reinterpret_cast<uintptr_t>(&g_szHackVerWatermark), X1);
+        auto *szBuildLockerFormat = reinterpret_cast<std::array<char, 21> *>(jest.RwFromAddr(PatchTable("data_build_locker_format_rw")));
+        *szBuildLockerFormat      = std::to_array("%s%s%d.%d.%d\0\0\0\0\0\0\0\0");
         jest.Patch<Movz>(PatchTable("patch_buildlocker_06_movz"), W21, 0x13);  // RENDERLAYER_UI_OVERLAY
 
         /* 0x10CC - lower right */
@@ -90,20 +89,20 @@ namespace d3 {
         // SigmaMemoryInit (sSigmaMemoryInit, 0xA36A50): gptGraphicsPersistentMemoryHeap size.
         // 0xA36B34: MOV W19, #0x17400000
         // Bump graphics persistent heap (XRemoteHeap) to reduce alloc failures.
-        const u32 gfx_persistent_heap_size = 0x27400000;  // +0x10000000 (256 MB)
-        jest.Patch<Movz>(0xA36B34, W19, (gfx_persistent_heap_size >> 16), ShiftValue_16);
+        const u32 gfxPersistentHeapSize = 0x27400000;  // +0x10000000 (256 MB)
+        jest.Patch<Movz>(0xA36B34, W19, (gfxPersistentHeapSize >> 16), ShiftValue_16);
     }
 
     /* String swap and formatting for APP_DRAW_FPS_BIT */
     void PatchReleaseFPSLabel() {
         auto jest = patch::RandomAccessPatcher();
         jest.Patch<Movz>(PatchTable("patch_release_fps_label_01_movz"), W0, (8 + GLOBALSNO_FONT_EXOCETLIGHT));
-        auto szReleaseFPSFormat = reinterpret_cast<std::array<char, 10> *>(jest.RwFromAddr(PatchTable("data_release_fps_format_rw")));
-        auto nReleaseFPSPosX    = reinterpret_cast<float *>(jest.RoFromAddr(PatchTable("data_release_fps_pos_x_ro")));
-        auto nReleaseFPSPosY    = reinterpret_cast<float *>(jest.RoFromAddr(PatchTable("data_release_fps_pos_y_ro")));
-        *szReleaseFPSFormat     = std::to_array("FPS: %.0f");  // :.ascii "%3.1f FPS"
-        *nReleaseFPSPosX        = -77.7;                       // nReleaseFPSPosX:.float -180.0
-        *nReleaseFPSPosY        = 500.0;                       // nReleaseFPSPosY:.float 290.0
+        auto *szReleaseFPSFormat = reinterpret_cast<std::array<char, 10> *>(jest.RwFromAddr(PatchTable("data_release_fps_format_rw")));
+        auto *nReleaseFPSPosX    = reinterpret_cast<float *>(jest.RoFromAddr(PatchTable("data_release_fps_pos_x_ro")));
+        auto *nReleaseFPSPosY    = reinterpret_cast<float *>(jest.RoFromAddr(PatchTable("data_release_fps_pos_y_ro")));
+        *szReleaseFPSFormat      = std::to_array("FPS: %.0f");  // :.ascii "%3.1f FPS"
+        *nReleaseFPSPosX         = -77.7;                       // nReleaseFPSPosX:.float -180.0
+        *nReleaseFPSPosY         = 500.0;                       // nReleaseFPSPosY:.float 290.0
 
         /* Skip the frame timer check/color setter (avoid flashing text colors) */
         jest.Patch<Nop>(PatchTable("patch_release_fps_label_02_nop"));
@@ -125,16 +124,16 @@ namespace d3 {
         auto jest = patch::RandomAccessPatcher();
         /* String swap and formatting for DDM_FPS_QA */
         jest.Patch<Movz>(PatchTable("patch_ddm_labels_01_movz"), W0, (8 + GLOBALSNO_FONT_SCRIPT));
-        MakeAdrlPatch(PatchTable("patch_ddm_labels_02_adrl"), reinterpret_cast<uintptr_t>(&c_szHackVerWatermark), X1);
-        MakeAdrlPatch(PatchTable("patch_ddm_labels_03_adrl"), reinterpret_cast<uintptr_t>(&c_rgbaText), X3);
-        MakeAdrlPatch(PatchTable("patch_ddm_labels_04_adrl"), reinterpret_cast<uintptr_t>(&c_rgbaDropShadow), X4);
+        MakeAdrlPatch(PatchTable("patch_ddm_labels_02_adrl"), reinterpret_cast<uintptr_t>(&g_szHackVerWatermark), X1);
+        MakeAdrlPatch(PatchTable("patch_ddm_labels_03_adrl"), reinterpret_cast<uintptr_t>(&g_rgbaText), X3);
+        MakeAdrlPatch(PatchTable("patch_ddm_labels_04_adrl"), reinterpret_cast<uintptr_t>(&g_rgbaDropShadow), X4);
         jest.Patch<Movz>(PatchTable("patch_ddm_labels_05_movz"), W7, 0x13);  // RENDERLAYER_UI_OVERLAY
 
         /* String swap and formatting for DDM_FPS_SIMPLE */
         jest.Patch<Movz>(PatchTable("patch_ddm_labels_06_movz"), W0, (8 + GLOBALSNO_FONT_SCRIPT));
-        MakeAdrlPatch(PatchTable("patch_ddm_labels_07_adrl"), reinterpret_cast<uintptr_t>(&c_szHackVerWatermark), X23);
-        MakeAdrlPatch(PatchTable("patch_ddm_labels_08_adrl"), reinterpret_cast<uintptr_t>(&c_rgbaText), X3);
-        MakeAdrlPatch(PatchTable("patch_ddm_labels_09_adrl"), reinterpret_cast<uintptr_t>(&c_rgbaDropShadow), X4);
+        MakeAdrlPatch(PatchTable("patch_ddm_labels_07_adrl"), reinterpret_cast<uintptr_t>(&g_szHackVerWatermark), X23);
+        MakeAdrlPatch(PatchTable("patch_ddm_labels_08_adrl"), reinterpret_cast<uintptr_t>(&g_rgbaText), X3);
+        MakeAdrlPatch(PatchTable("patch_ddm_labels_09_adrl"), reinterpret_cast<uintptr_t>(&g_rgbaDropShadow), X4);
         jest.Patch<Movz>(PatchTable("patch_ddm_labels_10_movz"), W7, 0x13);  // RENDERLAYER_UI_OVERLAY
     }
 
@@ -156,57 +155,57 @@ namespace d3 {
         if (!(global_config.resolution_hack.active))
             return;
 
-        const u32 out_w = global_config.resolution_hack.OutputWidthPx();
-        const u32 out_h = global_config.resolution_hack.OutputHeightPx();
+        const u32 outW = global_config.resolution_hack.OutputWidthPx();
+        const u32 outH = global_config.resolution_hack.OutputHeightPx();
 
         // NX64NVNHeap::EarlyInit (0x0E7770): uMaxSize/Preallocate size.
         // 0x0E7770: MOV W19, #0x49C00000
         // NX64NVNHeap::EarlyInit (0x0E77A0): largest pool max_alloc.
         // 0x0E77A0: MOV W3, #0x8000000
         // Increase heap headroom + largest pool max_alloc for >1280p output.
-        if (out_h > 1280) {
-            const u32 heap_size = 0x59C00000;  // +0x10000000 (256 MB)
-            const u32 max_alloc = 0x10000000;  // +0x08000000 (128 MB)
-            jest.Patch<Movz>(0x0E7770, W19, (heap_size >> 16), ShiftValue_16);
-            jest.Patch<Movz>(0x0E77A0, W3, (max_alloc >> 16), ShiftValue_16);
+        if (outH > 1280) {
+            const u32 heapSize = 0x59C00000;  // +0x10000000 (256 MB)
+            const u32 maxAlloc = 0x10000000;  // +0x08000000 (128 MB)
+            jest.Patch<Movz>(0x0E7770, W19, (heapSize >> 16), ShiftValue_16);
+            jest.Patch<Movz>(0x0E77A0, W3, (maxAlloc >> 16), ShiftValue_16);
         }
 
         // Force "GfxGetSystemID == 1?" branch to match ours (7) to apply resolution defaults
         // GfxValidateDisplayMode() | 0x29A4F8: CMP W15, #1
         jest.Patch<CmpImmediate>(0x29A4F8, W15, 7);
         // Override resolution defaults (DisplayMode table @ 0xEB6D64 in 2.7.6).
-        const u32 mode_flags   = 10;
-        const u32 window_mode  = 0;
-        const u32 win_left     = 0;
-        const u32 win_top      = 0;
-        const u32 win_w        = out_w;
-        const u32 win_h        = out_h;
-        const u32 ui_w         = out_w;
-        const u32 ui_h         = out_h;
-        const u32 refresh_hz   = 60;
-        const u32 color_depth  = 24;
-        const u32 msaa_level   = 2;
-        const u32 msaa_quality = 2;
-        jest.Patch<u32>(0xEB6D64, mode_flags);    // dwFlags
-        jest.Patch<u32>(0xEB6D68, window_mode);   // dwWindowMode
-        jest.Patch<u32>(0xEB6D6C, win_left);      // nWinLeft
-        jest.Patch<u32>(0xEB6D70, win_top);       // nWinTop
-        jest.Patch<u32>(0xEB6D74, win_w);         // nWinWidth
-        jest.Patch<u32>(0xEB6D78, win_h);         // nWinHeight
-        jest.Patch<u32>(0xEB6D7C, ui_w);          // dwUIOptWidth
-        jest.Patch<u32>(0xEB6D80, ui_h);          // dwUIOptHeight
-        jest.Patch<u32>(0xEB6D84, out_w);         // dwWidth
-        jest.Patch<u32>(0xEB6D88, out_h);         // dwHeight
-        jest.Patch<u32>(0xEB6D8C, refresh_hz);    // nRefreshRate
-        jest.Patch<u32>(0xEB6D90, color_depth);   // dwColorDepth
-        jest.Patch<u32>(0xEB6D94, msaa_level);    // dwMSAALevel
-        jest.Patch<u32>(0xEB6D98, msaa_quality);  // dwMSAAQuality (paired)
+        const u32 modeFlags   = 10;
+        const u32 windowMode  = 0;
+        const u32 winLeft     = 0;
+        const u32 winTop      = 0;
+        const u32 winW        = outW;
+        const u32 winH        = outH;
+        const u32 uiW         = outW;
+        const u32 uiH         = outH;
+        const u32 refreshHz   = 60;
+        const u32 colorDepth  = 24;
+        const u32 msaaLevel   = 2;
+        const u32 msaaQuality = 2;
+        jest.Patch<u32>(0xEB6D64, modeFlags);    // dwFlags
+        jest.Patch<u32>(0xEB6D68, windowMode);   // dwWindowMode
+        jest.Patch<u32>(0xEB6D6C, winLeft);      // nWinLeft
+        jest.Patch<u32>(0xEB6D70, winTop);       // nWinTop
+        jest.Patch<u32>(0xEB6D74, winW);         // nWinWidth
+        jest.Patch<u32>(0xEB6D78, winH);         // nWinHeight
+        jest.Patch<u32>(0xEB6D7C, uiW);          // dwUIOptWidth
+        jest.Patch<u32>(0xEB6D80, uiH);          // dwUIOptHeight
+        jest.Patch<u32>(0xEB6D84, outW);         // dwWidth
+        jest.Patch<u32>(0xEB6D88, outH);         // dwHeight
+        jest.Patch<u32>(0xEB6D8C, refreshHz);    // nRefreshRate
+        jest.Patch<u32>(0xEB6D90, colorDepth);   // dwColorDepth
+        jest.Patch<u32>(0xEB6D94, msaaLevel);    // dwMSAALevel
+        jest.Patch<u32>(0xEB6D98, msaaQuality);  // dwMSAAQuality (paired)
 
         // Display mode pair (full). GFXNX64NVN::Init (0x0E7850).
         // 0x0E7858: MOV X8, #1600
         // 0x0E7860: MOVK X8, #900, LSL#32
-        jest.Patch<Movz>(PatchTable("patch_resolution_targets_01_movz"), X8, out_w);
-        jest.Patch<Movk>(PatchTable("patch_resolution_targets_02_movk"), X8, out_h, ShiftValue_32);
+        jest.Patch<Movz>(PatchTable("patch_resolution_targets_01_movz"), X8, outW);
+        jest.Patch<Movk>(PatchTable("patch_resolution_targets_02_movk"), X8, outH, ShiftValue_32);
 
         // Fallback/base scale mode (same block).
         // 0x0E785C: MOV X9, #1280
@@ -230,8 +229,8 @@ namespace d3 {
     void PatchDynamicSeasonal() {
         if (global_config.seasons.active) {
             PRINT("Setting active Season to %d", global_config.seasons.current_season)
-            XVarUint32_Set(&s_varSeasonNum, global_config.seasons.current_season, 3u);
-            XVarUint32_Set(&s_varSeasonState, 1, 3u);
+            XVarUint32_Set(&g_varSeasonNum, global_config.seasons.current_season, 3u);
+            XVarUint32_Set(&g_varSeasonState, 1, 3u);
 
             auto jest = patch::RandomAccessPatcher();
             jest.Patch<Movz>(PatchTable("patch_dynamic_seasonal_03_movz"), W1, 1);  // always true for UIHeroCreate::Console::bSeasonConfirmedAvailable() (skip B.ne and always confirm)
@@ -256,7 +255,7 @@ namespace d3 {
 
         auto *buff_start = *reinterpret_cast<s64 **>(GameOffsetFromTable("event_buff_start"));
         auto *buff_end   = *reinterpret_cast<s64 **>(GameOffsetFromTable("event_buff_end"));
-        if (buff_start && buff_end && (!*buff_start || !*buff_end || *buff_end <= *buff_start)) {
+        if ((buff_start != nullptr) && (buff_end != nullptr) && ((*buff_start == 0) || (*buff_end == 0) || *buff_end <= *buff_start)) {
             *buff_start = kBuffStartFallback;
             *buff_end   = kBuffEndFallback;
         }
@@ -275,30 +274,30 @@ namespace d3 {
         if (auto *event_season_only = *reinterpret_cast<uintptr_t **>(GameOffsetFromTable("event_season_only")))
             XVarBool_Set(event_season_only, false, 3u);
 
-        auto set_bool = [](uintptr_t *var, bool value) {
+        auto set_bool = [](uintptr_t *var, bool value) -> void {
             if (var)
                 XVarBool_Set(var, value, 3u);
         };
 
-        set_bool(&s_varDoubleRiftKeystones, global_config.events.DoubleRiftKeystones);
-        set_bool(&s_varDoubleBloodShards, global_config.events.DoubleBloodShards);
-        set_bool(&s_varDoubleTreasureGoblins, global_config.events.DoubleTreasureGoblins);
-        set_bool(&s_varDoubleBountyBags, global_config.events.DoubleBountyBags);
-        set_bool(&s_varRoyalGrandeur, global_config.events.RoyalGrandeur);
-        set_bool(&s_varLegacyOfNightmares, global_config.events.LegacyOfNightmares);
-        set_bool(&s_varTriunesWill, global_config.events.TriunesWill);
-        set_bool(&s_varPandemonium, global_config.events.Pandemonium);
-        set_bool(&s_varKanaiPowers, global_config.events.KanaiPowers);
-        set_bool(&s_varTrialsOfTempests, global_config.events.TrialsOfTempests);
-        set_bool(&s_varShadowClones, global_config.events.ShadowClones);
-        set_bool(&s_varFourthKanaisCubeSlot, global_config.events.FourthKanaisCubeSlot);
-        set_bool(&s_varEtherealItems, global_config.events.EtherealItems);
-        set_bool(&s_varSoulShards, global_config.events.SoulShards);
-        set_bool(&s_varSwarmRifts, global_config.events.SwarmRifts);
-        set_bool(&s_varSanctifiedItems, global_config.events.SanctifiedItems);
-        set_bool(&s_varDarkAlchemy, global_config.events.DarkAlchemy);
-        set_bool(&s_varNestingPortals, global_config.events.NestingPortals);
-        set_bool(&s_varParagonCap, false);  // ParagonCap off by default
+        set_bool(&g_varDoubleRiftKeystones, global_config.events.DoubleRiftKeystones);
+        set_bool(&g_varDoubleBloodShards, global_config.events.DoubleBloodShards);
+        set_bool(&g_varDoubleTreasureGoblins, global_config.events.DoubleTreasureGoblins);
+        set_bool(&g_varDoubleBountyBags, global_config.events.DoubleBountyBags);
+        set_bool(&g_varRoyalGrandeur, global_config.events.RoyalGrandeur);
+        set_bool(&g_varLegacyOfNightmares, global_config.events.LegacyOfNightmares);
+        set_bool(&g_varTriunesWill, global_config.events.TriunesWill);
+        set_bool(&g_varPandemonium, global_config.events.Pandemonium);
+        set_bool(&g_varKanaiPowers, global_config.events.KanaiPowers);
+        set_bool(&g_varTrialsOfTempests, global_config.events.TrialsOfTempests);
+        set_bool(&g_varShadowClones, global_config.events.ShadowClones);
+        set_bool(&g_varFourthKanaisCubeSlot, global_config.events.FourthKanaisCubeSlot);
+        set_bool(&g_varEtherealItems, global_config.events.EtherealItems);
+        set_bool(&g_varSoulShards, global_config.events.SoulShards);
+        set_bool(&g_varSwarmRifts, global_config.events.SwarmRifts);
+        set_bool(&g_varSanctifiedItems, global_config.events.SanctifiedItems);
+        set_bool(&g_varDarkAlchemy, global_config.events.DarkAlchemy);
+        set_bool(&g_varNestingPortals, global_config.events.NestingPortals);
+        set_bool(&g_varParagonCap, false);  // ParagonCap off by default
     }
 
     void PortCheatCodes() {
@@ -456,18 +455,18 @@ namespace d3 {
 
         PortCheatCodes();
 
-        XVarBool_Set(&s_varLocalLoggingEnable, true, 3u);
-        // XVarBool_Set(&s_varChallengeRiftEnabled, global_config.challenge_rifts.active, 3u);
-        XVarBool_Set(&s_varOnlineServicePTR, global_config.seasons.spoof_ptr, 3u);
-        XVarBool_Set(&s_varExperimentalScheduling, global_config.resolution_hack.exp_scheduler, 3u);
+        XVarBool_Set(&g_varLocalLoggingEnable, true, 3u);
+        // XVarBool_Set(&g_varChallengeRiftEnabled, global_config.challenge_rifts.active, 3u);
+        XVarBool_Set(&g_varOnlineServicePTR, global_config.seasons.spoof_ptr, 3u);
+        XVarBool_Set(&g_varExperimentalScheduling, global_config.resolution_hack.exp_scheduler, 3u);
         jest.Patch<Movz>(PatchTable("patch_signin_01_movz"), W0, 1);  // always Console::GamerProfile::IsSignedInOnline
         jest.Patch<Ret>(PatchTable("patch_signin_02_ret"));           // ^ ret
 
         /* String swap for autosave screen */
-        MakeAdrlPatch(PatchTable("patch_autosave_string_01_adrl"), reinterpret_cast<uintptr_t>(&c_szHackVerAutosave), X0);
+        MakeAdrlPatch(PatchTable("patch_autosave_string_01_adrl"), reinterpret_cast<uintptr_t>(&g_szHackVerAutosave), X0);
 
         /* String swap for start screen */
-        MakeAdrlPatch(PatchTable("patch_start_string_01_adrl"), reinterpret_cast<uintptr_t>(&c_szHackVerStart), X0);
+        MakeAdrlPatch(PatchTable("patch_start_string_01_adrl"), reinterpret_cast<uintptr_t>(&g_szHackVerStart), X0);
 
         /* Enable local logging */
         jest.Patch<Movz>(PatchTable("patch_local_logging_01_movz"), W0, 1);
@@ -502,7 +501,7 @@ namespace d3 {
         jest.Patch<Ret>(PatchTable("patch_trace_message_01_ret")); /* void __fastcall sTraceMessage(const void *pMessage) */
 
         /* Fix path for stat tracing */
-        MakeAdrlPatch(PatchTable("patch_trace_stat_path_01_adrl"), reinterpret_cast<uintptr_t>(&c_szTraceStat), X0);
+        MakeAdrlPatch(PatchTable("patch_trace_stat_path_01_adrl"), reinterpret_cast<uintptr_t>(&g_szTraceStat), X0);
 
         if (!global_config.seasons.allow_online) {
             // Hide "Connect to Diablo Servers" menu entry (main menu item 12).

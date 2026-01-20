@@ -7,7 +7,6 @@
 #include <cstring>
 #include <cmath>
 #include <string>
-#include <vector>
 
 #include "lib/hook/trampoline.hpp"
 #include "lib/reloc/reloc.hpp"

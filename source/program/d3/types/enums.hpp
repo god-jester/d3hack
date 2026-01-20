@@ -1544,19 +1544,19 @@ enum $DrawFlags : int32 {
     APP_DRAW_FLAG_COUNT                         = 0x7C,
 };
 
-enum Account_Digest_Flags : int32 {
-    Digest_Flags_HARDCORE_HERO_UNLOCKED_DEPRECATED                          = 0x1,
-    Digest_Flags_ADVENTURE_MODE_UNLOCKED                                    = 0x2,
-    Digest_Flags_PARAGON_100_VANILLA_FEAT                                   = 0x3,
-    Digest_Flags_MASTER_DIFFICULTY_UNLOCKED                                 = 0x4,
-    Digest_Flags_TORMENT_DIFFICULTY_UNLOCKED                                = 0x5,
-    Digest_Flags_ADVENTURE_MODE_TUTORIAL_PLAYED                             = 0x6,
-    Digest_Flags_HARDCORE_MASTER_DIFFICULTY_UNLOCKED                        = 0x7,
-    Digest_Flags_HARDCORE_TORMENT_DIFFICULTY_UNLOCKED                       = 0x8,
-    Digest_Flags_HARDCORE_ADVENTURE_MODE_UNLOCKED                           = 0x9,
-    Digest_Flags_TORMENT_DIFFICULTY_7_AND_OVER_UNLOCKED                     = 0xA,
-    Digest_Flags_HARDCORE_TORMENT_DIFFICULTY_7_AND_OVER_UNLOCKED_DEPRECATED = 0xB,
-    Digest_Flags_BANNED                                                     = 0xC,
+enum AccountDigestFlags : int32 {
+    HARDCORE_HERO_UNLOCKED_DEPRECATED                          = 0x1,
+    ADVENTURE_MODE_UNLOCKED                                    = 0x2,
+    PARAGON_100_VANILLA_FEAT                                   = 0x3,
+    MASTER_DIFFICULTY_UNLOCKED                                 = 0x4,
+    TORMENT_DIFFICULTY_UNLOCKED                                = 0x5,
+    ADVENTURE_MODE_TUTORIAL_PLAYED                             = 0x6,
+    HARDCORE_MASTER_DIFFICULTY_UNLOCKED                        = 0x7,
+    HARDCORE_TORMENT_DIFFICULTY_UNLOCKED                       = 0x8,
+    HARDCORE_ADVENTURE_MODE_UNLOCKED                           = 0x9,
+    TORMENT_DIFFICULTY_7_AND_OVER_UNLOCKED                     = 0xA,
+    HARDCORE_TORMENT_DIFFICULTY_7_AND_OVER_UNLOCKED_DEPRECATED = 0xB,
+    BANNED                                                     = 0xC,
 };
 
 enum HardwareClass : int32 {
@@ -1813,7 +1813,7 @@ enum GlobalSNOTypes : int32 {
     GLOBALSNO_SUBOBJECT_VIGNETTE_TEXTURE                            = 0x90,
     GLOBALSNO_SUBOBJECT_PROJECTED_LAYER_SHADER                      = 0x91,
     GLOBALSNO_SUBOBJECT_PROJECTED_LAYER_SHADERMAP                   = 0x92,
-    GLOBALSNO_SUBOBJECT_PROJECTED_LAYER__ALTERNATE_SHADER           = 0x93,
+    GLOBALSNO_SUBOBJECT_PROJECTED_LAYER_ALTERNATE_SHADER            = 0x93,
     GLOBALSNO_SUBOBJECT_DEBUG_PROJECTED_LAYER_SHADER                = 0x94,
     GLOBALSNO_SUBOBJECT_DEBUG_DEPTH_PMA_SHADER                      = 0x95,
     GLOBALSNO_SUBOBJECT_SHADOW_MAP_MASK                             = 0x96,

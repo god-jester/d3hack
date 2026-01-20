@@ -1,11 +1,15 @@
 #pragma once
 
+#include <array>
+
+#include "d3/types/enums.hpp"
 #include "nn/os/os_mutex_type.hpp"
 #include "nn/fs/fs_types.hpp"
 #include "bits/allocator.h"
 #include "bits/stl_function.h"
 #include "bits/unordered_map.h"
 #include "bits/functional_hash.h"
+#include "../idadefs.h"
 
 namespace Blizzard {
 
@@ -24,7 +28,7 @@ namespace Blizzard {
         struct nnTlsSlot {
             uint32_t _innerValue;
         };
-        typedef void (*TLSDestructor)(void *);
+        using TLSDestructor = void (*)(void *);
 
         struct TLSSlot {
             Blizzard::Thread::TLSDestructor destructor;
@@ -158,7 +162,8 @@ namespace blz {
         blz::_shared_ptr_manager *m_manager = new _shared_ptr_manager;
     };
 
-    typedef basic_string<char, blz::char_traits<char>, blz::allocator<char>> string;
+    // typedef basic_string<char, blz::char_traits<char>, blz::allocator<char>> string;
+    using string = basic_string<char, blz::char_traits<char>, blz::allocator<char>>;
 
     template<typename T>
     struct chained_hash_node {

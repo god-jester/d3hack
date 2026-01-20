@@ -1,15 +1,18 @@
+#include <d3/_util.hpp>
+#include <d3/_lobby.hpp>
+#include <d3/types/common.hpp>
 #include "lib/hook/inline.hpp"
 #include "lib/hook/replace.hpp"
 #include "lib/hook/trampoline.hpp"
 
 namespace d3 {
 
-    void paragongbidtests() {
+    void ParagonGBIDTests() {
         // [[maybe_unused]] FastAttribKey v44;
         // try setting within normalish 20k bounds and see if it sticks with no codes
-        vector<GBID> ids;
-        AllGBIDsOfType(GB_PARAGON_BONUSES, &ids);
-        for (auto &bonusGbid : ids) {
+        std::vector<GBID> ids;
+        AllGBIDsOfType(GB_PARAGON_BONUSES, ids);
+        for (GBID bonusGbid : ids) {
             [[maybe_unused]] auto test = bonusGbid;
             // auto gbString = GbidStringAll(bonusGbid); //, GB_PARAGON_BONUSES);
             // v44.nValue = MakeAttribKey(Paragon_Bonus, bonusGbid).nValue;
@@ -38,21 +41,23 @@ namespace d3 {
 
     HOOK_DEFINE_TRAMPOLINE(RequestDropItemHook) {
         static void Callback(ActorCommonData *ptACD, const ACDID idACDOwner) {
-            if (_HOSTCHK && ptACD && ptACD->id != ACDID_INVALID && !ItemHasLabel(ptACD->hGB.gbid, 114)) {
+            const bool can_dupe = _HOSTCHK && ptACD && ptACD->id != ACDID_INVALID && !ItemHasLabel(ptACD->hGB.gbid, 114);
+            if (can_dupe) {
                 PRINT_EXPR("Duping: %p", ptACD);
                 // _SERVERCODE_ON
                 if (ActorCommonData *ptACDPlayer = ACDTryToGet(idACDOwner); ptACDPlayer) {
                     if (ActorCommonData *ptACDNewItem = DupeItem(ptACDPlayer, ptACD); ptACDNewItem)
                         CreateFlippy(ptACDPlayer, ptACDNewItem), UnbindACD(ptACDNewItem);
                 }
-                Orig(ptACD, idACDOwner);
-                // paragongbidtests();
-                // UnlockAll();
-                // _SERVERCODE_OFF
             } else {
                 PRINT_EXPR("ERROR! Invalid dupe attempt, wanting to drop: %x", idACDOwner)
-                Orig(ptACD, idACDOwner);
             }
+            Orig(ptACD, idACDOwner);
+            // if (can_dupe) {
+            // ParagonGBIDTests();
+            // UnlockAll();
+            // _SERVERCODE_OFF
+            // }
         }
     };
 

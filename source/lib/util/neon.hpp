@@ -6,9 +6,14 @@ namespace exl::util::neon {
 
     #define VECTOR_SIZE(size) [[gnu::vector_size(size)]]
     #define VECTOR_NAME(bits, length) F##bits##x##length
+#if defined(__clang__)
+    #define VECTOR_TYPE(bits, length)                                                                           \
+        using VECTOR_NAME(bits, length) = f##bits VECTOR_SIZE(sizeof(f##bits) * length);
+#else
     #define VECTOR_TYPE(bits, length)                                                                           \
         using VECTOR_NAME(bits, length) = f##bits VECTOR_SIZE(sizeof(f##bits) * length);                        \
         static_assert(sizeof(VECTOR_NAME(bits, length)) == sizeof(f##bits) * length,  STRINGIFY(VECTOR_NAME(bits, length))  " type is wrong!")
+#endif
 
     VECTOR_TYPE(16, 4);
     VECTOR_TYPE(32, 2);

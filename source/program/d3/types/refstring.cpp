@@ -1,5 +1,4 @@
 #include "symbols/refstring.hpp"
-#include "d3/setting.hpp"
 
 SETUP_CRS_PTR(CRefString_ctor_default);
 SETUP_CRS_PTR(CRefString_ctor_int);
@@ -51,7 +50,7 @@ CRefString::CRefString(const char *szString) {
     CRefString_ctor_lpcstr(this, szString);
 }
 
-CRefString::CRefString(const char *szString, int nLength) { CRefString_CommonCtorBody(this, szString, static_cast<int>(nLength)); }
+CRefString::CRefString(const char *szString, int nLength) { CRefString_CommonCtorBody(this, szString, nLength); }
 CRefString::CRefString(const char *szString, uint nLength) { CRefString_CommonCtorBody(this, szString, static_cast<int>(nLength)); }
 CRefString::CRefString(const char *szString, long nLength) { CRefString_CommonCtorBody(this, szString, static_cast<int>(nLength)); }
 

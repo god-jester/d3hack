@@ -1,8 +1,9 @@
+#include "../../config.hpp"
+#include "../patches.hpp"
+#include "d3/types/common.hpp"
 #include "lib/hook/inline.hpp"
 #include "lib/hook/replace.hpp"
 #include "lib/hook/trampoline.hpp"
-#include "../../config.hpp"
-#include "d3/types/common.hpp"
 
 namespace nn::os {
     auto GetHostArgc() -> u64;
@@ -11,11 +12,11 @@ namespace nn::os {
 
 namespace d3 {
 
-    bool g_testRanOnce = false;
-    int  g_refcount    = 0;
-    int  g_draw_count  = 0;
+    inline bool g_testRanOnce = false;
+    inline int  g_refCount    = 0;
+    inline int  g_drawCount   = 0;
 
-    constinit const char *g_cmdArgs[] = {
+    inline constinit const char *g_cmdArgs[] = {
         "<<main>>",
         "-ignoreversioncheck",
         // "-w",
@@ -55,7 +56,7 @@ namespace d3 {
         // "-cursorignorehighdpi",
         "-nofpslimit",
         "-usepageflip",
-        "-debugd3d",
+        // "-debugd3d",
         "-overridelogfolder",
         "sd:/config/d3hack-nx/",
         // "-overridefmodemergencymem",
@@ -104,9 +105,9 @@ namespace d3 {
     HOOK_DEFINE_TRAMPOLINE(EquipAny) {
         //   @ GameError ACDInventoryItemAllowedInSlot(const ActorCommonData *tACDItem, const InventoryLocation *tInvLoc, const BOOL fSkipRequirements, const BOOL fSwapping)
         static auto Callback(const ActorCommonData *tACDItem, const InventoryLocation *tInvLoc, const BOOL fSkipRequirements, const BOOL fSwapping) -> GameError {
+            auto rGameError = Orig(tACDItem, tInvLoc, fSkipRequirements, fSwapping);
             if (!global_config.rare_cheats.active || !global_config.rare_cheats.equip_any_slot)
-                return Orig(tACDItem, tInvLoc, fSkipRequirements, fSwapping);
-            Orig(tACDItem, tInvLoc, fSkipRequirements, fSwapping);
+                return rGameError;
             return GAMEERROR_NONE;
         }
     };
@@ -118,11 +119,11 @@ namespace d3 {
         if (global_config.loot_modifiers.TieredLootRunLevel > 0) {
             tSpecifier->tLooteeParams.nTieredLootRunLevel = global_config.loot_modifiers.TieredLootRunLevel;
         }
-        tSpecifier->tLooteeParams.bDisableAncientDrops       = global_config.loot_modifiers.DisableAncientDrops;
-        tSpecifier->tLooteeParams.bDisablePrimalAncientDrops = global_config.loot_modifiers.DisablePrimalAncientDrops;
-        tSpecifier->tLooteeParams.bDisableTormentDrops       = global_config.loot_modifiers.DisableTormentDrops;
-        tSpecifier->tLooteeParams.bDisableTormentCheck       = global_config.loot_modifiers.DisableTormentCheck;
-        tSpecifier->tLooteeParams.bSuppressGiftGeneration    = global_config.loot_modifiers.SuppressGiftGeneration;
+        tSpecifier->tLooteeParams.bDisableAncientDrops       = static_cast<BOOL>(global_config.loot_modifiers.DisableAncientDrops);
+        tSpecifier->tLooteeParams.bDisablePrimalAncientDrops = static_cast<BOOL>(global_config.loot_modifiers.DisablePrimalAncientDrops);
+        tSpecifier->tLooteeParams.bDisableTormentDrops       = static_cast<BOOL>(global_config.loot_modifiers.DisableTormentDrops);
+        tSpecifier->tLooteeParams.bDisableTormentCheck       = static_cast<BOOL>(global_config.loot_modifiers.DisableTormentCheck);
+        tSpecifier->tLooteeParams.bSuppressGiftGeneration    = static_cast<BOOL>(global_config.loot_modifiers.SuppressGiftGeneration);
         tSpecifier->eAncientRank                             = global_config.loot_modifiers.AncientRankValue;
     }
 
@@ -149,17 +150,17 @@ namespace d3 {
     HOOK_DEFINE_INLINE(FloatingDmgHook) {
         static void Callback(exl::hook::InlineCtx *ctx) {
             // BB5E8
-            auto DmgColor = reinterpret_cast<RGBAColor *>(ctx->X[3]);
-            *DmgColor     = crgbaRed;
+            auto *DmgColor = reinterpret_cast<RGBAColor *>(ctx->X[3]);
+            *DmgColor      = crgbaRed;
         }
     };
 
     HOOK_DEFINE_INLINE(VarResHook) {
         static void Callback(exl::hook::InlineCtx *ctx) {
-            auto ptVarRWindow = reinterpret_cast<VariableResRWindowData *>(ctx->X[19]);
-            ctx->X[1]         = reinterpret_cast<uintptr_t>(&c_szVariableResString);
-            ctx->X[2]         = static_cast<uint32>(g_ptGfxData->workerData[0].dwRTHeight);
-            ctx->X[3]         = static_cast<uint32>(ptVarRWindow->flPercent * g_ptGfxData->tCurrentMode.dwHeight);
+            auto *ptVarRWindow = reinterpret_cast<VariableResRWindowData *>(ctx->X[19]);
+            ctx->X[1]          = reinterpret_cast<uintptr_t>(&g_szVariableResString);
+            ctx->X[2]          = g_ptGfxData->workerData[0].dwRTHeight;
+            ctx->X[3]          = static_cast<uint32>(ptVarRWindow->flPercent * g_ptGfxData->tCurrentMode.dwHeight);
 
             // if (global_config.overlays.active && global_config.overlays.var_res_label)
             //     AppDrawFlagSet(APP_DRAW_VARIABLE_RES_DEBUG_BIT, 1);
@@ -196,7 +197,7 @@ namespace d3 {
 
     HOOK_DEFINE_INLINE(FontStringGetRenderedSizeHook) {
         static void Callback(exl::hook::InlineCtx *ctx) {
-            auto tProps       = *reinterpret_cast<TextRenderProperties **>(&ctx->X[0]);
+            auto *tProps      = *reinterpret_cast<TextRenderProperties **>(&ctx->X[0]);
             tProps->nFontSize = 19;
             tProps->flScale   = 1.5f;
         };
@@ -205,9 +206,9 @@ namespace d3 {
     HOOK_DEFINE_INLINE(FontStringDrawHook) {
         static void Callback(exl::hook::InlineCtx *ctx) {
             return;
-            ++g_draw_count;
+            ++g_drawCount;
 
-            auto tProps = *reinterpret_cast<TextRenderProperties **>(&ctx->X[0]);
+            auto *tProps = *reinterpret_cast<TextRenderProperties **>(&ctx->X[0]);
             // tProps->nFontSize           = 19;
             // tProps->flScale             = 1.5f;
             // tProps->fSnapToPixelCenterX = 1;
@@ -215,8 +216,8 @@ namespace d3 {
             // tProps->flAdvanceScalar = 1.25f;
 
             // return;
-            auto vecPointUIC = *reinterpret_cast<Vector2D **>(&ctx->X[2]);
-            if (g_draw_count < 2) {
+            auto *vecPointUIC = *reinterpret_cast<Vector2D **>(&ctx->X[2]);
+            if (g_drawCount < 2) {
                 if (vecPointUIC != nullptr) {
                     PRINT_EXPR("%f %f", vecPointUIC->x, vecPointUIC->y);
                     PRINT_EXPR("%f %f %f", tProps->flStereoDepth, tProps->flAdvanceScalar, tProps->flScale);
@@ -236,37 +237,38 @@ namespace d3 {
 
     HOOK_DEFINE_TRAMPOLINE(Enum_GB_Types) {
         static void Callback(GameBalanceType eType, GBHandleList *listResults) {
+            Orig(eType, listResults);
+
             if (global_config.overlays.active && global_config.overlays.var_res_label)
                 AppDrawFlagSet(APP_DRAW_VARIABLE_RES_DEBUG_BIT, 1);
             if (global_config.overlays.active && global_config.overlays.fps_label)
                 AppDrawFlagSet(APP_DRAW_FPS_BIT, 1);
             if (global_config.overlays.ddm_labels)
-                sg_tAppGlobals.eDebugDisplayMode = DDM_FPS_SIMPLE;
+                g_tAppGlobals.eDebugDisplayMode = DDM_FPS_SIMPLE;
             if (global_config.defaults_only || !global_config.debug.active || !global_config.debug.enable_debug_flags) {
-                Orig(eType, listResults);
                 return;
             }
 
-            // PRINT_EXPR("uint: %s", XVarUint32_ToString(&s_varSeasonNum).m_elements)
-            // PRINT_EXPR("uint: %s", XVarUint32_ToString(&s_varSeasonState).m_elements)
+            // PRINT_EXPR("uint: %s", XVarUint32_ToString(&g_varSeasonNum).m_elements)
+            // PRINT_EXPR("uint: %s", XVarUint32_ToString(&g_varSeasonState).m_elements)
 
             // auto pszFileData = std::make_shared<std::string>(c_szSeasonSwap);
             // *pszFileData = testingok;
             // OnSeasonsFileRetrieved(nullptr, 0, &pszFileData);
-            // XVarUint32_Set(&s_varSeasonNum, 30, 3u);
-            // XVarUint32_Set(&s_varSeasonState, 1, 3u);
-            // PRINT_EXPR("uint-post: %s", XVarUint32_ToString(&s_varSeasonNum).m_elements)
-            // PRINT_EXPR("uint-post: %s", XVarUint32_ToString(&s_varSeasonState).m_elements)
-            // XVarBool_Set(&s_varOnlineServicePTR, true, 3u);
-            // XVarBool_Set(&s_varLocalLoggingEnable, true, 3u);
-            // XVarBool_Set(&s_varChallengeRiftEnabled, true, 3u);
-            // XVarBool_Set(&s_varExperimentalScheduling, true, 3u);
-            // sg_tAppGlobals->eDebugDisplayMode = DDM_CONVERSATIONS // DDM_SOUND_STATUS // DDM_FPS_SIMPLE; // DDM_FPS_QA // DDM_FPS_PROGRAMMER
-            // sg_tAppGlobals.eDebugDisplayMode = DDM_LOOT_REST_BONUS;
-            sg_tAppGlobals.eDebugFadeMode  = DFM_FADE_NEVER;
-            sg_tAppGlobals.eDebugSoundMode = DSM_FULL;
-            // sg_tAppGlobals.flDebugDrawRadius = 0.4f;
-            // sg_tAppGlobals.eStringDebugMode  = STRINGDEBUG_LABEL;
+            // XVarUint32_Set(&g_varSeasonNum, 30, 3u);
+            // XVarUint32_Set(&g_varSeasonState, 1, 3u);
+            // PRINT_EXPR("uint-post: %s", XVarUint32_ToString(&g_varSeasonNum).m_elements)
+            // PRINT_EXPR("uint-post: %s", XVarUint32_ToString(&g_varSeasonState).m_elements)
+            // XVarBool_Set(&g_varOnlineServicePTR, true, 3u);
+            // XVarBool_Set(&g_varLocalLoggingEnable, true, 3u);
+            // XVarBool_Set(&g_varChallengeRiftEnabled, true, 3u);
+            // XVarBool_Set(&g_varExperimentalScheduling, true, 3u);
+            // g_tAppGlobals->eDebugDisplayMode = DDM_CONVERSATIONS // DDM_SOUND_STATUS // DDM_FPS_SIMPLE; // DDM_FPS_QA // DDM_FPS_PROGRAMMER
+            // g_tAppGlobals.eDebugDisplayMode = DDM_LOOT_REST_BONUS;
+            g_tAppGlobals.eDebugFadeMode  = DFM_FADE_NEVER;
+            g_tAppGlobals.eDebugSoundMode = DSM_FULL;
+            // g_tAppGlobals.flDebugDrawRadius = 0.4f;
+            // g_tAppGlobals.eStringDebugMode  = STRINGDEBUG_LABEL;
             // AppDrawFlagSet(APP_DRAW_VARIABLE_RES_DEBUG_BIT, 1);
             // AppDrawFlagSet(APP_DRAW_FPS_BIT, 1);
             AppDrawFlagSet(APP_DRAW_CONTROLLER_AUTO_TARGETING, 1);
@@ -282,27 +284,27 @@ namespace d3 {
             // AppDrawFlagSet(APP_DRAW_NO_CONSOLE_ICONS_BIT, 1);
             AppDrawFlagSet(APP_DRAW_HWCLASS_DISTORTIONS_BIT, 1);
             // AppGlobalFlagDisable(-1, 0u);
-            sg_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_ALL_HITS_CRIT_BIT);
-            // sg_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_FLYTHROUGH_BIT);
-            sg_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_INSTANT_RESURRECTION_BIT);
-            // sg_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_FORCE_SPAWN_ALL_GIZMO_LOCATIONS);
-            // sg_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_DISPLAY_ALL_SKILLS);
-            // sg_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_DISPLAY_ITEM_AFFIXES);
-            // sg_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_DISPLAY_ITEM_ATTRIBUTES);
-            sg_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_ALWAYS_PLAY_GETHIT_BIT);
-            sg_tAppGlobals.dwDebugFlags2 |= (1 << APP_GLOBAL2_DONT_IDENTIFY_RARES_BIT);
-            sg_tAppGlobals.dwDebugFlags2 |= (1 << APP_GLOBAL2_ALWAYS_PLAY_KNOCKBACK_BIT);
-            sg_tAppGlobals.dwDebugFlags2 |= (1 << APP_GLOBAL2_ALL_HITS_OVERKILL_BIT);
-            sg_tAppGlobals.dwDebugFlags2 |= (1 << APP_GLOBAL2_ALL_HITS_CRUSHING_BLOW_BIT);
-            sg_tAppGlobals.dwDebugFlags2 |= (1 << APP_GLOBAL2_DONT_THROTTLE_FLOATING_NUMBERS);
-            // sg_tAppGlobals.dwDebugFlags2 |= (1 << APP_GLOBAL2_DISPLAY_ITEM_TARGETED_CLASS);
-            // sg_tAppGlobals.dwDebugFlags3 |= (1 << APP_GLOBAL3_ANCIENT_ROLLS_WILL_ALWAYS_SUCCEED);
-            // sg_tAppGlobals.dwDebugFlags3 |= (1 << APP_GLOBAL3_ANCIENTS_ALWAYS_ROLL_PRIMAL);
-            // sg_tAppGlobals.dwDebugFlags3 |= (1 << APP_GLOBAL3_LOW_HEALTH_SCREEN_GLOW_DISABLED);
-            sg_tAppGlobals.dwDebugFlags3 |= (1 << APP_GLOBAL3_CONSOLE_COLLECTORS_EDITION);
+            g_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_ALL_HITS_CRIT_BIT);
+            // g_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_FLYTHROUGH_BIT);
+            g_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_INSTANT_RESURRECTION_BIT);
+            // g_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_FORCE_SPAWN_ALL_GIZMO_LOCATIONS);
+            // g_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_DISPLAY_ALL_SKILLS);
+            // g_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_DISPLAY_ITEM_AFFIXES);
+            // g_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_DISPLAY_ITEM_ATTRIBUTES);
+            g_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_ALWAYS_PLAY_GETHIT_BIT);
+            g_tAppGlobals.dwDebugFlags2 |= (1 << APP_GLOBAL2_DONT_IDENTIFY_RARES_BIT);
+            g_tAppGlobals.dwDebugFlags2 |= (1 << APP_GLOBAL2_ALWAYS_PLAY_KNOCKBACK_BIT);
+            g_tAppGlobals.dwDebugFlags2 |= (1 << APP_GLOBAL2_ALL_HITS_OVERKILL_BIT);
+            g_tAppGlobals.dwDebugFlags2 |= (1 << APP_GLOBAL2_ALL_HITS_CRUSHING_BLOW_BIT);
+            g_tAppGlobals.dwDebugFlags2 |= (1 << APP_GLOBAL2_DONT_THROTTLE_FLOATING_NUMBERS);
+            // g_tAppGlobals.dwDebugFlags2 |= (1 << APP_GLOBAL2_DISPLAY_ITEM_TARGETED_CLASS);
+            // g_tAppGlobals.dwDebugFlags3 |= (1 << APP_GLOBAL3_ANCIENT_ROLLS_WILL_ALWAYS_SUCCEED);
+            // g_tAppGlobals.dwDebugFlags3 |= (1 << APP_GLOBAL3_ANCIENTS_ALWAYS_ROLL_PRIMAL);
+            // g_tAppGlobals.dwDebugFlags3 |= (1 << APP_GLOBAL3_LOW_HEALTH_SCREEN_GLOW_DISABLED);
+            g_tAppGlobals.dwDebugFlags3 |= (1 << APP_GLOBAL3_CONSOLE_COLLECTORS_EDITION);
 
-            // sg_tAppGlobals.dwDebugFlags3 = 0xFFFFFFFF;
-            // sg_tAppGlobals.dwDebugFlags3 ^= ~(1 << APP_GLOBAL3_ANCIENT_ROLLS_WILL_ALWAYS_SUCCEED);
+            // g_tAppGlobals.dwDebugFlags3 = 0xFFFFFFFF;
+            // g_tAppGlobals.dwDebugFlags3 ^= ~(1 << APP_GLOBAL3_ANCIENT_ROLLS_WILL_ALWAYS_SUCCEED);
             // AppGlobalFlagDisable(1, APP_GLOBAL_NET_COLLECT_DATA_BIT);
             // AppGlobalFlagDisable(1, APP_GLOBAL_AI_DISABLED_BIT);
             // AppGlobalFlagDisable(1, APP_GLOBAL_AI_BLIND_BIT);
@@ -315,13 +317,11 @@ namespace d3 {
 
             // AppGlobalFlagDisable(3, APP_GLOBAL3_PLAYER_MUTE_REQUESTED_BIT);
 
-            Orig(eType, listResults);
-            return;
             if (eType == GB_ITEMS) {
                 // int counter = 0;
-                PRINT_EXPR("%d", sg_tAppGlobals.ptItemAppGlobals->nItems);
-                // PRINT_EXPR("%d", sg_tAppGlobals.ptItemAppGlobals->tRootItemType.gbid)
-                // if (sg_tAppGlobals.ptItemAppGlobals->nItems > 0) {
+                PRINT_EXPR("%d", g_tAppGlobals.ptItemAppGlobals->nItems);
+                // PRINT_EXPR("%d", g_tAppGlobals.ptItemAppGlobals->tRootItemType.gbid)
+                // if (g_tAppGlobals.ptItemAppGlobals->nItems > 0) {
 
                 //     PRINT_EXPR("%i", GetItemPtr(-1164887190)->gbid)
                 //     PRINT_EXPR("%i", GetItemPtr(-1164887190)->nSeasonRequiredToDrop)

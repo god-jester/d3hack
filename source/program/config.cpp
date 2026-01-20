@@ -4,6 +4,7 @@
 #include "nn/fs.hpp"
 
 #include <sstream>
+#include <string_view>
 
 PatchConfig global_config {};
 

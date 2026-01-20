@@ -56,14 +56,14 @@
         snprintf(buf, (nSize + 1), fmt, __VA_ARGS__);             \
     }
 
-constinit const char c_szSeasonSwap[] =
+constinit const char g_cSzSeasonSwap[] =
     "# Format for dates MUST be: \" ? ? ? , DD MMM YYYY hh : mm:ss UTC\"\n"
     "# The Day of Month(DD) MUST be 2 - digit; use either preceding zero or trailing space\n"
     "[Season 29]\n"
     "Start \"Sat, 09 Feb 2025 00:00:00 GMT\"\n"
     "End \"Tue, 09 Feb 2026 01:00:00 GMT\"\n\n";
 
-constinit const char c_szConfigSwap[] =
+constinit const char g_cSzConfigSwap[] =
     "HeroPublishFrequencyMinutes \"30\"\n"
     "EnableCrossPlatformSaveMigration \"1\"\n"
     "SeasonalGlobalLeaderboardsEnabled \"1\"\n"

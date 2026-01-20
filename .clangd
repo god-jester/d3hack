@@ -1,0 +1,32 @@
+---
+CompileFlags:
+  Compiler: /opt/devkitpro/devkitA64/bin/aarch64-none-elf-*
+  CompilationDatabase: build
+  Add:
+    - --target=aarch64-none-elf
+    - -ferror-limit=0
+    - -fgnuc-version=15.2.0
+    - -stdlib=libstdc++
+    - -std=gnu++23
+    # - -include
+    # - clangd_compat.hpp
+  Remove:
+    - -Ofast
+    - -mtp=soft
+
+InlayHints:
+  ParameterNames: Yes
+  DeducedTypes: No
+Diagnostics:
+  UnusedIncludes: None
+  ClangTidy:
+    FastCheckFilter: None
+    Remove: [readability*]
+---
+If:
+  PathMatch: [.*\.h(pp)?, .*\.c(pp)?]
+  PathExclude: source/program/d3/.*
+Diagnostics:
+  Suppress: '*'
+  ClangTidy:
+    Remove: [readability*]

@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "lib/hook/inline.hpp"
 #include "lib/hook/replace.hpp"
 #include "lib/hook/trampoline.hpp"
@@ -6,6 +8,7 @@
 #include "d3/_util.hpp"
 #include "nvn.hpp"
 #include "d3/types/common.hpp"
+#include "d3/types/namespaces.hpp"
 
 namespace d3 {
 
@@ -25,12 +28,12 @@ namespace d3 {
             const AttributeCompressor *ptCompressor;
             uint8 uSyncFlags;
             */
-            // PRINT_EXPR("%i", cg_arAttribDefs[1].eAttrib)
-            auto                attrDef = cg_arAttribDefs[CURRENCIES_DISCOVERED];
+            // PRINT_EXPR("%i", g_arAttribDefs[1].eAttrib)
+            auto                attrDef = g_arAttribDefs[CURRENCIES_DISCOVERED];
             FastAttribKey const tKey {.nValue = CURRENCIES_DISCOVERED};
             AttribStringInfo(tKey, attrDef.tDefaultValue);
             for (auto i : AllAttributes) {
-                attrDef = cg_arAttribDefs[i];
+                attrDef = g_arAttribDefs[i];
                 FastAttribKey tKey {.nValue = i};
                 if (attrDef.tDefaultValue._anon_0.nValue > 0)
                     AttribStringInfo(tKey, attrDef.tDefaultValue);
@@ -43,23 +46,23 @@ namespace d3 {
             return;
             namespace exl_ptr = exl::util::pointer_path;
             /* FastAttribSetValue(AttributeGroup, tKey, &tValue); */
-            auto nSavedAttribId      = static_cast<Attrib>(ctx->W[10]);                    // paAttribsToSave[v13].nSavedAttribId
-            auto ptCurAttrib         = *reinterpret_cast<u64 *>(&ctx->X[19]);              // tSavedAttributes->attributes_.elements_[v18];
-            auto tOrigKey            = *FollowPtr<s32, 0x18>(ptCurAttrib);
-            auto uAttribsToSaveCount = ctx->W[22];                                         // uint32
-            auto paAttribsToSave     = *reinterpret_cast<SavedAttribDef **>(&ctx->X[23]);  // const SavedAttribDef *
+            auto  nSavedAttribId      = static_cast<Attrib>(ctx->W[10]);                    // paAttribsToSave[v13].nSavedAttribId
+            auto  ptCurAttrib         = *(&ctx->X[19]);                                     // tSavedAttributes->attributes_.elements_[v18];
+            auto  tOrigKey            = *FollowPtr<s32, 0x18>(ptCurAttrib);
+            auto  uAttribsToSaveCount = ctx->W[22];                                         // uint32
+            auto *paAttribsToSave     = *reinterpret_cast<SavedAttribDef **>(&ctx->X[23]);  // const SavedAttribDef *
             // auto idFastAttrib        = ctx->W[0];                                         // AttribGroupID
             auto tKey   = *reinterpret_cast<FastAttribKey *>(ctx->X[1]);    // tKey
             auto tValue = *reinterpret_cast<FastAttribValue *>(ctx->X[2]);  // tValue *
 
-            auto index       = KeyGetAttrib(tKey);
-            auto makeorigkey = MakeAttribKey(nSavedAttribId, (tKey.nValue >> 12)).nValue;
-            auto attribstr   = AttribToStr(tKey);
-            auto paramstr    = ParamToStr(index, (tKey.nValue >> 12));
-            auto fullattr    = KeyGetFullAttrib(tKey);
-            auto tTemp       = FastAttribKey {.nValue = fullattr};
-            auto fullstr     = AttribToStr(tTemp);
-            auto attrDef     = cg_arAttribDefs[index];
+            auto        index       = KeyGetAttrib(tKey);
+            auto        makeorigkey = MakeAttribKey(nSavedAttribId, (tKey.nValue >> 12)).nValue;
+            const auto *attribstr   = AttribToStr(tKey);
+            const auto *paramstr    = ParamToStr(index, (tKey.nValue >> 12));
+            auto        fullattr    = KeyGetFullAttrib(tKey);
+            auto        tTemp       = FastAttribKey {.nValue = fullattr};
+            const auto *fullstr     = AttribToStr(tTemp);
+            auto        attrDef     = g_arAttribDefs[index];
 
             for (u32 i = 0; i <= uAttribsToSaveCount; ++i) {
                 if (paAttribsToSave[i].eAttrib == index) {
@@ -75,7 +78,7 @@ namespace d3 {
                     );
                 }
             }
-            auto fullparamstr = ParamToStr(index, (tTemp.nValue >> 12));
+            const auto *fullparamstr = ParamToStr(index, (tTemp.nValue >> 12));
             PRINT(
                 "\n\t"
                 "-> nSavedAttribId: %i\n\t"
@@ -91,9 +94,9 @@ namespace d3 {
                 fullattr, fullstr,
                 (fullattr >> 12), fullparamstr
             );
-            vector<GBID> eBonuses;
-            AllGBIDsOfType(GB_PARAGON_BONUSES, &eBonuses);
-            for (auto &bonusGbid : eBonuses) {
+            std::vector<GBID> eBonuses;
+            AllGBIDsOfType(GB_PARAGON_BONUSES, eBonuses);
+            for (GBID bonusGbid : eBonuses) {
                 // break;
                 auto gbString = GbidStringAll(bonusGbid);  //, GB_PARAGON_BONUSES);
                 // break;
@@ -150,7 +153,7 @@ namespace d3 {
         }
     };
 
-    static bool ReadVarint(const u8 *data, size_t len, size_t &idx, u64 &out) {
+    static auto ReadVarint(const u8 *data, size_t len, size_t &idx, u64 &out) -> bool {
         out       = 0;
         u32 shift = 0;
         while (idx < len && shift < 64) {
@@ -163,7 +166,7 @@ namespace d3 {
         return false;
     }
 
-    static bool ParseWeeklyChallengeTopLevel(const blz::string *data, u32 &f1, u32 &f2, u32 &f3, u64 &f4) {
+    static auto ParseWeeklyChallengeTopLevel(const blz::string *data, u32 &f1, u32 &f2, u32 &f3, u64 &f4) -> bool {
         if (!data || !data->m_elements || data->m_size == 0)
             return false;
         const auto *bytes = reinterpret_cast<const u8 *>(data->m_elements);
@@ -219,7 +222,9 @@ namespace d3 {
             const bool ok   = Orig(msg, data);
             if (data) {
                 if (size >= 3000 && size <= 9000) {
-                    u32        f1 = 0, f2 = 0, f3 = 0;
+                    u32        f1     = 0;
+                    u32        f2     = 0;
+                    u32        f3     = 0;
                     u64        f4     = 0;
                     const bool parsed = ParseWeeklyChallengeTopLevel(data, f1, f2, f3, f4);
                     PRINT_EXPR("ParsePartialFromString size=%u ok=%d parsed=%d f1=%u f2=%u f3=%u f4=%llu", size, ok, parsed, f1, f2, f3, static_cast<unsigned long long>(f4))
@@ -231,12 +236,12 @@ namespace d3 {
         }
     };
 
-    static int coscount = 0;
+    static int g_nCosCount = 0;
     HOOK_DEFINE_INLINE(CountCosmetics) {
         static void Callback(exl::hook::InlineCtx *ctx) {
-            ++coscount;
-            if (!(coscount % 1000))
-                PRINT_EXPR("Cosmetics so far: %d", coscount)
+            ++g_nCosCount;
+            if ((g_nCosCount % 1000) == 0)
+                PRINT_EXPR("Cosmetics so far: %d", g_nCosCount)
         }
     };
 
@@ -295,7 +300,7 @@ namespace d3 {
         // @ void __fastcall GfxWindowChangeDisplayMode(const DisplayMode *tMode)
         static void Callback(exl::hook::InlineCtx *ctx) {
             auto *tMode = reinterpret_cast<DisplayMode *>(ctx->X[0]);
-            if (!tMode) {
+            if (tMode == nullptr) {
                 PRINT("GfxWindowChangeDisplayMode X0=null LR=0x%lx", ctx->X[30])
                 return;
             }
@@ -312,19 +317,19 @@ namespace d3 {
         }
     };
 
-    using GFXNX64NVNHandle                 = uintptr_t;
-    using GfxViewportSetFn                 = void (*)(GFXNX64NVNHandle *self, IRect2D *rectViewport);
-    inline GfxViewportSetFn GfxViewportSet = reinterpret_cast<GfxViewportSetFn>(GameOffset(0x0F0280));
+    using GFXNX64NVNHandle                   = uintptr_t;
+    using GfxViewportSetFn                   = void (*)(GFXNX64NVNHandle *self, IRect2D *rectViewport);
+    inline GfxViewportSetFn g_gfxViewportSet = reinterpret_cast<GfxViewportSetFn>(GameOffset(0x0F0280));
 
     HOOK_DEFINE_TRAMPOLINE(GfxViewportSetHook) {
         // @ 0x0F0280: void __fastcall GFXNX64NVN::ViewportSet(GFXNX64NVN*, IRect2D*)
         static void Callback(GFXNX64NVNHandle *self, IRect2D *rectViewport) {
-            if (!rectViewport) {
+            if (rectViewport == nullptr) {
                 Orig(self, rectViewport);
                 return;
             }
 
-            if (g_ptGfxData) {
+            if (g_ptGfxData != nullptr) {
                 struct RenderTargetView {
                     SNO   snoRTTex;
                     int32 eCubeMapFace;
@@ -334,10 +339,10 @@ namespace d3 {
                 memcpy(&rt0, &g_ptGfxData->workerData[0].tCurrentRTs[0], sizeof(rt0));
 
                 if (rt0.snoRTTex == 0) {
-                    const uint32 out_w = static_cast<uint32>(std::max(g_ptGfxData->tCurrentMode.nWinWidth, 0));
-                    const uint32 out_h = static_cast<uint32>(std::max(g_ptGfxData->tCurrentMode.nWinHeight, 0));
-                    const uint32 vp_w  = static_cast<uint32>(std::max(rectViewport->right - rectViewport->left, 0));
-                    const uint32 vp_h  = static_cast<uint32>(std::max(rectViewport->bottom - rectViewport->top, 0));
+                    const uint32 outW = static_cast<uint32>(std::max(g_ptGfxData->tCurrentMode.nWinWidth, 0));
+                    const uint32 outH = static_cast<uint32>(std::max(g_ptGfxData->tCurrentMode.nWinHeight, 0));
+                    const uint32 vpW  = static_cast<uint32>(std::max(rectViewport->right - rectViewport->left, 0));
+                    const uint32 vpH  = static_cast<uint32>(std::max(rectViewport->bottom - rectViewport->top, 0));
 
                     auto calc_scale = [](uint32 width, uint32 height) -> float {
                         constexpr uint32 kMaxRenderDim = 2048;
@@ -349,11 +354,9 @@ namespace d3 {
                         }
                         if (height > kMaxRenderDim) {
                             const float hscale = static_cast<float>(kMaxRenderDim) / static_cast<float>(height);
-                            if (hscale < scale)
-                                scale = hscale;
+                            scale              = std::min(hscale, scale);
                         }
-                        if (scale > 1.0f)
-                            scale = 1.0f;
+                        scale = std::min(scale, 1.0f);
                         if (scale <= 0.0f)
                             scale = 1.0f;
                         return scale;
@@ -362,48 +365,47 @@ namespace d3 {
                     auto scale_dim = [](uint32 dim, float scale) -> uint32 {
                         auto scaled = static_cast<uint32>(dim * scale);
                         scaled &= ~1u;
-                        if (scaled < 2)
-                            scaled = 2;
+                        scaled = std::max<uint32>(scaled, 2);
                         return scaled;
                     };
 
-                    const float  scale          = calc_scale(out_w, out_h);
-                    const uint32 expected_vp_w  = scale_dim(out_w, scale);
-                    const uint32 expected_vp_h  = scale_dim(out_h, scale);
-                    const bool   is_scaled_vp   = (vp_w == expected_vp_w && vp_h == expected_vp_h);
-                    const bool   is_smaller_vp  = (out_w > vp_w || out_h > vp_h);
-                    const bool   is_valid_sizes = (out_w > 0 && out_h > 0);
+                    const float  scale        = calc_scale(outW, outH);
+                    const uint32 expectedVpW  = scale_dim(outW, scale);
+                    const uint32 expectedVpH  = scale_dim(outH, scale);
+                    const bool   isScaledVp   = (vpW == expectedVpW && vpH == expectedVpH);
+                    const bool   isSmallerVp  = (outW > vpW || outH > vpH);
+                    const bool   isValidSizes = (outW > 0 && outH > 0);
 
                     // Only override the swapchain viewport if it looks like our internal clamped render resolution.
                     // This avoids breaking legitimate partial-screen viewports (e.g. splitscreen/UI sub-views).
-                    if (is_valid_sizes && is_smaller_vp && is_scaled_vp) {
+                    if (isValidSizes && isSmallerVp && isScaledVp) {
                         static uint32 s_last_vp_w  = 0;
                         static uint32 s_last_vp_h  = 0;
                         static uint32 s_last_out_w = 0;
                         static uint32 s_last_out_h = 0;
-                        if (vp_w != s_last_vp_w || vp_h != s_last_vp_h || out_w != s_last_out_w || out_h != s_last_out_h) {
-                            PRINT("ViewportSet swapchain override: %ux%u -> %ux%u", vp_w, vp_h, out_w, out_h)
-                            s_last_vp_w  = vp_w;
-                            s_last_vp_h  = vp_h;
-                            s_last_out_w = out_w;
-                            s_last_out_h = out_h;
+                        if (vpW != s_last_vp_w || vpH != s_last_vp_h || outW != s_last_out_w || outH != s_last_out_h) {
+                            PRINT("ViewportSet swapchain override: %ux%u -> %ux%u", vpW, vpH, outW, outH)
+                            s_last_vp_w  = vpW;
+                            s_last_vp_h  = vpH;
+                            s_last_out_w = outW;
+                            s_last_out_h = outH;
                         }
                         rectViewport->left   = 0;
                         rectViewport->top    = 0;
-                        rectViewport->right  = static_cast<int32>(out_w);
-                        rectViewport->bottom = static_cast<int32>(out_h);
+                        rectViewport->right  = static_cast<int32>(outW);
+                        rectViewport->bottom = static_cast<int32>(outH);
                     }
                 }
                 // Instrumentation: log first time we see a clamped viewport, and what RT we're on.
                 if (rectViewport->left == 0 && rectViewport->top == 0 && rectViewport->right == 2048 && rectViewport->bottom == 1152) {
                     static bool s_logged_2048_swap = false;
                     static bool s_logged_2048_rt   = false;
-                    const bool  is_swap            = (rt0.snoRTTex == 0);
-                    if ((is_swap && !s_logged_2048_swap) || (!is_swap && !s_logged_2048_rt)) {
-                        const auto out_w = static_cast<uint32>(std::max(g_ptGfxData->tCurrentMode.nWinWidth, 0));
-                        const auto out_h = static_cast<uint32>(std::max(g_ptGfxData->tCurrentMode.nWinHeight, 0));
-                        PRINT("ViewportSet saw 2048x1152 (rt0.sno=%d out=%ux%u)", rt0.snoRTTex, out_w, out_h)
-                        if (is_swap)
+                    const bool  isSwap             = (rt0.snoRTTex == 0);
+                    if ((isSwap && !s_logged_2048_swap) || (!isSwap && !s_logged_2048_rt)) {
+                        const auto outW = static_cast<uint32>(std::max(g_ptGfxData->tCurrentMode.nWinWidth, 0));
+                        const auto outH = static_cast<uint32>(std::max(g_ptGfxData->tCurrentMode.nWinHeight, 0));
+                        PRINT("ViewportSet saw 2048x1152 (rt0.sno=%d out=%ux%u)", rt0.snoRTTex, outW, outH)
+                        if (isSwap)
                             s_logged_2048_swap = true;
                         else
                             s_logged_2048_rt = true;
@@ -425,7 +427,7 @@ namespace d3 {
     namespace {
         constexpr uint32 kStencilMaxDim = 2048;
 
-        inline float CalcStencilScale(uint32 width, uint32 height) {
+        inline auto CalcStencilScale(uint32 width, uint32 height) -> float {
             if (width == 0 || height == 0)
                 return 1.0f;
             float scale = 1.0f;
@@ -433,11 +435,9 @@ namespace d3 {
                 scale = static_cast<float>(kStencilMaxDim) / static_cast<float>(width);
             if (height > kStencilMaxDim) {
                 const float hscale = static_cast<float>(kStencilMaxDim) / static_cast<float>(height);
-                if (hscale < scale)
-                    scale = hscale;
+                scale              = std::min(hscale, scale);
             }
-            if (scale > 1.0f)
-                scale = 1.0f;
+            scale = std::min(scale, 1.0f);
             if (scale <= 0.0f)
                 scale = 1.0f;
             return scale;
@@ -446,8 +446,7 @@ namespace d3 {
         inline uint32 ScaleStencilDim(uint32 dim, float scale) {
             auto scaled = static_cast<uint32>(dim * scale);
             scaled &= ~1u;
-            if (scaled < 2)
-                scaled = 2;
+            scaled = std::max<uint32>(scaled, 2);
             return scaled;
         }
 
@@ -456,8 +455,8 @@ namespace d3 {
             int32 eCubeMapFace;
         };
 
-        inline bool GetRT0(RenderTargetView &out) {
-            if (!g_ptGfxData)
+        inline auto GetRT0(RenderTargetView &out) -> bool {
+            if (g_ptGfxData == nullptr)
                 return false;
             memcpy(&out, &g_ptGfxData->workerData[0].tCurrentRTs[0], sizeof(out));
             return true;
@@ -467,40 +466,40 @@ namespace d3 {
     HOOK_DEFINE_INLINE(GfxStencilBufferEnableHook) {
         // @ 0x0EFCD0: void __fastcall GFXNX64NVN::StencilBufferEnable(GFXNX64NVN*, int)
         static void Callback(exl::hook::InlineCtx *ctx) {
-            if (!ctx)
+            if (ctx == nullptr)
                 return;
 
-            const uint32 mode           = static_cast<uint32>(ctx->W[1]);
-            const bool   auto_disable   = global_config.resolution_hack.active;
-            const bool   should_disable = auto_disable;
+            const uint32 mode          = static_cast<uint32>(ctx->W[1]);
+            const bool   autoDisable   = global_config.resolution_hack.active;
+            const bool   shouldDisable = autoDisable;
 
-            if (!global_config.debug.active && !should_disable)
+            if (!global_config.debug.active && !shouldDisable)
                 return;
 
             RenderTargetView rt0 {};
-            const bool       have_rt0 = GetRT0(rt0);
-            const bool       is_swap  = have_rt0 && (rt0.snoRTTex == 0);
-            const uint32     out_w    = g_ptGfxData ? static_cast<uint32>(std::max(g_ptGfxData->tCurrentMode.nWinWidth, 0)) : 0u;
-            const uint32     out_h    = g_ptGfxData ? static_cast<uint32>(std::max(g_ptGfxData->tCurrentMode.nWinHeight, 0)) : 0u;
-            const float      scale    = CalcStencilScale(out_w, out_h);
-            const uint32     int_w    = ScaleStencilDim(out_w ? out_w : 1u, scale);
-            const uint32     int_h    = ScaleStencilDim(out_h ? out_h : 1u, scale);
-            const bool       scaled   = (scale < 1.0f);
+            const bool       haveRt0 = GetRT0(rt0);
+            const bool       isSwap  = haveRt0 && (rt0.snoRTTex == 0);
+            const uint32     outW    = (g_ptGfxData != nullptr) ? static_cast<uint32>(std::max(g_ptGfxData->tCurrentMode.nWinWidth, 0)) : 0u;
+            const uint32     outH    = (g_ptGfxData != nullptr) ? static_cast<uint32>(std::max(g_ptGfxData->tCurrentMode.nWinHeight, 0)) : 0u;
+            const float      scale   = CalcStencilScale(outW, outH);
+            const uint32     intW    = ScaleStencilDim((outW != 0u) ? outW : 1u, scale);
+            const uint32     intH    = ScaleStencilDim((outH != 0u) ? outH : 1u, scale);
+            const bool       scaled  = (scale < 1.0f);
 
-            const uintptr_t lr        = static_cast<uintptr_t>(ctx->X[30]);
-            const uintptr_t lr_offset = lr ? (lr - exl::util::modules::GetTargetStart()) : 0u;
+            const uintptr_t lr       = static_cast<uintptr_t>(ctx->X[30]);
+            const uintptr_t lrOffset = (lr != 0u) ? (lr - exl::util::modules::GetTargetStart()) : 0u;
 
-            if (should_disable && is_swap && scaled && mode != 0) {
+            if (shouldDisable && isSwap && scaled && mode != 0) {
                 ctx->W[1] = 0;
                 PRINT(
                     "StencilEnable swapchain override: %u->0 (rt0=%d out=%ux%u int=%ux%u LR=0x%lx%s)",
                     mode,
-                    have_rt0 ? rt0.snoRTTex : -1,
-                    out_w,
-                    out_h,
-                    int_w,
-                    int_h,
-                    lr_offset,
+                    haveRt0 ? rt0.snoRTTex : -1,
+                    outW,
+                    outH,
+                    intW,
+                    intH,
+                    lrOffset,
                     " auto"
                 );
                 return;
@@ -508,16 +507,16 @@ namespace d3 {
 
             if (global_config.debug.active) {
                 static uint32 s_logged = 0;
-                if (s_logged < 64 && scaled && is_swap && mode != 0) {
+                if (s_logged < 64 && scaled && isSwap && mode != 0) {
                     PRINT(
                         "StencilEnable: mode=%u rt0=%d out=%ux%u int=%ux%u LR=0x%lx",
                         mode,
                         rt0.snoRTTex,
-                        out_w,
-                        out_h,
-                        int_w,
-                        int_h,
-                        lr_offset
+                        outW,
+                        outH,
+                        intW,
+                        intH,
+                        lrOffset
                     );
                     ++s_logged;
                 }
@@ -528,7 +527,7 @@ namespace d3 {
     HOOK_DEFINE_INLINE(GfxStencilBufferSetParamsHook) {
         // @ 0x0EFE60: void __fastcall GFXNX64NVN::StencilBufferSetParams(GFXNX64NVN*, CompareFunc, ref, ops...)
         static void Callback(exl::hook::InlineCtx *ctx) {
-            if (!ctx)
+            if (ctx == nullptr)
                 return;
             if (!global_config.debug.active)
                 return;
@@ -537,19 +536,19 @@ namespace d3 {
             if (!GetRT0(rt0))
                 return;
 
-            const uint32 out_w   = static_cast<uint32>(std::max(g_ptGfxData->tCurrentMode.nWinWidth, 0));
-            const uint32 out_h   = static_cast<uint32>(std::max(g_ptGfxData->tCurrentMode.nWinHeight, 0));
-            const float  scale   = CalcStencilScale(out_w, out_h);
-            const bool   scaled  = (scale < 1.0f);
-            const bool   is_swap = (rt0.snoRTTex == 0);
-            if (!scaled || !is_swap)
+            const uint32 outW   = static_cast<uint32>(std::max(g_ptGfxData->tCurrentMode.nWinWidth, 0));
+            const uint32 outH   = static_cast<uint32>(std::max(g_ptGfxData->tCurrentMode.nWinHeight, 0));
+            const float  scale  = CalcStencilScale(outW, outH);
+            const bool   scaled = (scale < 1.0f);
+            const bool   isSwap = (rt0.snoRTTex == 0);
+            if (!scaled || !isSwap)
                 return;
 
-            const uint32 int_w = ScaleStencilDim(out_w ? out_w : 1u, scale);
-            const uint32 int_h = ScaleStencilDim(out_h ? out_h : 1u, scale);
+            const uint32 intW = ScaleStencilDim((outW != 0u) ? outW : 1u, scale);
+            const uint32 intH = ScaleStencilDim((outH != 0u) ? outH : 1u, scale);
 
-            const uintptr_t lr        = static_cast<uintptr_t>(ctx->X[30]);
-            const uintptr_t lr_offset = lr ? (lr - exl::util::modules::GetTargetStart()) : 0u;
+            const uintptr_t lr       = static_cast<uintptr_t>(ctx->X[30]);
+            const uintptr_t lrOffset = (lr != 0u) ? (lr - exl::util::modules::GetTargetStart()) : 0u;
 
             static uint32 s_logged = 0;
             if (s_logged < 128) {
@@ -563,11 +562,11 @@ namespace d3 {
                     static_cast<uint32>(ctx->W[6]),
                     static_cast<uint32>(ctx->W[7]),
                     rt0.snoRTTex,
-                    out_w,
-                    out_h,
-                    int_w,
-                    int_h,
-                    lr_offset
+                    outW,
+                    outH,
+                    intW,
+                    intH,
+                    lrOffset
                 );
                 ++s_logged;
             }
@@ -623,7 +622,7 @@ namespace d3 {
 
     HOOK_DEFINE_INLINE(FontSnoop) {
         static void Callback(exl::hook::InlineCtx *ctx) {
-            auto tParams = reinterpret_cast<TextCreationParams *>(ctx->X[1]);
+            auto *tParams = reinterpret_cast<TextCreationParams *>(ctx->X[1]);
             if (tParams->snoFont == 72347 /* SCRIPT*/) {  // 72350 = SANSSERIF ?
                 PRINT_EXPR("%i %i", tParams->nFontSize, tParams->snoFont)
                 tParams->eResizeToFit = 1;
@@ -663,7 +662,7 @@ namespace d3 {
     HOOK_DEFINE_INLINE(CurlData) {
         static void Callback(exl::hook::InlineCtx *ctx) {
             PRINT("CURL %s", "ENTER")
-            if (!(char *)(ctx->X[21]))
+            if (((char *)(ctx->X[21])) == nullptr)
                 return;
             PRINT("_curl: %s", (char *)(ctx->X[21]))
         }
@@ -672,7 +671,7 @@ namespace d3 {
     HOOK_DEFINE_INLINE(PreferencesFile) {
         static void Callback(exl::hook::InlineCtx *ctx) {
             auto PreferencesFileData = reinterpret_cast<blz::shared_ptr<blz::string> *>(ctx->X[2]);
-            if (!PreferencesFileData || !PreferencesFileData->m_pointer)
+            if ((PreferencesFileData == 0u) || !PreferencesFileData->m_pointer)
                 return;
             PRINT("Preferences str %s", PreferencesFileData->m_pointer->m_elements)
             /*
@@ -738,7 +737,7 @@ namespace d3 {
     HOOK_DEFINE_INLINE(PubFileDataConstructor) {
         static void Callback(exl::hook::InlineCtx *ctx) {
             auto PublisherFileData = reinterpret_cast<blz::string *>(ctx->X[21]);  // X8 @ 0x62444
-            if (!PublisherFileData || !PublisherFileData->m_elements)
+            if ((PublisherFileData == 0u) || !PublisherFileData->m_elements)
                 return;
             PRINT("PublisherFileData blz::string (size: %ld)\n %s", PublisherFileData->m_size, PublisherFileData->m_elements)
         }
@@ -752,21 +751,21 @@ namespace d3 {
 
     HOOK_DEFINE_INLINE(BDFileDataMem) {
         static void Callback(exl::hook::InlineCtx *ctx) {
-            auto fdata = reinterpret_cast<bdFileData *>(ctx->X[0]);
-            if (!fdata || !fdata->m_fileData)
+            auto *fdata = reinterpret_cast<bdFileData *>(ctx->X[0]);
+            if ((fdata == nullptr) || (fdata->m_fileData == nullptr))
                 return;
             PRINT("BDFileDataMem (size: %d)\n %s", fdata->m_fileSize, (char *)fdata->m_fileData)
             auto         length     = static_cast<u32>(fdata->m_fileSize);
             const auto  *bytes      = reinterpret_cast<const u8 *>(fdata->m_fileData);
-            const u32    dump_len   = (length < 100u) ? length : 100u;
+            const u32    dumpLen    = (length < 100u) ? length : 100u;
             const char   kPrefix[]  = "FILE CONTENT: ";
             const size_t kPrefixLen = sizeof(kPrefix) - 1;
-            const size_t out_len    = kPrefixLen + (static_cast<size_t>(dump_len) * 3);
-            auto        *out        = static_cast<char *>(SigmaMemoryNew(out_len + 1, 0, nullptr, true));
-            if (out) {
+            const size_t outLen     = kPrefixLen + (static_cast<size_t>(dumpLen) * 3);
+            auto        *out        = static_cast<char *>(SigmaMemoryNew(outLen + 1, 0, nullptr, 1));
+            if (out != nullptr) {
                 SigmaMemoryMove(out, const_cast<char *>(kPrefix), kPrefixLen);
                 size_t pos = kPrefixLen;
-                for (u32 i = 0; i < dump_len; ++i) {
+                for (u32 i = 0; i < dumpLen; ++i) {
                     const u8 value = bytes[i];
                     out[pos++]     = ByteToChar((value >> 4) & 0xF);
                     out[pos++]     = ByteToChar(value & 0xF);
@@ -791,14 +790,14 @@ namespace d3 {
         static void Callback(exl::hook::InlineCtx *ctx) {
             auto PublisherFileData = reinterpret_cast<blz::string *>(ctx->X[23]);
             auto length            = static_cast<bdUInt>(ctx->W[24]);
-            if (!PublisherFileData)
+            if (PublisherFileData == 0u)
                 return;
             auto bytes  = PublisherFileData->m_elements;
             auto usize  = static_cast<uint32>(PublisherFileData->m_size);
             auto m_size = LODWORD(usize);
 
             PRINT("PublisherFileDataHex blz::basic_string (filesize: %d | stringsize: %d)", length, m_size)
-            auto        dump_path     = blz_make_stringf("%s/dumps/dmp_%u.dat", g_szBaseDir.c_str(), length);
+            auto        dump_path     = blz_make_stringf("%s/dumps/dmp_%u.dat", g_szBaseDir, length);
             const char *dump_path_str = dump_path.m_elements ? dump_path.m_elements : "";
             PRINT_EXPR("Trying to write to: %s", dump_path_str)
             if (bytes && WriteTestFile(dump_path_str, bytes, length))
@@ -841,16 +840,11 @@ namespace d3 {
 
     HOOK_DEFINE_TRAMPOLINE(ChallengeRiftCallback) {
         static void Callback(void *bind, StorageResult *pRes, ChallengeData *ptChalConf, WeeklyChallengeData *ptChalData) {
-            if (!global_config.challenge_rifts.active) {
-                Orig(bind, pRes, ptChalConf, ptChalData);
-                return;
+            const bool can_populate = global_config.challenge_rifts.active && ptChalConf && ptChalData && pRes;
+            if (can_populate) {
+                if (PopulateChallengeRiftData(*ptChalConf, *ptChalData))
+                    *pRes = Console::Online::STORAGE_SUCCESS;
             }
-            if (!ptChalConf || !ptChalData || !pRes) {
-                Orig(bind, pRes, ptChalConf, ptChalData);
-                return;
-            }
-            if (PopulateChallengeRiftData(*ptChalConf, *ptChalData))
-                *pRes = Console::Online::STORAGE_SUCCESS;
             Orig(bind, pRes, ptChalConf, ptChalData);
         }
     };

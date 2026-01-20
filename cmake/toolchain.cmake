@@ -3,6 +3,7 @@
 
 ## Generic settings
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_SYSTEM_NAME "Generic")
 set(CMAKE_SYSTEM_VERSION "DKA-NX-14")
 set(CMAKE_SYSTEM_PROCESSOR "aarch64")
@@ -24,6 +25,7 @@ endif()
 set(DEVKITA64 "${DEVKITPRO}/devkitA64")
 set(LIBNX "${DEVKITPRO}/libnx")
 set(PORTLIBS "${DEVKITPRO}/portlibs/switch")
+set(DEVKITA64_SYSROOT "${DEVKITA64}/aarch64-none-elf")
 
 # Add devkitA64 GCC tools to CMake.
 if(WIN32)
@@ -72,6 +74,44 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
 set(CMAKE_INSTALL_PREFIX ${PORTLIBS} CACHE PATH "Install libraries to the portlibs directory")
 set(CMAKE_PREFIX_PATH ${PORTLIBS} CACHE PATH "Find libraries in the portlibs directory")
 
+## Standard library (clangd/compile_commands support)
+
+if (IS_DIRECTORY "${DEVKITA64_SYSROOT}")
+    set(CMAKE_SYSROOT "${DEVKITA64_SYSROOT}")
+endif()
+
+set(DEVKITA64_GCC_ROOT "${DEVKITA64}/lib/gcc/aarch64-none-elf")
+set(DEVKITA64_GCC_VERSION "")
+if (IS_DIRECTORY "${DEVKITA64_GCC_ROOT}")
+    file(GLOB _devkita64_gcc_versions RELATIVE "${DEVKITA64_GCC_ROOT}" "${DEVKITA64_GCC_ROOT}/*")
+    list(SORT _devkita64_gcc_versions)
+    list(LENGTH _devkita64_gcc_versions _devkita64_gcc_versions_len)
+    if (_devkita64_gcc_versions_len GREATER 0)
+        math(EXPR _devkita64_gcc_last_idx "${_devkita64_gcc_versions_len} - 1")
+        list(GET _devkita64_gcc_versions ${_devkita64_gcc_last_idx} DEVKITA64_GCC_VERSION)
+    endif()
+endif()
+
+set(DEVKITA64_STDLIB_INCLUDES "")
+if (DEVKITA64_GCC_VERSION)
+    list(APPEND DEVKITA64_STDLIB_INCLUDES
+        "${DEVKITA64_SYSROOT}/include/c++/${DEVKITA64_GCC_VERSION}"
+        "${DEVKITA64_SYSROOT}/include/c++/${DEVKITA64_GCC_VERSION}/aarch64-none-elf"
+        "${DEVKITA64_SYSROOT}/include/c++/${DEVKITA64_GCC_VERSION}/backward"
+        "${DEVKITA64}/lib/gcc/aarch64-none-elf/${DEVKITA64_GCC_VERSION}/include"
+        "${DEVKITA64}/lib/gcc/aarch64-none-elf/${DEVKITA64_GCC_VERSION}/include-fixed"
+        "${DEVKITA64_SYSROOT}/include"
+    )
+endif()
+
+set(_devkita64_stdinc_flags "")
+foreach (_dir IN LISTS DEVKITA64_STDLIB_INCLUDES)
+    if (IS_DIRECTORY "${_dir}")
+        list(APPEND _devkita64_stdinc_flags "-isystem" "${_dir}")
+    endif()
+endforeach()
+list(JOIN _devkita64_stdinc_flags " " DEVKITA64_STDLIB_INCLUDE_FLAGS)
+
 ## Options for code generation
 
 # Technically, the Switch does support shared libraries, but the toolchain doesn't.
@@ -81,8 +121,11 @@ add_definitions(-DSWITCH -D__SWITCH__ -D__RTLD_6XX__)
 
 set(ARCH "-march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIC -fvisibility=hidden")
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -Wall -Werror -Ofast -ffunction-sections -fdata-sections -Wno-format-zero-length ${ARCH}" CACHE STRING "C flags")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_C_FLAGS} -fno-rtti -fno-exceptions -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-threadsafe-statics" CACHE STRING "C++ flags")
+set(_d3hack_c_flags "-g -Wall -Werror -Ofast -ffunction-sections -fdata-sections -Wno-format-zero-length ${ARCH} --sysroot=${CMAKE_SYSROOT} ${DEVKITA64_STDLIB_INCLUDE_FLAGS}")
+set(_d3hack_cxx_flags "${_d3hack_c_flags} -fno-rtti -fno-exceptions -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-threadsafe-statics")
+
+set(CMAKE_C_FLAGS "${_d3hack_c_flags}" CACHE STRING "C flags" FORCE)
+set(CMAKE_CXX_FLAGS "${_d3hack_cxx_flags}" CACHE STRING "C++ flags" FORCE)
 set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -x assembler-with-cpp -g ${ARCH}" CACHE STRING "ASM flags")
 # These flags are purposefully empty to use the default flags when invoking the
 # devkitA64 linker. Otherwise the linker may complain about duplicate flags.

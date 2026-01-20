@@ -4,7 +4,6 @@
 #include <cstring>
 #include <string_view>
 
-#include "lib/diag/assert.hpp"
 #include "lib/alloc.hpp"
 #include "nn/fs.hpp"
 #include "program/d3/setting.hpp"

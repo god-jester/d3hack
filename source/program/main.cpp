@@ -1,13 +1,9 @@
-#include "lib/hook/inline.hpp"
 #include "lib/hook/trampoline.hpp"
 #include "lib/diag/assert.hpp"
-#include "lib/armv8/instructions.hpp"
-#include "lib/util/sys/modules.hpp"
 #include "lib/util/version.hpp"
 #include "program/build_info.hpp"
 #include "nn/fs/fs_mount.hpp"
 #include "d3/_util.hpp"
-#include "d3/_lobby.hpp"
 #include "d3/patches.hpp"
 #include "config.hpp"
 #include "d3/hooks/util.hpp"
@@ -21,12 +17,12 @@
 
 #include <cstring>
 
-#define to_float(v)         __coerce<float>(v)
-#define to_s32(v)           vcvtps_s32_f32(v)
-#define to_u32(v)           vcvtps_u32_f32(v)
+#define TO_FLOAT(v)         __coerce<float>(v)
+#define TO_S32(v)           vcvtps_s32_f32(v)
+#define TO_U32(v)           vcvtps_u32_f32(v)
 
-#define findtrunc(v, n)     (strstr(pBuf, v) && strlen(pBuf) >= n)
-#define findtruncp(v, p, n) (strstr(pBuf, v) && strstr(pBuf, v) - pBuf == p && strlen(pBuf) >= n)
+#define FINDTRUNC(v, n)     (strstr(pBuf, v) && strlen(pBuf) >= (n))
+#define FINDTRUNCP(v, p, n) (strstr(pBuf, v) && strstr(pBuf, v) - pBuf == (p) && strlen(pBuf) >= (n))
 
 // namespace nn::oe {
 //     void SetCopyrightVisibility(bool);
@@ -34,14 +30,14 @@
 
 namespace d3 {
     namespace {
-        bool VerifySignature() {
+        auto VerifySignature() -> bool {
             if (exl::util::GetUserVersion() == exl::util::UserVersion::DEFAULT)
                 return true;
             PRINT("Signature guard failed; build string \"%s\" not found", D3CLIENT_VER);
             return false;
         }
 
-        bool g_config_hooks_installed = false;
+        bool g_configHooksInstalled = false;
     }  // namespace
 
     // static auto diablo_rounding(u32 nDamage) {
@@ -93,7 +89,7 @@ namespace d3 {
             auto ret        = Orig(hInstance, hWndParent);
             g_ptMainRWindow = reinterpret_cast<RWindow *const>(GameOffsetFromTable("main_rwindow"));
             PRINT_LINE("ShellInitialized");
-            g_request_seasons_load = true;
+            g_requestSeasonsLoad = true;
 
             // EXL_ABORT("Hello!");
 
@@ -112,10 +108,10 @@ namespace d3 {
     HOOK_DEFINE_TRAMPOLINE(sInitializeWorld){
         static void Callback(SNO snoWorld, uintptr_t *ptSWorld) {
             Orig(snoWorld, ptSWorld);
-            auto tSGameGlobals  = SGameGlobalsGet();
-            auto sGameCurID     = AppServerGetOnlyGame();
-            gs_idGameConnection = ServerGetOnlyGameConnection();
-            PRINT("NEW sInitializeWorld! (SGame: %x | Connection: %x | Primary for connection: %p) %s %s", sGameCurID, gs_idGameConnection, GetPrimaryPlayerForGameConnection(gs_idGameConnection), tSGameGlobals->uszCreatorAccountName, tSGameGlobals->uszCreatorHeroName);
+            auto *ptSGameGlobals = SGameGlobalsGet();
+            auto  sGameCurID     = AppServerGetOnlyGame();
+            g_idGameConnection   = ServerGetOnlyGameConnection();
+            PRINT("NEW sInitializeWorld! (SGame: %x | Connection: %x | Primary for connection: %p) %s %s", sGameCurID, g_idGameConnection, GetPrimaryPlayerForGameConnection(g_idGameConnection), ptSGameGlobals->uszCreatorAccountName, ptSGameGlobals->uszCreatorHeroName);
         }
     };
     HOOK_DEFINE_TRAMPOLINE(MainInit){
@@ -129,19 +125,19 @@ namespace d3 {
             R_ABORT_UNLESS(nn::fs::MountSdCardForDebug("sd"));
             LoadPatchConfig();
             if (global_config.resolution_hack.active) {
-                const u32 out_w   = global_config.resolution_hack.OutputWidthPx();
-                const u32 out_h   = global_config.resolution_hack.OutputHeightPx();
-                const u32 clamp_h = global_config.resolution_hack.ClampTextureHeightPx();
-                const u32 clamp_w = global_config.resolution_hack.ClampTextureWidthPx();
+                const u32 outW   = global_config.resolution_hack.OutputWidthPx();
+                const u32 outH   = global_config.resolution_hack.OutputHeightPx();
+                const u32 clampH = global_config.resolution_hack.ClampTextureHeightPx();
+                const u32 clampW = global_config.resolution_hack.ClampTextureWidthPx();
                 PRINT(
                     "ResolutionHack config: target=%u output=%ux%u min_scale=%.1f clamp_h=%u clamp=%ux%u defaults_only=%u",
                     global_config.resolution_hack.target_resolution,
-                    out_w,
-                    out_h,
+                    outW,
+                    outH,
                     global_config.resolution_hack.min_res_scale,
-                    clamp_h,
-                    clamp_w,
-                    clamp_h,
+                    clampH,
+                    clampW,
+                    clampH,
                     static_cast<u32>(global_config.defaults_only)
                 );
             } else {
@@ -149,14 +145,14 @@ namespace d3 {
             }
 
             // Apply patches based on config
-            if (!g_config_hooks_installed) {
+            if (!g_configHooksInstalled) {
                 SetupUtilityHooks();
                 SetupResolutionHooks();
                 SetupDebuggingHooks();
                 SetupSeasonEventHooks();
                 PatchVarResLabel();
                 PatchReleaseFPSLabel();
-                g_config_hooks_installed = true;
+                g_configHooksInstalled = true;
             }
             if (global_config.debug.enable_crashes)
                 SetupLobbyHooks();
@@ -180,7 +176,7 @@ namespace d3 {
         }
     };
     HOOK_DEFINE_TRAMPOLINE(StubCopyright) {
-        static void Callback(bool enabled) { Orig(false); }
+        static void Callback(bool /*enabled*/) { Orig(false); }
     };
 
     extern "C" void exl_main(void * /*x0*/, void * /*x1*/) {
@@ -214,7 +210,7 @@ namespace d3 {
         // Safe, per-frame-gated features should apply immediately just by updating global_config.
         // For enable-only static patches, re-run patch entrypoints when turning them on.
 
-        auto append_note = [&](const char *text) {
+        auto append_note = [&](const char *text) -> void {
             if (text == nullptr || text[0] == '\0') {
                 return;
             }
@@ -231,8 +227,8 @@ namespace d3 {
         };
 
         // XVars that can be updated at runtime.
-        XVarBool_Set(&s_varOnlineServicePTR, global_config.seasons.spoof_ptr, 3u);
-        XVarBool_Set(&s_varExperimentalScheduling, global_config.resolution_hack.exp_scheduler, 3u);
+        XVarBool_Set(&g_varOnlineServicePTR, global_config.seasons.spoof_ptr, 3u);
+        XVarBool_Set(&g_varExperimentalScheduling, global_config.resolution_hack.exp_scheduler, 3u);
 
         // Enable-only patches.
         if (global_config.overlays.active && global_config.overlays.buildlocker_watermark &&
@@ -280,7 +276,7 @@ namespace d3 {
             result.restart_required = true;
         }
 
-        if (out) {
+        if (out != nullptr) {
             *out = result;
         }
     }

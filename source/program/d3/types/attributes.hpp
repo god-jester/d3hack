@@ -1,4 +1,5 @@
 #pragma once
+#include <initializer_list>
 
 enum Attributes : int {
     ATTRIBUTE_NONE                                                   = -1,  // 0xFFFFFFFF

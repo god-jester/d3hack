@@ -3,14 +3,16 @@
 #include "d3/types/common.hpp"
 
 namespace d3 {
-    constinit int8 g_nMats     = 22;
-    constinit int8 g_nCrafters = 4;
+    inline constinit int8 g_nMats     = 22;
+    inline constinit int8 g_nCrafters = 4;
 
     struct GameBalanceTable {
         const LPCSTR      name;
         const int32       eType;
         const std::size_t maxElements;
-    } g_tGBTableUnshifted[NUM_GBTYPES + 2] {
+    };
+
+    inline constinit GameBalanceTable g_tGBTableUnshifted[NUM_GBTYPES + 2] {
         {"GB_KEYWORD", -2},          // 0xFFFFFFFE
         {"GB_INVALID", -1},          // 0xFFFFFFFF
         {"", 0x0},

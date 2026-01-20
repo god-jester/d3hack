@@ -118,7 +118,7 @@ add_executable(${EXL_TARGET_NAME} ${EXL_SOURCES_ASM} ${EXL_SOURCES_C} ${EXL_SOUR
 
 set(EXL_INCLUDE_DIRS
     "${PROJECT_SOURCE_DIR}/include"
-    "${PROJECT_SOURCE_DIR}/source"
+    # "${PROJECT_SOURCE_DIR}/source" # Switch source to only non-system include
 )
 
 file(GLOB EXL_MODULE_DIRS LIST_DIRECTORIES true "${PROJECT_SOURCE_DIR}/source/*")
@@ -132,7 +132,11 @@ if(LIBNX)
     list(APPEND EXL_INCLUDE_DIRS "${LIBNX}/include")
 endif()
 
-target_include_directories(${EXL_TARGET_NAME} PRIVATE ${EXL_INCLUDE_DIRS})
+target_include_directories(${EXL_TARGET_NAME} PRIVATE "${PROJECT_SOURCE_DIR}/source")
+target_include_directories(${EXL_TARGET_NAME} SYSTEM PRIVATE ${EXL_INCLUDE_DIRS})
+# if(LIBNX)
+#     target_include_directories(${EXL_TARGET_NAME} SYSTEM PRIVATE "${LIBNX}/include")
+# endif()
 
 target_compile_definitions(${EXL_TARGET_NAME} PRIVATE
     IMGUI_USER_CONFIG=\"imgui_backend/nvn_imgui_config.h\"

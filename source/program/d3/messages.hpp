@@ -52,7 +52,7 @@ namespace d3 {
         MessageSendToClient(&pList, SMSG_DISPLAY_ERROR, &_pMessage, nMsgSize);
     }
 
-    void SyncFlags(const Player *tTarget, uint32 DigestFlags) {
+    void SyncFlags(const Player *tTarget, uint32 uDigestFlags) {
         if (!_HOSTCHK)
             return;
         PlayerList       pList;
@@ -60,7 +60,7 @@ namespace d3 {
         size_t           nMsgSize = sizeof(DWordDataMessage);
 
         memset(&_pMessage, 0, nMsgSize);
-        _pMessage.dwData = DigestFlags;
+        _pMessage.dwData = uDigestFlags;
 
         PopulatePlayerList(&pList, tTarget);
         MessageSendToClient(&pList, SMSG_ACCOUNT_FLAGS_SYNC + 1, &_pMessage, nMsgSize);

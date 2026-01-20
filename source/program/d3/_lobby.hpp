@@ -6,21 +6,21 @@
 #include "nn/os/impl/os_timeout_helper.hpp"
 
 namespace d3 {
-    RareItemName cg_tRareItemName = {0, _rarenamestrings_prefix_dex, 16, 33};  //33 for goat, 22 for Leo
+    inline RareItemName g_tRareItemName = {0, _rarenamestrings_prefix_dex, 16, 33};  //33 for goat, 22 for Leo
 
-    void AppGlobalFlagDisable(int8 idx, uint32 FLAG) {
+    void AppGlobalFlagDisable(int8 idx, uint32 flag) {
         return;
         switch (idx) {
         case -1:
-            sg_tAppGlobals.dwDebugFlags  = 0xFFFFFFFF;
-            sg_tAppGlobals.dwDebugFlags2 = 0xFFFFFFFF;
-            sg_tAppGlobals.dwDebugFlags3 = 0xFFFFFFFF;
+            g_tAppGlobals.dwDebugFlags  = 0xFFFFFFFF;
+            g_tAppGlobals.dwDebugFlags2 = 0xFFFFFFFF;
+            g_tAppGlobals.dwDebugFlags3 = 0xFFFFFFFF;
         case 1:
-            sg_tAppGlobals.dwDebugFlags ^= ~(1 << FLAG);
+            g_tAppGlobals.dwDebugFlags ^= ~(1 << flag);
         case 2:
-            sg_tAppGlobals.dwDebugFlags2 ^= ~(1 << FLAG);
+            g_tAppGlobals.dwDebugFlags2 ^= ~(1 << flag);
         case 3:
-            sg_tAppGlobals.dwDebugFlags3 ^= ~(1 << FLAG);
+            g_tAppGlobals.dwDebugFlags3 ^= ~(1 << flag);
         }
     }
 
@@ -34,7 +34,7 @@ namespace d3 {
 
         GBHandleList listResults = {};
         memset((void *)&listResults, 0, 20);
-        listResults.m_list.m_ptNodeAllocator = GBGetHandlePool();
+        listResults.m_list.m_ptNodeAllocator = reinterpret_cast<XListMemoryPool<GBHandle> *>(GBGetHandlePool());
         listResults.m_ConstructorCalled      = 1;
         GBEnumerate(eType, &listResults);
 
@@ -49,9 +49,9 @@ namespace d3 {
                 //     continue;
                 if (CosmeticItemType eType = GetCosmeticItemType(eItem); eType != COSMETIC_ITEM_INVALID) {
                     if (eType == COSMETIC_ITEM_PET) {
-                        SCosmeticItems_LearnPet(idPlayerACD, eItem, 0);
+                        SCosmeticItems_LearnPet(idPlayerACD, eItem, false);
                     } else {
-                        SCosmeticItems_LearnCosmeticItem(idPlayerACD, eItem, eType, 0);
+                        SCosmeticItems_LearnCosmeticItem(idPlayerACD, eItem, eType, false);
                     }
                 }
                 SItemPlayerExtractLegendaryPower(ptSPlayer, eItem, &errorCode);
@@ -81,25 +81,25 @@ namespace d3 {
     }
 
     void FlagsAreFun() {
-        sg_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_ALL_HITS_CRIT_BIT);
-        // sg_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_FLYTHROUGH_BIT);
-        // sg_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_FORCE_SPAWN_ALL_GIZMO_LOCATIONS);
-        sg_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_DISPLAY_ALL_SKILLS);
-        sg_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_DISPLAY_ITEM_AFFIXES);
-        sg_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_DISPLAY_ITEM_ATTRIBUTES);
-        sg_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_ALWAYS_PLAY_GETHIT_BIT);
-        sg_tAppGlobals.dwDebugFlags2 |= (1 << APP_GLOBAL2_DONT_IDENTIFY_RARES_BIT);
-        sg_tAppGlobals.dwDebugFlags2 |= (1 << APP_GLOBAL2_ALWAYS_PLAY_KNOCKBACK_BIT);
-        sg_tAppGlobals.dwDebugFlags2 |= (1 << APP_GLOBAL2_ALL_HITS_OVERKILL_BIT);
-        sg_tAppGlobals.dwDebugFlags2 |= (1 << APP_GLOBAL2_ALL_HITS_CRUSHING_BLOW_BIT);
-        sg_tAppGlobals.dwDebugFlags2 |= (1 << APP_GLOBAL2_DONT_THROTTLE_FLOATING_NUMBERS);
-        sg_tAppGlobals.dwDebugFlags2 |= (1 << APP_GLOBAL2_DISPLAY_ITEM_TARGETED_CLASS);
-        sg_tAppGlobals.dwDebugFlags3 |= (1 << APP_GLOBAL3_ANCIENT_ROLLS_WILL_ALWAYS_SUCCEED);
-        sg_tAppGlobals.dwDebugFlags3 |= (1 << APP_GLOBAL3_ANCIENTS_ALWAYS_ROLL_PRIMAL);
-        sg_tAppGlobals.dwDebugFlags3 |= (1 << APP_GLOBAL3_LOW_HEALTH_SCREEN_GLOW_DISABLED);
-        sg_tAppGlobals.dwDebugFlags3 |= (1 << APP_GLOBAL3_CONSOLE_COLLECTORS_EDITION);
+        g_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_ALL_HITS_CRIT_BIT);
+        // g_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_FLYTHROUGH_BIT);
+        // g_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_FORCE_SPAWN_ALL_GIZMO_LOCATIONS);
+        g_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_DISPLAY_ALL_SKILLS);
+        g_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_DISPLAY_ITEM_AFFIXES);
+        g_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_DISPLAY_ITEM_ATTRIBUTES);
+        g_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_ALWAYS_PLAY_GETHIT_BIT);
+        g_tAppGlobals.dwDebugFlags2 |= (1 << APP_GLOBAL2_DONT_IDENTIFY_RARES_BIT);
+        g_tAppGlobals.dwDebugFlags2 |= (1 << APP_GLOBAL2_ALWAYS_PLAY_KNOCKBACK_BIT);
+        g_tAppGlobals.dwDebugFlags2 |= (1 << APP_GLOBAL2_ALL_HITS_OVERKILL_BIT);
+        g_tAppGlobals.dwDebugFlags2 |= (1 << APP_GLOBAL2_ALL_HITS_CRUSHING_BLOW_BIT);
+        g_tAppGlobals.dwDebugFlags2 |= (1 << APP_GLOBAL2_DONT_THROTTLE_FLOATING_NUMBERS);
+        g_tAppGlobals.dwDebugFlags2 |= (1 << APP_GLOBAL2_DISPLAY_ITEM_TARGETED_CLASS);
+        g_tAppGlobals.dwDebugFlags3 |= (1 << APP_GLOBAL3_ANCIENT_ROLLS_WILL_ALWAYS_SUCCEED);
+        g_tAppGlobals.dwDebugFlags3 |= (1 << APP_GLOBAL3_ANCIENTS_ALWAYS_ROLL_PRIMAL);
+        g_tAppGlobals.dwDebugFlags3 |= (1 << APP_GLOBAL3_LOW_HEALTH_SCREEN_GLOW_DISABLED);
+        g_tAppGlobals.dwDebugFlags3 |= (1 << APP_GLOBAL3_CONSOLE_COLLECTORS_EDITION);
 
-        // sg_tAppGlobals.dwDebugFlags3 = 0xFFFFFFFF;
+        // g_tAppGlobals.dwDebugFlags3 = 0xFFFFFFFF;
     }
 
     void UnlockAll() {
@@ -120,7 +120,7 @@ namespace d3 {
         // AllGBIDsOfType(GB_INVALID, &arGBIDAll);
         // arGBIDAll.clear();
 
-        for (auto ptSPlayer = PlayerGetFirstAll(); ptSPlayer; ptSPlayer = PlayerGetNextAll(ptSPlayer)) {
+        for (auto *ptSPlayer = PlayerGetFirstAll(); ptSPlayer != nullptr; ptSPlayer = PlayerGetNextAll(ptSPlayer)) {
             // nn::os::SleepThread(nTimer);
             if (ptSPlayer->idPlayerACD != ACDID_INVALID) {
                 idCurPlayer    = ptSPlayer->idPlayerACD;
@@ -148,10 +148,10 @@ namespace d3 {
                 // // IntAttribSet(ptACDCurPlayer, PARAGONCAPENABLED, 0, 0);
 
                 PRINT_EXPR("%s: %x | %x | %x \n", ptSPlayer->tAccount.usName, ptSPlayer->idPlayerACD, ptSPlayer->idGameConnection, ptACDCurPlayer->ann)
-                PRINT_EXPR("sg_mapLobby[%x] = %i", idCurPlayer, sg_mapLobby[idCurPlayer])
+                PRINT_EXPR("g_mapLobby[%x] = %i", idCurPlayer, g_mapLobby[idCurPlayer])
                 PRINT_EXPR("ptACDID[%x]->uDigestFlags = %i", idCurPlayer, ptSPlayer->tAccount.uDigestFlags)
-                auto p_uDigestFlags = &ptSPlayer->tAccount.uDigestFlags;
-                *p_uDigestFlags     = 0xFFF;
+                auto *p_uDigestFlags = &ptSPlayer->tAccount.uDigestFlags;
+                *p_uDigestFlags      = 0xFFF;
                 SyncFlags(ptSPlayer, *p_uDigestFlags);
 
                 // ExperienceDropLootForAll(ptACDCurPlayer, idCurPlayer, 0xFFFFFFFF, 0, 14 + 7.0);
@@ -190,8 +190,8 @@ namespace d3 {
                 // nn::os::SleepThread(nTimer);
                 // DisplayGameMessageForAllPlayers("UIToolTips:Gold", 0xFEFEFEFE, 0xFEFEFEFE);
                 DisplayGameMessageForAllPlayers("ConsoleUI:AutosaveWarningScreenText_Switch", 0xFEFEFEFE, 0xFEFEFEFE);
-                if (!sg_mapLobby[idCurPlayer]) {
-                    // sg_mapLobby[idCurPlayer] = true;
+                if (!g_mapLobby[idCurPlayer]) {
+                    // g_mapLobby[idCurPlayer] = true;
                     /* Mod stash slots to maximum of 910 */
                     IntAttribSet(ptACDCurPlayer, SHARED_STASH_SLOTS, -1, 910);
                     IntAttribSet(ptACDCurPlayer, HIGHEST_UNLOCKED_RIFT_LEVEL, -1, 147);
@@ -233,12 +233,12 @@ namespace d3 {
                     PRINT("%d", 0)
                     // break;
                     /* Teach all crafting recipes */
-                    vector<GBID> eRecipes;
-                    AllGBIDsOfType(GB_RECIPES, &eRecipes);
-                    for (GBID &eRecipe : eRecipes)
+                    std::vector<GBID> eRecipes;
+                    // (static_cast<size_t>(1000));
+                    AllGBIDsOfType(GB_RECIPES, eRecipes);
+                    for (GBID eRecipe : eRecipes)
                         if (eRecipe != -1)
                             SItemCrafting_LearnRecipe(ptSPlayer->idPlayerACD, eRecipe);
-
                     PRINT("%d", 1)
                 }
 
@@ -255,24 +255,24 @@ namespace d3 {
             return;
         _SERVERCODE_ON
         WorldPlace tPlace;  // SACDInventoryPickupOrSpillOntoGround(tACDPlayer, tACDNewItem, 0, 0LL, 1);
-        if (tACDNewItem &&
-            FlippyFindLandingLocation(tACDPlayer, tACDNewItem->snoActor, &tPlace, PlayerGetByACD(tACDPlayer->id), nullptr, ACDID_INVALID))
+        if ((tACDNewItem != nullptr) &&
+            (FlippyFindLandingLocation(tACDPlayer, tACDNewItem->snoActor, &tPlace, PlayerGetByACD(tACDPlayer->id), nullptr, ACDID_INVALID) != 0))
             FlippyDropCreateOnActor(tACDPlayer->id, tACDNewItem->id, &tPlace);
         _SERVERCODE_OFF
     }
 
-    auto DupeItem(ActorCommonData *tACDPlayer, ActorCommonData *tACDItem, bool bCreateFlippy = false) -> ActorCommonData * {
-        if (!_HOSTCHK || ItemHasLabel(tACDItem->hGB.gbid, 114))
+    auto DupeItem(ActorCommonData * /*tACDPlayer*/, ActorCommonData *tACDItem, bool /*bCreateFlippy*/ = false) -> ActorCommonData * {
+        if (!_HOSTCHK || (ItemHasLabel(tACDItem->hGB.gbid, 114) != 0))
             return nullptr;
         D3::Items::Generator tGenerator;
         ItemsGenerator_ctor(&tGenerator);
         auto tRareItemName = *FollowPtr<RareItemName, 0x138>(tACDItem);
 
-        *FollowPtr<RareItemName, 0x138>(tACDItem) = cg_tRareItemName;  // Always force template item rare name to "Jester's"
-        PopulateGenerator(tACDItem, &tGenerator, 0);                   // Populate template for new item
-        *FollowPtr<RareItemName, 0x138>(tACDItem) = tRareItemName;     // Restore original rare name
+        *FollowPtr<RareItemName, 0x138>(tACDItem) = g_tRareItemName;  // Always force template item rare name to "Jester's"
+        PopulateGenerator(tACDItem, &tGenerator, 0);                  // Populate template for new item
+        *FollowPtr<RareItemName, 0x138>(tACDItem) = tRareItemName;    // Restore original rare name
         _SERVERCODE_ON
-        auto tACDNewItem = ACDTryToGet(SItemGenerate(&ItemInvalid, &tGenerator, &cgplaceNull, 0.0, 0));
+        auto *tACDNewItem = ACDTryToGet(SItemGenerate(&g_itemInvalid, &tGenerator, &g_cPlaceNull, 0.0, 0));
         _SERVERCODE_OFF
         ItemsGenerator_dtor(&tGenerator);  // Destruct generator
         return tACDNewItem;

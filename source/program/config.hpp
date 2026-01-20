@@ -122,8 +122,8 @@ struct PatchConfig {
         bool        DisableTormentDrops       = false;
         bool        DisableTormentCheck       = false;
         bool        SuppressGiftGeneration    = true;
-        u32         ForcedILevel              = 0;
-        u32         TieredLootRunLevel        = 0;
+        int         ForcedILevel              = 0;
+        int         TieredLootRunLevel        = 0;
         std::string AncientRank               = "Primal";
         int         AncientRankValue          = 2;
     } loot_modifiers;

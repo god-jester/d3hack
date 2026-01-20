@@ -1,6 +1,8 @@
 #pragma once
 
 #include <array>
+#include <string_view>
+#include <vector>
 #include "sys/types.h"
 #include "lib/util/ptr_path.hpp"
 #include "lib/diag/assert.hpp"

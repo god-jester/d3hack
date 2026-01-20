@@ -1,12 +1,17 @@
 ---
+ExtraArgs: ["-Wno-unknown-attributes", "-std=gnu++23"]
 # bugprone-implicit-widening-of-multiplication-resultは64bitのみの対応で良くなれば追加することが可能
-Checks:          '-*,modernize-*,android-*,bugprone-*,-bugprone-sizeof-expression,misc-*,performance-*,-cert-dcl50-cpp,-cert-err58-cpp,readability-*,-misc-no-recursion,-misc-non-private-member-variables-in-classes,-readability-uppercase-literal-suffix,-readability-magic-numbers,-readability-braces-around-statements,-readability-implicit-bool-cast,-readability-named-parameter,google-*,-google-readability-braces-around-statements,-google-runtime-int,-google-readability-function-size,clang-analyzer-*,-clang-analyzer-alpha*,-clang-analyzer-deadcode*,modernize-use-equals-default,modernize-use-equals-delete,modernize-use-override,modernize-return-braced-init-list,-bugprone-easily-swappable-parameters,-bugprone-implicit-widening-of-multiplication-result,-bugprone-lambda-function-name'
+Checks: readability-*, modernize-*, android-*, google-*, bugprone-*, misc-*, performance-*, clang-analyzer-*, 
+  -cert-dcl50-cpp, -cert-err58-cpp, -bugprone-sizeof-expression, -misc-no-recursion, -misc-non-private-member-variables-in-classes, -misc-include-cleaner, 
+  -clang-analyzer-alpha*, -clang-analyzer-deadcode*, -google-readability-braces-around-statements, -google-runtime-int, -google-readability-function-size, 
+  -bugprone-easily-swappable-parameters, -bugprone-implicit-widening-of-multiplication-result, -bugprone-lambda-function-name, 
+  -readability-non-const-parameter, -readability-uppercase-literal-suffix, -readability-magic-numbers, -readability-braces-around-statements, 
+  -readability-implicit-bool-cast, -readability-named-parameter, -modernize-use-scoped-lock, -performance-enum-size
 # Checks: '-*,readability-isolate-declaration,readability-implicit-bool-conversion'
 # HeaderFilterRegex: '(nn/nlib/([^PC].+|threading/.+|unicode/.+|testing/.+|msgpack/.+|succinct/.+|oss/.+|succinct/.+))'
-# HeaderFilterRegex: '.\\.+hpp'
+# HeaderFilterRegex: '.+\.hpp'
 # HeaderFilterRegex: '^(?!(setting.hpp))'
-# ExcludeHeaderFilterRegex: '(\\source\\setting.hpp|(lib\\.+|nn\\.+))'
-AnalyzeTemporaryDtors: false
+# ExcludeHeaderFilterRegex: '(setting\.hpp|common\.hpp|(lib/*|nn/*)|/opt/devkitpro/*)'
 User:            user
 CheckOptions: [
 
@@ -19,14 +24,11 @@ CheckOptions: [
 #  See: https://clang.llvm.org/extra/clang-tidy/checks/readability-identifier-naming.html
 #
   {key: readability-identifier-naming.AbstractClassCase, value: camelBack},
-
   {key: readability-identifier-naming.ClassCase, value: camelBack},
-
   {key: readability-identifier-naming.ClassConstantCase, value: camelBack},
   {key: readability-identifier-naming.ClassConstantPrefix, value: ''},
 
 #  {key: readability-identifier-naming.ClassMemberCase, value: lower_case},  # no PrivateClassMemberCase
-
 #  {key: readability-identifier-naming.ClassMethodCase, value: camelBack},
 
   {key: readability-identifier-naming.ConstantCase, value: camelBack},
@@ -45,14 +47,14 @@ CheckOptions: [
   {key: readability-identifier-naming.ConstexprMethodIgnoredRegexp, value: '.+_$|^begin$|^end$|^cbegin$|^cend$|^size$|^length$|^empty$|^at$|^front$|^back$|^data$'},
 
   {key: readability-identifier-naming.ConstexprVariableCase, value: CamelCase},
-  {key: readability-identifier-naming.ConstexprVariablePrefix, value: ''},
-  {key: readability-identifier-naming.ConstexprVariableIgnoredRegexp, value: '.+_$|^value$'},
+  # {key: readability-identifier-naming.ConstexprVariablePrefix, value: 'k'},
+  {key: readability-identifier-naming.ConstexprVariableIgnoredRegexp, value: '.+_$|^k*|^value$'},
 
   {key: readability-identifier-naming.EnumCase, value: CamelCase},
   {key: readability-identifier-naming.EnumIgnoredRegexp, value: '^\$.+'},
   {key: readability-identifier-naming.EnumConstantCase, value: UPPER_CASE},
   {key: readability-identifier-naming.EnumConstantIgnoredRegexp, value: '^_.+'},
-  # {key: readability-identifier-naming.EnumConstantPrefix, value: ''},
+  {key: readability-identifier-naming.EnumConstantPrefix, value: ''},
 
   {key: readability-identifier-naming.FunctionCase, value: CamelCase},
   {key: readability-identifier-naming.FunctionIgnoredRegexp, value: '^swap$|^nlib_.+$|^nmalloc.*'},
@@ -72,12 +74,11 @@ CheckOptions: [
  {key: readability-identifier-naming.GlobalVariableCase, value: camelBack},
  {key: readability-identifier-naming.GlobalVariablePrefix, value: 'g_'},
  {key: readability-identifier-naming.GlobalVariableIgnoredRegexp, value: '^CRefString_.+|^gRefString.+'},
+
   # IgnoreMainLikeFunctions
 
   {key: readability-identifier-naming.InlineNamespaceCase, value: lower_case},
-
   {key: readability-identifier-naming.LocalConstantCase, value: camelBack},
-
   {key: readability-identifier-naming.LocalConstantPointerCase, value: camel_Snake_Back},
   {key: readability-identifier-naming.LocalPointerCase, value: camel_Snake_Back},
   # {key: readability-identifier-naming.LocalPointerPrefix, value: ''},
@@ -120,13 +121,14 @@ CheckOptions: [
   {key: readability-identifier-naming.StaticConstantPrefix, value: ''},
 
   {key: readability-identifier-naming.StaticVariableCase, value: lower_case},
-  {key: readability-identifier-naming.StaticVariablePrefix, value: 'g_'},
+  {key: readability-identifier-naming.StaticVariablePrefix, value: 's_'},
 
   {key: readability-identifier-naming.StructCase, value: Camel_Snake_Case},
+  {key: readability-identifier-naming.StructIgnoredRegexp, value: '.+$'},
 
-  {key: readability-identifier-naming.TemplateParameterCase, value: UPPER_CASE},
+  # {key: readability-identifier-naming.TemplateParameterCase, value: UPPER_CASE},
 
-  {key: readability-identifier-naming.TemplateTemplateParameterCase, value: UPPER_CASE},
+  # {key: readability-identifier-naming.TemplateTemplateParameterCase, value: UPPER_CASE},
 
   # {key: readability-identifier-naming.TypeAliasCase, value: camelBack},
   # {key: readability-identifier-naming.TypeAliasIgnoredRegexp, value: '^type$|^iterator_category$|^value_type$|^difference_type$|^pointer$|^const_pointer$|^reference$|^const_reference$|^size_type$|^iterator$|^const_iterator$|^reverse_iterator$|^const_reverse_iterator$'},
@@ -157,7 +159,7 @@ CheckOptions: [
   {key: modernize-pass-by-value.IncludeStyle, value: llvm},
   {key: modernize-replace-auto-ptr.IncludeStyle, value: llvm},
   {key: modernize-use-nullptr.NullMacros, value: 'NULL'},
-  {key: readability-function-cognitive-complexity.Threshold, value: '150'}
+  {key: readability-function-cognitive-complexity.Threshold, value: '150'},
   {key: modernize-avoid-bind.UseLambda, value: '1'},
   {key: modernize-concat-nested-namespaces.ShortNamespaceLines, value: '1'},
   {key: modernize-deprecated-headers.Replacements, value: ''},
@@ -191,5 +193,8 @@ CheckOptions: [
   {key: modernize-use-transparent-functors.FunctionTypes, value: ''},
   {key: modernize-use-uncaught-exceptions.IgnoreNoexceptFunctions, value: '0'},
   {key: modernize-use-using.IgnoreMacros, value: '1'},
+  {key: misc-include-cleaner.UnusedIncludes, value: 'true'},
+  {key: misc-include-cleaner.MissingIncludes, value: 'false'}
+
 ]
 ...

@@ -13,16 +13,16 @@
 
 namespace exl::setting {
     /* How large the fake .bss heap will be. */
-    constexpr size_t HeapSize = 0x5000;
+    constexpr size_t HeapSize = 0x2000;
 
     /* How large the JIT area will be for hooks. */
-    constexpr size_t JitSize = 0x5000;  // default 0x1000 usually works
+    constexpr size_t JitSize = 0x4000;  // default 0x1000 usually works
 
     /* How large the area will be inline hook pool. */
-    constexpr size_t InlinePoolSize = 0x5000;  // default 0x1000 usually works
+    constexpr size_t InlinePoolSize = 0x4000;  // default 0x1000 usually works
 
     /* How large the formatting buffer should be for logging. The buffer will be on the stack. */
-    constexpr size_t LogBufferSize = 512;
+    constexpr size_t LogBufferSize = 256;
 
     /* Sanity checks. */
     static_assert(ALIGN_UP(JitSize, PAGE_SIZE) == JitSize, "");
