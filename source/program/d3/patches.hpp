@@ -150,13 +150,15 @@ namespace d3 {
         // jest.Patch<Movz>(PatchTable("patch_resolution_targets_11_movz"), W0, 0);  // 0 = "Docked"
         // ShellInitialize (0x6678C8): BL nn::oe::GetPerformanceMode
         // ShellEventLoop (0x667B04): BL nn::oe::GetPerformanceMode
-        // jest.Patch<Movz>(PatchTable("patch_resolution_targets_12_movz"), W0, 1);  // 1 = "Boost"
-        // jest.Patch<Movz>(PatchTable("patch_resolution_targets_13_movz"), W0, 1);  // 1 = "Boost"
+        jest.Patch<Movz>(PatchTable("patch_resolution_targets_12_movz"), W0, 1);  // 1 = "Boost"
+        jest.Patch<Movz>(PatchTable("patch_resolution_targets_13_movz"), W0, 1);  // 1 = "Boost"
         if (!(global_config.resolution_hack.active))
             return;
 
         const u32 outW = global_config.resolution_hack.OutputWidthPx();
         const u32 outH = global_config.resolution_hack.OutputHeightPx();
+        // const u32 clampW = global_config.resolution_hack.ClampTextureWidthPx();
+        // const u32 clampH = global_config.resolution_hack.ClampTextureHeightPx();
 
         // NX64NVNHeap::EarlyInit (0x0E7770): uMaxSize/Preallocate size.
         // 0x0E7770: MOV W19, #0x49C00000

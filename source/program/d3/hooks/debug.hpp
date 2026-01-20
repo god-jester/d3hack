@@ -296,27 +296,6 @@ namespace d3 {
         }
     };
 
-    HOOK_DEFINE_INLINE(GfxWindowChangeDisplayModeHook) {
-        // @ void __fastcall GfxWindowChangeDisplayMode(const DisplayMode *tMode)
-        static void Callback(exl::hook::InlineCtx *ctx) {
-            auto *tMode = reinterpret_cast<DisplayMode *>(ctx->X[0]);
-            if (tMode == nullptr) {
-                PRINT("GfxWindowChangeDisplayMode X0=null LR=0x%lx", ctx->X[30])
-                return;
-            }
-            PRINT("GfxWindowChangeDisplayMode X0=%p LR=0x%lx", tMode, ctx->X[30])
-            PRINT(
-                "  dwFlags=0x%x dwWindowMode=%d nWinLeft=%d nWinTop=%d nWinWidth=%d nWinHeight=%d",
-                tMode->dwFlags, tMode->dwWindowMode, tMode->nWinLeft, tMode->nWinTop, tMode->nWinWidth, tMode->nWinHeight
-            )
-            PRINT(
-                "  dwUIOptWidth=%u dwUIOptHeight=%u dwWidth=%u dwHeight=%u nRefreshRate=%d dwBitDepth=%u dwMSAALevel=%u",
-                tMode->dwUIOptWidth, tMode->dwUIOptHeight, tMode->dwWidth, tMode->dwHeight, tMode->nRefreshRate, tMode->dwBitDepth, tMode->dwMSAALevel
-            )
-            PRINT("  flAspectRatio=%f", tMode->flAspectRatio)
-        }
-    };
-
     using GFXNX64NVNHandle                   = uintptr_t;
     using GfxViewportSetFn                   = void (*)(GFXNX64NVNHandle *self, IRect2D *rectViewport);
     inline GfxViewportSetFn g_gfxViewportSet = reinterpret_cast<GfxViewportSetFn>(GameOffset(0x0F0280));

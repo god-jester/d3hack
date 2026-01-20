@@ -5,7 +5,7 @@
 #include <string_view>
 
 #include "lib/alloc.hpp"
-#include "nn/fs.hpp"
+#include "nn/fs.hpp"  // IWYU pragma: keep
 #include "program/d3/setting.hpp"
 
 namespace d3::romfs {

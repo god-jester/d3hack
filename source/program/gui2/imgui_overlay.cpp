@@ -11,9 +11,9 @@
 #include "lib/hook/trampoline.hpp"
 #include "lib/reloc/reloc.hpp"
 #include "lib/util/sys/mem_layout.hpp"
-#include "nn/fs.hpp"
-#include "nn/hid.hpp"
-#include "nn/os.hpp"
+#include "nn/fs.hpp"  // IWYU pragma: keep
+#include "nn/hid.hpp"  // IWYU pragma: keep
+#include "nn/os.hpp"  // IWYU pragma: keep
 #include "program/romfs_assets.hpp"
 #include "program/gui2/ui/overlay.hpp"
 #include "program/gui2/ui/windows/notifications_window.hpp"
@@ -93,6 +93,7 @@ namespace d3::imgui_overlay {
             (void)user_data;
 
             if (SigmaMemoryNew != nullptr) {
+                // PRINT("Using SigmaMemoryNew for ImGuiAlloc(%zu)", size);
                 return SigmaMemoryNew(size, 0x20, nullptr, false);
             }
 
@@ -770,6 +771,8 @@ namespace d3::imgui_overlay {
                 io.IniFilename = nullptr;
                 io.LogFilename = nullptr;
                 io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+                io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+                io.ConfigFlags |= ImGuiConfigFlags_IsTouchScreen;
                 io.BackendFlags |= ImGuiBackendFlags_HasGamepad;
                 io.BackendPlatformName = "d3hack";
             }

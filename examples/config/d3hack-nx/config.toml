@@ -12,10 +12,10 @@ SectionEnabled = true
 OutputTarget = 1080
 # Minimum resolution scale (percentage) to apply. 100% = locked resolution.
 MinResScale = 85
-# Clamp internal texture height (0=off, 100-9999). Default 1152 = 2048x1152.
-ClampTextureResolution = 1152
+# Clamp internal texture height (0=off, 100-9999)
+ClampTextureResolution = 1200
 # Use Blizzard's experimental scheduler; can improve performance.
-ExperimentalScheduler = false
+ExperimentalScheduler = true
 
 [seasons]
 # Enable season overrides (SeasonNumber; SeasonMapMode lives under [events]).
@@ -67,7 +67,7 @@ TriunesWill = false
 # Season 19 - Season of Eternal Conflict (Pandemonium killstreaks).
 Pandemonium = false
 # Season 20/31/37 - Season of the Forbidden Archives (unrestricted Kanai's Cube powers).
-KanaiPowers = false
+KanaiPowers = true
 # Season 21 - Trials of the Tempests (elemental meteors).
 TrialsOfTempests = false
 # Season 22/33 - Shades of the Nephalem (Shrines/Pylons = Shadow Clones).
@@ -79,13 +79,13 @@ EtherealItems = false
 # Season 25/30/36 - The Lords of Hell (Soul Shards).
 SoulShards = false
 # Season 26 - The Fall of the Nephalem (Echoing Nightmares).
-SwarmRifts = false
+SwarmRifts = true
 # Season 27/34 - Light's Calling (Sanctified items).
 SanctifiedItems = false
 # Season 28 - Rites of Sanctuary (Altar of Rites: Dark Alchemy).
 DarkAlchemy = true
 # Season 29 - Visions of Enmity (Nesting Portals / Diabolical Fissures).
-NestingPortals = false
+NestingPortals = true
 
 [rare_cheats]
 # Master toggle for gameplay-altering cheats/hacks.
@@ -107,7 +107,7 @@ NoCooldowns = true
 # Instant identify/craft/enchant + instant cube crafts.
 InstantCubeAndCraftsAndEnchants = true
 # Allow socketing any gem into any slot.
-SocketGemsToAnySlot = false
+SocketGemsToAnySlot = true
 # Auto-pickup loot.
 AutoPickup = false
 # Equip items in any slot (slot restrictions removed).
@@ -151,9 +151,9 @@ DisableTormentCheck = true
 # Suppress Ramaladni's Gift generation.
 SuppressGiftGeneration = true
 # Force item level for drops (1-70).
-ForcedILevel = 70
+ForcedILevel = 0
 # Force run level for tiered loot tables.
-TieredLootRunLevel = 150
+TieredLootRunLevel = 0
 # Force ancient rank (Normal | Ancient | Primal).
 AncientRank = "Primal"
 

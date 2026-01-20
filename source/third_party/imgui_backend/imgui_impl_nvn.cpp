@@ -8,10 +8,12 @@
 
 
 #include "lib/diag/assert.hpp"
-#include "program/d3/setting.hpp"
+// #include "program/d3/setting.hpp"
 #include "program/romfs_assets.hpp"
 
 #define UBOSIZE 0x1000
+#define PRINT(...) (static_cast<void>(sizeof(__VA_ARGS__)));
+#define PRINT_LINE(...) (static_cast<void>(sizeof(__VA_ARGS__)));
 
 typedef float Matrix44f[4][4];
 

@@ -4,16 +4,18 @@
 
 namespace exl::util::neon {
 
+#if defined(__clang__)
+    #define VECTOR_TYPE_ASSERT(bits, length)
+#else
+    #define VECTOR_TYPE_ASSERT(bits, length)                                                                    \
+        static_assert(sizeof(VECTOR_NAME(bits, length)) == sizeof(f##bits) * length,                            \
+                      STRINGIFY(VECTOR_NAME(bits, length)) " type is wrong!")
+#endif
     #define VECTOR_SIZE(size) [[gnu::vector_size(size)]]
     #define VECTOR_NAME(bits, length) F##bits##x##length
-#if defined(__clang__)
-    #define VECTOR_TYPE(bits, length)                                                                           \
-        using VECTOR_NAME(bits, length) = f##bits VECTOR_SIZE(sizeof(f##bits) * length);
-#else
     #define VECTOR_TYPE(bits, length)                                                                           \
         using VECTOR_NAME(bits, length) = f##bits VECTOR_SIZE(sizeof(f##bits) * length);                        \
-        static_assert(sizeof(VECTOR_NAME(bits, length)) == sizeof(f##bits) * length,  STRINGIFY(VECTOR_NAME(bits, length))  " type is wrong!")
-#endif
+        VECTOR_TYPE_ASSERT(bits, length)
 
     VECTOR_TYPE(16, 4);
     VECTOR_TYPE(32, 2);
@@ -43,4 +45,5 @@ namespace exl::util::neon {
     #undef VECTOR_SIZE
     #undef VECTOR_NAME
     #undef VECTOR_TYPE
+    #undef VECTOR_TYPE_ASSERT
 }

@@ -18,9 +18,6 @@
 #define IMGUI_DISABLE_DEMO_WINDOWS
 #define IMGUI_DISABLE_WIN32_FUNCTIONS
 #define IMGUI_DISABLE_TTY_FUNCTIONS
+// #define IMGUI_DISABLE_STB_TRUETYPE_IMPLEMENTATION
 // #define IMGUI_DISABLE_DEFAULT_FONT
 // #define IMGUI_DISABLE_OBSOLETE_FUNCTIONS
-
-// Route stb_truetype allocations through ImGui's allocator.
-#define STBTT_malloc(x, u) ((void)(u), IM_ALLOC(x))
-#define STBTT_free(x, u)   ((void)(u), IM_FREE(x))

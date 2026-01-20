@@ -1,7 +1,7 @@
 #include "config.hpp"
 #include "d3/setting.hpp"
 #include "lib/diag/assert.hpp"
-#include "nn/fs.hpp"
+#include "nn/fs.hpp"  // IWYU pragma: keep
 
 #include <sstream>
 #include <string_view>

@@ -112,6 +112,7 @@ namespace d3 {
             auto  sGameCurID     = AppServerGetOnlyGame();
             g_idGameConnection   = ServerGetOnlyGameConnection();
             PRINT("NEW sInitializeWorld! (SGame: %x | Connection: %x | Primary for connection: %p) %s %s", sGameCurID, g_idGameConnection, GetPrimaryPlayerForGameConnection(g_idGameConnection), ptSGameGlobals->uszCreatorAccountName, ptSGameGlobals->uszCreatorHeroName);
+            // GfxWindowChangeDisplayModeHook::Callback(&g_ptGfxData->tCurrentMode);
         }
     };
     HOOK_DEFINE_TRAMPOLINE(MainInit){
