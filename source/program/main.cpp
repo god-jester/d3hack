@@ -138,11 +138,12 @@ namespace d3 {
                 const u32 clampH = global_config.resolution_hack.ClampTextureHeightPx();
                 const u32 clampW = global_config.resolution_hack.ClampTextureWidthPx();
                 PRINT(
-                    "ResolutionHack config: target=%u output=%ux%u min_scale=%.1f clamp_h=%u clamp=%ux%u defaults_only=%u",
+                    "ResolutionHack config: target=%u output=%ux%u min_scale=%.1f max_scale=%.1f clamp_h=%u clamp=%ux%u defaults_only=%u",
                     global_config.resolution_hack.target_resolution,
                     outW,
                     outH,
                     global_config.resolution_hack.min_res_scale,
+                    global_config.resolution_hack.max_res_scale,
                     clampH,
                     clampW,
                     clampH,
@@ -153,7 +154,7 @@ namespace d3 {
             }
 
             PatchRenderTargetCurrentResolutionScale(
-                global_config.resolution_hack.active ? global_config.resolution_hack.output_handheld_scale : 0.0f
+                global_config.resolution_hack.active ? global_config.resolution_hack.HandheldScaleFraction() : 0.0f
             );
 
             // Apply patches based on config
@@ -260,7 +261,7 @@ namespace d3 {
         if (prev.resolution_hack.active != global_config.resolution_hack.active ||
             prev.resolution_hack.output_handheld_scale != global_config.resolution_hack.output_handheld_scale) {
             PatchRenderTargetCurrentResolutionScale(
-                global_config.resolution_hack.active ? global_config.resolution_hack.output_handheld_scale : 0.0f
+                global_config.resolution_hack.active ? global_config.resolution_hack.HandheldScaleFraction() : 0.0f
             );
             append_note("RT scale");
         }

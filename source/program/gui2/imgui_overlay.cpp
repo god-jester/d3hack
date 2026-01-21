@@ -321,12 +321,17 @@ namespace d3::imgui_overlay {
             return (buttons & (1ULL << bit)) != 0;
         }
 
+        static bool KeyboardKeyDown(const nn::hid::KeyboardState &state, nn::hid::KeyboardKey key) {
+            return state.keys.isBitSet(key);
+        }
+
         static d3::gui2::ui::Overlay g_overlay {};
         static NpadCombinedState     g_last_npad {};
         static bool                  g_last_npad_valid = false;
 
         static void PushImGuiGamepadInputs(float dt_s);
         static void PushImGuiMouseInputs(const ImVec2 &viewport_size);
+        static void PushImGuiKeyboardInputs();
         static void UpdateImGuiStyleAndScale(ImVec2 viewport_size);
 
         static bool       g_imgui_style_initialized = false;
@@ -569,6 +574,105 @@ namespace d3::imgui_overlay {
             }
         }
 
+        static void PushImGuiKeyboardInputs() {
+            if (!g_imgui_ctx_initialized) {
+                return;
+            }
+
+            // Avoid calling into hid early; wait until the game has completed shell initialization.
+            if (d3::g_ptMainRWindow == nullptr) {
+                return;
+            }
+
+            ScopedHidPassthroughForOverlay passthrough_guard;
+
+            static bool s_keyboard_init_tried = false;
+            if (!s_keyboard_init_tried) {
+                s_keyboard_init_tried = true;
+                nn::hid::InitializeKeyboard();
+            }
+
+            nn::hid::KeyboardState st {};
+            nn::hid::GetKeyboardState(&st);
+
+            ImGuiIO &io = ImGui::GetIO();
+
+            const bool ctrl_left = KeyboardKeyDown(st, nn::hid::KeyboardKey::LeftControl);
+            const bool ctrl_right = KeyboardKeyDown(st, nn::hid::KeyboardKey::RightControl);
+            const bool shift_left = KeyboardKeyDown(st, nn::hid::KeyboardKey::LeftShift);
+            const bool shift_right = KeyboardKeyDown(st, nn::hid::KeyboardKey::RightShift);
+            const bool alt_left = KeyboardKeyDown(st, nn::hid::KeyboardKey::LeftAlt);
+            const bool alt_right = KeyboardKeyDown(st, nn::hid::KeyboardKey::RightAlt);
+            const bool gui_left = KeyboardKeyDown(st, nn::hid::KeyboardKey::LeftGui);
+            const bool gui_right = KeyboardKeyDown(st, nn::hid::KeyboardKey::RightGui);
+            const bool ctrl_mod = st.modifiers.isBitSet(nn::hid::KeyboardModifier::Control);
+            const bool shift_mod = st.modifiers.isBitSet(nn::hid::KeyboardModifier::Shift);
+            const bool alt_mod = st.modifiers.isBitSet(nn::hid::KeyboardModifier::LeftAlt) ||
+                st.modifiers.isBitSet(nn::hid::KeyboardModifier::RightAlt);
+            const bool gui_mod = st.modifiers.isBitSet(nn::hid::KeyboardModifier::Gui);
+
+            io.AddKeyEvent(ImGuiKey_LeftCtrl, ctrl_left || (ctrl_mod && !ctrl_right));
+            io.AddKeyEvent(ImGuiKey_RightCtrl, ctrl_right);
+            io.AddKeyEvent(ImGuiKey_LeftShift, shift_left || (shift_mod && !shift_right));
+            io.AddKeyEvent(ImGuiKey_RightShift, shift_right);
+            io.AddKeyEvent(ImGuiKey_LeftAlt, alt_left || (alt_mod && !alt_right));
+            io.AddKeyEvent(ImGuiKey_RightAlt, alt_right);
+            io.AddKeyEvent(ImGuiKey_LeftSuper, gui_left || (gui_mod && !gui_right));
+            io.AddKeyEvent(ImGuiKey_RightSuper, gui_right);
+
+            auto set_key = [&](ImGuiKey key, nn::hid::KeyboardKey hid_key) {
+                io.AddKeyEvent(key, KeyboardKeyDown(st, hid_key));
+            };
+
+            set_key(ImGuiKey_Tab, nn::hid::KeyboardKey::Tab);
+            set_key(ImGuiKey_LeftArrow, nn::hid::KeyboardKey::LeftArrow);
+            set_key(ImGuiKey_RightArrow, nn::hid::KeyboardKey::RightArrow);
+            set_key(ImGuiKey_UpArrow, nn::hid::KeyboardKey::UpArrow);
+            set_key(ImGuiKey_DownArrow, nn::hid::KeyboardKey::DownArrow);
+            set_key(ImGuiKey_Enter, nn::hid::KeyboardKey::Return);
+            set_key(ImGuiKey_Escape, nn::hid::KeyboardKey::Escape);
+            set_key(ImGuiKey_Backspace, nn::hid::KeyboardKey::Backspace);
+            set_key(ImGuiKey_Space, nn::hid::KeyboardKey::Space);
+
+            set_key(ImGuiKey_0, nn::hid::KeyboardKey::D0);
+            set_key(ImGuiKey_1, nn::hid::KeyboardKey::D1);
+            set_key(ImGuiKey_2, nn::hid::KeyboardKey::D2);
+            set_key(ImGuiKey_3, nn::hid::KeyboardKey::D3);
+            set_key(ImGuiKey_4, nn::hid::KeyboardKey::D4);
+            set_key(ImGuiKey_5, nn::hid::KeyboardKey::D5);
+            set_key(ImGuiKey_6, nn::hid::KeyboardKey::D6);
+            set_key(ImGuiKey_7, nn::hid::KeyboardKey::D7);
+            set_key(ImGuiKey_8, nn::hid::KeyboardKey::D8);
+            set_key(ImGuiKey_9, nn::hid::KeyboardKey::D9);
+
+            set_key(ImGuiKey_A, nn::hid::KeyboardKey::A);
+            set_key(ImGuiKey_B, nn::hid::KeyboardKey::B);
+            set_key(ImGuiKey_C, nn::hid::KeyboardKey::C);
+            set_key(ImGuiKey_D, nn::hid::KeyboardKey::D);
+            set_key(ImGuiKey_E, nn::hid::KeyboardKey::E);
+            set_key(ImGuiKey_F, nn::hid::KeyboardKey::F);
+            set_key(ImGuiKey_G, nn::hid::KeyboardKey::G);
+            set_key(ImGuiKey_H, nn::hid::KeyboardKey::H);
+            set_key(ImGuiKey_I, nn::hid::KeyboardKey::I);
+            set_key(ImGuiKey_J, nn::hid::KeyboardKey::J);
+            set_key(ImGuiKey_K, nn::hid::KeyboardKey::K);
+            set_key(ImGuiKey_L, nn::hid::KeyboardKey::L);
+            set_key(ImGuiKey_M, nn::hid::KeyboardKey::M);
+            set_key(ImGuiKey_N, nn::hid::KeyboardKey::N);
+            set_key(ImGuiKey_O, nn::hid::KeyboardKey::O);
+            set_key(ImGuiKey_P, nn::hid::KeyboardKey::P);
+            set_key(ImGuiKey_Q, nn::hid::KeyboardKey::Q);
+            set_key(ImGuiKey_R, nn::hid::KeyboardKey::R);
+            set_key(ImGuiKey_S, nn::hid::KeyboardKey::S);
+            set_key(ImGuiKey_T, nn::hid::KeyboardKey::T);
+            set_key(ImGuiKey_U, nn::hid::KeyboardKey::U);
+            set_key(ImGuiKey_V, nn::hid::KeyboardKey::V);
+            set_key(ImGuiKey_W, nn::hid::KeyboardKey::W);
+            set_key(ImGuiKey_X, nn::hid::KeyboardKey::X);
+            set_key(ImGuiKey_Y, nn::hid::KeyboardKey::Y);
+            set_key(ImGuiKey_Z, nn::hid::KeyboardKey::Z);
+        }
+
         using GetNpadStateFullKeyFn  = void (*)(nn::hid::NpadFullKeyState *, uint const &);
         using GetNpadStateHandheldFn = void (*)(nn::hid::NpadHandheldState *, uint const &);
         using GetNpadStateJoyDualFn  = void (*)(nn::hid::NpadJoyDualState *, uint const &);
@@ -588,6 +692,7 @@ namespace d3::imgui_overlay {
         using GetNpadStatesDetailJoyRightFn = int (*)(int *, nn::hid::NpadJoyRightState *, int, uint const &);
 
         using GetMouseStateFn = void (*)(nn::hid::MouseState *);
+        using GetKeyboardStateFn = void (*)(nn::hid::KeyboardState *);
 
         static void *LookupSymbolAddress(const char *name) {
             for (int i = static_cast<int>(exl::util::ModuleIndex::Start);
@@ -676,6 +781,18 @@ namespace d3::imgui_overlay {
             }
         };
 
+        HOOK_DEFINE_TRAMPOLINE(HidGetKeyboardStateHook) {
+            static void Callback(nn::hid::KeyboardState *out) {
+                if (ShouldBlockGamepadInput()) {
+                    if (out != nullptr) {
+                        *out = {};
+                    }
+                    return;
+                }
+                Orig(out);
+            }
+        };
+
 #undef DEFINE_HID_DETAIL_GET_STATES_HOOK
 #undef DEFINE_HID_GET_STATES_HOOK
 #undef DEFINE_HID_GET_STATE_HOOK
@@ -698,6 +815,7 @@ namespace d3::imgui_overlay {
             HidGetNpadStatesJoyRightHook::InstallAtFuncPtr(static_cast<GetNpadStatesJoyRightFn>(&nn::hid::GetNpadStates));
 
             HidGetMouseStateHook::InstallAtFuncPtr(static_cast<GetMouseStateFn>(&nn::hid::GetMouseState));
+            HidGetKeyboardStateHook::InstallAtFuncPtr(static_cast<GetKeyboardStateFn>(&nn::hid::GetKeyboardState));
 
             struct DetailHookEntry {
                 const char *name;
@@ -849,6 +967,7 @@ namespace d3::imgui_overlay {
                     PushImGuiGamepadInputs(ImGui::GetIO().DeltaTime);
                     if (g_overlay.overlay_visible()) {
                         PushImGuiMouseInputs(viewport_size);
+                        PushImGuiKeyboardInputs();
                     }
 
                     ImGui::NewFrame();

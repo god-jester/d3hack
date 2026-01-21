@@ -221,13 +221,26 @@ namespace d3::gui2::ui::windows {
                     overlay_.set_ui_dirty(true);
                 }
                 mark_dirty(ImGui::Checkbox(overlay_.tr("gui.resolution_spoof_docked", "Spoof docked"), &cfg.resolution_hack.spoof_docked));
+                bool  handheld_auto  = cfg.resolution_hack.output_handheld_scale <= 0.0f;
+                if (ImGui::Checkbox(
+                        overlay_.tr("gui.resolution_output_handheld_auto", "Handheld output scale: auto (stock)"),
+                        &handheld_auto
+                    )) {
+                    if (handheld_auto) {
+                        cfg.resolution_hack.output_handheld_scale = 0.0f;
+                    } else if (cfg.resolution_hack.output_handheld_scale <= 0.0f) {
+                        cfg.resolution_hack.output_handheld_scale = 80.0f;
+                    }
+                    overlay_.set_ui_dirty(true);
+                }
+                ImGui::BeginDisabled(handheld_auto);
                 float handheld_scale = cfg.resolution_hack.output_handheld_scale;
                 if (ImGui::SliderFloat(
-                        overlay_.tr("gui.resolution_output_handheld_scale", "Handheld output scale (0=auto)"),
+                        overlay_.tr("gui.resolution_output_handheld_scale", "Handheld output scale (%)"),
                         &handheld_scale,
                         PatchConfig::ResolutionHackConfig::kHandheldScaleMin,
                         PatchConfig::ResolutionHackConfig::kHandheldScaleMax,
-                        "%.2f",
+                        "%.0f%%",
                         ImGuiSliderFlags_AlwaysClamp
                     )) {
                     handheld_scale = PatchConfig::ResolutionHackConfig::NormalizeHandheldScale(handheld_scale);
@@ -236,6 +249,7 @@ namespace d3::gui2::ui::windows {
                         overlay_.set_ui_dirty(true);
                     }
                 }
+                ImGui::EndDisabled();
                 int handheld_target = static_cast<int>(cfg.resolution_hack.OutputHandheldHeightPx());
                 ImGui::BeginDisabled();
                 ImGui::InputInt(
@@ -246,13 +260,38 @@ namespace d3::gui2::ui::windows {
                     ImGuiInputTextFlags_ReadOnly
                 );
                 ImGui::EndDisabled();
-                float min_scale = cfg.resolution_hack.min_res_scale;
-                if (ImGui::SliderFloat(overlay_.tr("gui.resolution_min_scale", "Minimum resolution scale"), &min_scale, 10.0f, 100.0f, "%.0f%%")) {
+                float min_scale  = cfg.resolution_hack.min_res_scale;
+                float max_scale  = cfg.resolution_hack.max_res_scale;
+                bool  scale_dirty = false;
+                if (ImGui::SliderFloat(
+                        overlay_.tr("gui.resolution_min_scale", "Minimum resolution scale"),
+                        &min_scale,
+                        10.0f,
+                        100.0f,
+                        "%.0f%%"
+                    )) {
+                    if (min_scale > max_scale)
+                        max_scale = min_scale;
+                    scale_dirty = true;
+                }
+                if (ImGui::SliderFloat(
+                        overlay_.tr("gui.resolution_max_scale", "Maximum resolution scale"),
+                        &max_scale,
+                        10.0f,
+                        100.0f,
+                        "%.0f%%"
+                    )) {
+                    if (max_scale < min_scale)
+                        min_scale = max_scale;
+                    scale_dirty = true;
+                }
+                if (scale_dirty) {
                     cfg.resolution_hack.min_res_scale = min_scale;
+                    cfg.resolution_hack.max_res_scale = max_scale;
                     overlay_.set_ui_dirty(true);
                 }
                 int clamp_height = static_cast<int>(cfg.resolution_hack.clamp_texture_resolution);
-                if (ImGui::InputInt(overlay_.tr("gui.resolution_clamp_2048", "Clamp texture height (0=off, 100-9999)"), &clamp_height)) {
+                if (ImGui::InputInt(overlay_.tr("gui.resolution_clamp_texture", "Clamp texture height (0=off, 100-9999)"), &clamp_height)) {
                     clamp_height = std::max(clamp_height, 0);
                     if (clamp_height != 0 && clamp_height < 100)
                         clamp_height = 100;

@@ -16,12 +16,13 @@ struct PatchConfig {
     };
 
     struct ResolutionHackConfig {
-        bool  active            = true;
-        u32   target_resolution = 1080;   // boosted docked resolution
-        float min_res_scale     = 85.0f;  // boosted; default is 70%
-        bool  spoof_docked           = false;
-        bool  exp_scheduler     = true;
-        float output_handheld_scale = 0.0;  // 0.0 = keep stock 80% scale in RT resolution calc
+        bool  active                = true;
+        u32   target_resolution     = 1080;    // boosted docked resolution
+        float min_res_scale         = 85.0f;   // boosted; default is 70%
+        float max_res_scale         = 100.0f;  // default
+        bool  spoof_docked          = false;
+        bool  exp_scheduler         = true;
+        float output_handheld_scale = 0.0f;  // percent (0 = auto/stock)
 
         struct ExtraConfig {
             static constexpr s32 kUnset          = -1;
@@ -50,10 +51,10 @@ struct PatchConfig {
 
         ExtraConfig extra {};
 
-        static constexpr float kAspectRatio = 16.0f / 9.0f;
-        static constexpr float kHandheldScaleMin  = 0.1f;
-        static constexpr float kHandheldScaleMax  = 1.0f;
-        static constexpr float kHandheldScaleStep = 0.05f;
+        static constexpr float kAspectRatio       = 16.0f / 9.0f;
+        static constexpr float kHandheldScaleMin  = 30.0f;
+        static constexpr float kHandheldScaleMax  = 100.0f;
+        static constexpr float kHandheldScaleStep = 1.0f;
 
         static constexpr u32 WidthForHeight(u32 height) {
             return static_cast<u32>(height * kAspectRatio);
@@ -68,6 +69,9 @@ struct PatchConfig {
         constexpr u32 OutputHeightPx() const { return AlignEven(target_resolution); }
 
         static float NormalizeHandheldScale(float value) {
+            if (value <= 0.0f) {
+                return 0.0f;
+            }
             value = std::clamp(value, kHandheldScaleMin, kHandheldScaleMax);
             if (kHandheldScaleStep > 0.0f) {
                 value = std::round(value / kHandheldScaleStep) * kHandheldScaleStep;
@@ -75,11 +79,19 @@ struct PatchConfig {
             return std::clamp(value, kHandheldScaleMin, kHandheldScaleMax);
         }
 
-        u32 OutputHandheldHeightPx() const {
+        float HandheldScaleFraction() const {
             if (output_handheld_scale <= 0.0f) {
+                return 0.0f;
+            }
+            return output_handheld_scale * 0.01f;
+        }
+
+        u32 OutputHandheldHeightPx() const {
+            const float scale = HandheldScaleFraction();
+            if (scale <= 0.0f) {
                 return 0u;
             }
-            const float scaled = output_handheld_scale * static_cast<float>(target_resolution);
+            const float scaled = scale * static_cast<float>(target_resolution);
             return AlignEven(static_cast<u32>(std::lroundf(scaled)));
         }
 

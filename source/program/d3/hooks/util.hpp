@@ -164,9 +164,17 @@ namespace d3 {
     HOOK_DEFINE_INLINE(VarResHook) {
         static void Callback(exl::hook::InlineCtx *ctx) {
             auto *ptVarRWindow = reinterpret_cast<VariableResRWindowData *>(ctx->X[19]);
-            ctx->X[1]          = reinterpret_cast<uintptr_t>(&g_szVariableResString);
-            ctx->X[2]          = g_ptGfxData->workerData[0].dwRTHeight;
-            ctx->X[3]          = static_cast<uint32>(ptVarRWindow->flPercent * g_ptGfxData->tCurrentMode.dwHeight);
+            if (ptVarRWindow != nullptr && global_config.resolution_hack.active) {
+                const float min_pct = std::clamp(global_config.resolution_hack.min_res_scale, 10.0f, 100.0f);
+                const float max_pct = std::clamp(global_config.resolution_hack.max_res_scale, min_pct, 100.0f);
+                ptVarRWindow->flMinPercent = min_pct * 0.01f;
+                ptVarRWindow->flMaxPercent = max_pct * 0.01f;
+            }
+            if (global_config.overlays.active && global_config.overlays.var_res_label) {
+                ctx->X[1] = reinterpret_cast<uintptr_t>(&g_szVariableResString);
+                ctx->X[2] = g_ptGfxData->workerData[0].dwRTHeight;
+                ctx->X[3] = static_cast<uint32>(ptVarRWindow->flPercent * g_ptGfxData->tCurrentMode.dwHeight);
+            }
 
             // if (global_config.overlays.active && global_config.overlays.var_res_label)
             //     AppDrawFlagSet(APP_DRAW_VARIABLE_RES_DEBUG_BIT, 1);
@@ -410,7 +418,7 @@ namespace d3 {
         HostArgV::
             InstallAtFuncPtr(nn::os::GetHostArgv);
 
-        if (global_config.overlays.active && global_config.overlays.var_res_label) {
+        if ((global_config.overlays.active && global_config.overlays.var_res_label) || global_config.resolution_hack.active) {
             VarResHook::
                 InstallAtSymbol("sym_var_res_label");
         }

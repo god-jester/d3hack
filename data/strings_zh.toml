@@ -105,10 +105,16 @@ overlays_var_res = "可变分辨率标签"
 resolution_enabled = "启用##res"
 # Output target (vertical)
 resolution_output_target = "输出目标(垂直)"
+# Handheld output scale auto
+resolution_output_handheld_auto = "掌机输出缩放: 自动(原始)"
+# Handheld output scale
+resolution_output_handheld_scale = "掌机输出缩放(%)"
 # Minimum resolution scale
 resolution_min_scale = "最小分辨率缩放"
+# Maximum resolution scale
+resolution_max_scale = "最大分辨率缩放"
 # Clamp texture height (0=off, 100-9999)
-resolution_clamp_2048 = "纹理限制高度(0=关闭)"
+resolution_clamp_texture = "纹理限制高度(0=关闭)"
 # Experimental scheduler
 resolution_exp_scheduler = "实验性调度器"
 # Output size: %ux%u

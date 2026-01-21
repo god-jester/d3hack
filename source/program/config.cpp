@@ -434,6 +434,7 @@ namespace {
             t.insert("OutputTargetHandheld", static_cast<int64_t>(config.resolution_hack.OutputHandheldHeightPx()));
             t.insert("SpoofDocked", config.resolution_hack.spoof_docked);
             t.insert("MinResScale", static_cast<double>(config.resolution_hack.min_res_scale));
+            t.insert("MaxResScale", static_cast<double>(config.resolution_hack.max_res_scale));
             t.insert("ClampTextureResolution", static_cast<int64_t>(config.resolution_hack.clamp_texture_resolution));
             t.insert("ExperimentalScheduler", config.resolution_hack.exp_scheduler);
             toml::table extra;
@@ -709,6 +710,14 @@ void PatchConfig::ApplyTable(const toml::table &table) {
             {"MinScale", "MinimumScale", "MinResScale", "MinimumResScale", "MinResolutionScale", "MinimumResolutionScale"},
             resolution_hack.min_res_scale, 10.0, 100.0
         );
+        resolution_hack.max_res_scale = ReadDouble(
+            *resolution_section,
+            {"MaxScale", "MaximumScale", "MaxResScale", "MaximumResScale", "MaxResolutionScale", "MaximumResolutionScale"},
+            resolution_hack.max_res_scale, 10.0, 100.0
+        );
+        if (resolution_hack.max_res_scale < resolution_hack.min_res_scale) {
+            resolution_hack.max_res_scale = resolution_hack.min_res_scale;
+        }
         resolution_hack.spoof_docked = ReadBool(
             *resolution_section,
             {"SpoofDocked", "SpoofDock", "DockedSpoof"},
@@ -718,16 +727,19 @@ void PatchConfig::ApplyTable(const toml::table &table) {
             *resolution_section,
             {"OutputHandheldScale", "HandheldScale", "HandheldOutputScale"},
             resolution_hack.output_handheld_scale,
-            PatchConfig::ResolutionHackConfig::kHandheldScaleMin,
+            0.0,
             PatchConfig::ResolutionHackConfig::kHandheldScaleMax
         ));
+        if (resolution_hack.output_handheld_scale > 0.0f && resolution_hack.output_handheld_scale <= 1.0f) {
+            resolution_hack.output_handheld_scale *= 100.0f;
+        }
         if (auto handheld_target = ReadNumber(
                 *resolution_section,
                 {"OutputTargetHandheld", "HandheldOutputTarget", "HandheldTarget"}
             )) {
             if (resolution_hack.target_resolution > 0) {
                 const float scale = static_cast<float>(*handheld_target) / static_cast<float>(resolution_hack.target_resolution);
-                resolution_hack.output_handheld_scale = scale;
+                resolution_hack.output_handheld_scale = scale * 100.0f;
             } else {
                 resolution_hack.output_handheld_scale = 0.0f;
             }
@@ -735,15 +747,7 @@ void PatchConfig::ApplyTable(const toml::table &table) {
         resolution_hack.output_handheld_scale = PatchConfig::ResolutionHackConfig::NormalizeHandheldScale(
             resolution_hack.output_handheld_scale
         );
-        const u32 default_clamp  = resolution_hack.clamp_texture_resolution;
-        u32       fallback_clamp = default_clamp;
-        if (auto legacy = ReadValue<bool>(
-                *resolution_section,
-                {"ClampTextures2048", "ClampTexturesTo2048", "ClampTextures", "ClampTex2048", "ClampTex"}
-            )) {
-            fallback_clamp = *legacy ? PatchConfig::ResolutionHackConfig::kClampTextureResolutionDefault : 0u;
-        }
-        u32 clamp_value = fallback_clamp;
+        u32 clamp_value = resolution_hack.clamp_texture_resolution;
         if (auto value = ReadNumber(
                 *resolution_section,
                 {"ClampTextureResolution", "ClampTextureHeight", "ClampTexture", "ClampTextureRes"}

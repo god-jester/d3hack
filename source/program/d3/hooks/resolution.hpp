@@ -82,7 +82,7 @@ namespace d3 {
                 result.flAspectRatio = static_cast<float>(result.dwWidth) / static_cast<float>(result.dwHeight);
 
             PatchRenderTargetCurrentResolutionScale(
-                global_config.resolution_hack.active ? global_config.resolution_hack.output_handheld_scale : 0.0f
+                global_config.resolution_hack.active ? global_config.resolution_hack.HandheldScaleFraction() : 0.0f
             );
 
             return result;

@@ -34,7 +34,8 @@ Current baseline (2026-01-20)
 - NX64NVNHeap EarlyInit headroom and largest pool max_alloc bumped when output height > 1280.
 
 How it works
-- **Config**: `[resolution_hack]` in `config.toml` sets OutputTarget, OutputHandheldScale (0=auto), OutputTargetHandheld (derived), SpoofDocked, MinResScale, ClampTextureResolution (0=off, 100-9999), and ExperimentalScheduler.
+
+- **Config**: `[resolution_hack]` in `config.toml` sets OutputTarget, OutputHandheldScale (percent; 0=auto/stock), OutputTargetHandheld (derived), SpoofDocked, MinResScale, MaxResScale, ClampTextureResolution (0=off, 100-9999), and ExperimentalScheduler.
 - **Config (extra)**: `[resolution_hack.extra]` can override display mode fields (MSAALevel, BitDepth, RefreshRate, and window/UI/render dimensions).
 - **Patches**: PatchResolutionTargets rewrites the display mode table to match OutputTarget and applies NVN heap headroom when output height > 1280.
 - **Hooks**: NVNTexInfoCreateHook clamps oversized internal textures while keeping swapchain textures output-sized.
@@ -45,11 +46,12 @@ Recommended settings (ResHack)
 [resolution_hack]
 SectionEnabled = true
 OutputTarget = 2160
-OutputHandheldScale = 0.0
+OutputHandheldScale = 80
 OutputTargetHandheld = 0
 SpoofDocked = false
 ClampTextureResolution = 1152
-# MinResScale: keep your normal value (85 is a safe starting point).
+MaxResScale = 100 # Adjust max scale for better performance while keeping native UI
+MinResScale = 85 # Game default min scale is 70
 ```
 
 Optional display mode overrides
@@ -113,7 +115,7 @@ Place `config.toml` at:
 
 Key sections:
 
-- `[resolution_hack]`: OutputTarget, OutputHandheldScale, OutputTargetHandheld (derived), SpoofDocked, ClampTextureResolution, MinResScale, ExperimentalScheduler.
+- `[resolution_hack]`: OutputTarget, OutputHandheldScale (percent), OutputTargetHandheld (derived), SpoofDocked, ClampTextureResolution, MinResScale, MaxResScale, ExperimentalScheduler.
 - `[resolution_hack.extra]`: display mode overrides (MSAALevel, BitDepth, RefreshRate, window/UI/render dimensions).
 - `[seasons]`: SeasonNumber, AllowOnlinePlay, SpoofPtr.
 - `[events]`: seasonal flags + SeasonMapMode (MapOnly, OverlayConfig, Disabled).
