@@ -184,15 +184,24 @@ namespace d3::gui2::ui::windows {
                         const char *code;
                     };
                     const Lang kLangs[] = {
-                        {overlay_.tr("gui.lang_auto", "Auto (game)"), ""},
-                        {overlay_.tr("gui.lang_en", "English"), "en"},
-                        {overlay_.tr("gui.lang_de", "Deutsch"), "de"},
-                        {overlay_.tr("gui.lang_fr", "Francais"), "fr"},
-                        {overlay_.tr("gui.lang_es", "Espanol"), "es"},
-                        {overlay_.tr("gui.lang_it", "Italiano"), "it"},
-                        {overlay_.tr("gui.lang_ja", "Japanese"), "ja"},
-                        {overlay_.tr("gui.lang_ko", "Korean"), "ko"},
-                        {overlay_.tr("gui.lang_zh", "Chinese"), "zh"},
+                        {.label = overlay_.tr("gui.lang_auto", "Auto (game)"),
+                         .code  = ""},
+                        {.label = overlay_.tr("gui.lang_en", "English"),
+                         .code  = "en"},
+                        {.label = overlay_.tr("gui.lang_de", "Deutsch"),
+                         .code  = "de"},
+                        {.label = overlay_.tr("gui.lang_fr", "Francais"),
+                         .code  = "fr"},
+                        {.label = overlay_.tr("gui.lang_es", "Espanol"),
+                         .code  = "es"},
+                        {.label = overlay_.tr("gui.lang_it", "Italiano"),
+                         .code  = "it"},
+                        {.label = overlay_.tr("gui.lang_ja", "Japanese"),
+                         .code  = "ja"},
+                        {.label = overlay_.tr("gui.lang_ko", "Korean"),
+                         .code  = "ko"},
+                        {.label = overlay_.tr("gui.lang_zh", "Chinese"),
+                         .code  = "zh"},
                     };
 
                     for (const auto &lang : kLangs) {
@@ -444,12 +453,14 @@ namespace d3::gui2::ui::windows {
                 mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_enabled", "Enabled##rare_cheats"), &cfg.rare_cheats.active));
                 ImGui::BeginDisabled(!cfg.rare_cheats.active);
 
-                float move_speed = static_cast<float>(cfg.rare_cheats.move_speed);
+                auto move_speed =
+                    static_cast<float>(cfg.rare_cheats.move_speed);
                 if (ImGui::SliderFloat(overlay_.tr("gui.rare_cheats_move_speed", "Move speed multiplier"), &move_speed, 0.1f, 10.0f, "%.2fx")) {
                     cfg.rare_cheats.move_speed = static_cast<double>(move_speed);
                     overlay_.set_ui_dirty(true);
                 }
-                float attack_speed = static_cast<float>(cfg.rare_cheats.attack_speed);
+                auto attack_speed =
+                    static_cast<float>(cfg.rare_cheats.attack_speed);
                 if (ImGui::SliderFloat(overlay_.tr("gui.rare_cheats_attack_speed", "Attack speed multiplier"), &attack_speed, 0.1f, 10.0f, "%.2fx")) {
                     cfg.rare_cheats.attack_speed = static_cast<double>(attack_speed);
                     overlay_.set_ui_dirty(true);

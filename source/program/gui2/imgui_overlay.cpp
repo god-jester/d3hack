@@ -138,7 +138,7 @@ namespace d3::imgui_overlay {
                 return false;
             }
 
-            const size_t size_st = static_cast<size_t>(size);
+            const auto size_st = static_cast<size_t>(size);
             if (size_st > max_size) {
                 nn::fs::CloseFile(fh);
                 return false;
@@ -272,7 +272,7 @@ namespace d3::imgui_overlay {
         static auto CombineNpadState(NpadCombinedState &out, uint port) -> bool {
             out = {};
 
-            ScopedHidPassthroughForOverlay passthrough_guard;
+            ScopedHidPassthroughForOverlay const passthrough_guard;
 
             nn::hid::NpadFullKeyState  full {};
             nn::hid::NpadHandheldState handheld {};
@@ -531,7 +531,7 @@ namespace d3::imgui_overlay {
             }
 
             // Keep KBM init and reads scoped so our own HID hooks don't block us while the overlay is visible.
-            ScopedHidPassthroughForOverlay passthrough_guard;
+            ScopedHidPassthroughForOverlay const passthrough_guard;
 
             static bool s_mouse_init_tried = false;
             if (!s_mouse_init_tried) {
@@ -584,7 +584,7 @@ namespace d3::imgui_overlay {
                 return;
             }
 
-            ScopedHidPassthroughForOverlay passthrough_guard;
+            ScopedHidPassthroughForOverlay const passthrough_guard;
 
             static bool s_keyboard_init_tried = false;
             if (!s_keyboard_init_tried) {
@@ -823,20 +823,35 @@ namespace d3::imgui_overlay {
             };
 
             const DetailHookEntry detail_hooks[] = {
-                {"_ZN2nn3hid6detail13GetNpadStatesEPiPNS0_16NpadFullKeyStateEiRKj",
-                 [](uintptr_t addr) -> void { HidDetailGetNpadStatesFullKeyHook::InstallAtPtr(addr); }},
-                {"_ZN2nn3hid6detail13GetNpadStatesEPiPNS0_17NpadHandheldStateEiRKj",
-                 [](uintptr_t addr) -> void { HidDetailGetNpadStatesHandheldHook::InstallAtPtr(addr); }},
-                {"_ZN2nn3hid6detail13GetNpadStatesEPiPNS0_16NpadJoyDualStateEiRKj",
-                 [](uintptr_t addr) -> void { HidDetailGetNpadStatesJoyDualHook::InstallAtPtr(addr); }},
-                {"_ZN2nn3hid6detail13GetNpadStatesEPiPNS0_16NpadJoyLeftStateEiRKj",
-                 [](uintptr_t addr) -> void { HidDetailGetNpadStatesJoyLeftHook::InstallAtPtr(addr); }},
-                {"_ZN2nn3hid6detail13GetNpadStatesEPiPNS0_17NpadJoyRightStateEiRKj",
-                 [](uintptr_t addr) -> void { HidDetailGetNpadStatesJoyRightHook::InstallAtPtr(addr); }},
+                {.name    = "_ZN2nn3hid6detail13GetNpadStatesEPiPNS0_"
+                            "16NpadFullKeyStateEiRKj",
+                 .install = [](uintptr_t addr) -> void {
+                     HidDetailGetNpadStatesFullKeyHook::InstallAtPtr(addr);
+                 }},
+                {.name    = "_ZN2nn3hid6detail13GetNpadStatesEPiPNS0_"
+                            "17NpadHandheldStateEiRKj",
+                 .install = [](uintptr_t addr) -> void {
+                     HidDetailGetNpadStatesHandheldHook::InstallAtPtr(addr);
+                 }},
+                {.name    = "_ZN2nn3hid6detail13GetNpadStatesEPiPNS0_"
+                            "16NpadJoyDualStateEiRKj",
+                 .install = [](uintptr_t addr) -> void {
+                     HidDetailGetNpadStatesJoyDualHook::InstallAtPtr(addr);
+                 }},
+                {.name    = "_ZN2nn3hid6detail13GetNpadStatesEPiPNS0_"
+                            "16NpadJoyLeftStateEiRKj",
+                 .install = [](uintptr_t addr) -> void {
+                     HidDetailGetNpadStatesJoyLeftHook::InstallAtPtr(addr);
+                 }},
+                {.name    = "_ZN2nn3hid6detail13GetNpadStatesEPiPNS0_"
+                            "17NpadJoyRightStateEiRKj",
+                 .install = [](uintptr_t addr) -> void {
+                     HidDetailGetNpadStatesJoyRightHook::InstallAtPtr(addr);
+                 }},
             };
 
             for (const auto &hook : detail_hooks) {
-                void *addr = LookupSymbolAddress(hook.name);
+                void const *addr = LookupSymbolAddress(hook.name);
                 if (addr == nullptr) {
                     PRINT("[imgui_overlay] nn::hid detail symbol missing: %s", hook.name);
                     continue;
@@ -1152,7 +1167,7 @@ namespace d3::imgui_overlay {
         }
         font_cfg.GlyphRanges = s_font_ranges.Data;
 
-        ImFont *font = nullptr;
+        ImFont const *font = nullptr;
 
         static unsigned char *s_romfs_ttf_data = nullptr;
         static size_t         s_romfs_ttf_size = 0;

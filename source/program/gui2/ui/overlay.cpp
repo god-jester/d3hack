@@ -18,7 +18,7 @@ namespace d3::gui2::ui {
             std::string out;
             out.reserve(2);
 
-            for (char ch : in) {
+            for (char const ch : in) {
                 if (std::isalpha(static_cast<unsigned char>(ch)) == 0) {
                     continue;
                 }
@@ -287,7 +287,7 @@ namespace d3::gui2::ui {
                 }
             }
 
-            ImGuiIO &io       = ImGui::GetIO();
+            ImGuiIO const &io = ImGui::GetIO();
             focus_.nav_active = io.NavActive;
             // Dear ImGui doesn't expose WantCaptureGamepad; use keyboard capture as the closest proxy when navigation is enabled.
             focus_.want_capture_gamepad = io.WantCaptureKeyboard;

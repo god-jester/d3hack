@@ -5,6 +5,7 @@
 
 #include <sstream>
 #include <string_view>
+#include <utility>
 
 PatchConfig global_config {};
 
@@ -76,8 +77,8 @@ namespace {
     auto NormalizeKey(std::string_view input) -> std::string {
         std::string out;
         out.reserve(input.size());
-        for (char ch : input) {
-            unsigned char uc = static_cast<unsigned char>(ch);
+        for (char const ch : input) {
+            auto const uc = static_cast<unsigned char>(ch);
             if (std::isspace(uc) || ch == '_' || ch == '-')
                 continue;
             out.push_back(static_cast<char>(std::tolower(uc)));
@@ -134,7 +135,8 @@ namespace {
 
     auto ReadResolutionHackOutputTarget(const toml::table &table, std::initializer_list<std::string_view> keys, u32 fallback) -> u32 {
         if (auto value = ReadValue<int64_t>(table, keys)) {
-            if (*value > 0 && *value <= std::numeric_limits<u32>::max())
+            if (*value > 0 &&
+                std::cmp_less_equal(*value, std::numeric_limits<u32>::max()))
                 return static_cast<u32>(*value);
             return fallback;
         }
@@ -169,27 +171,27 @@ namespace {
 
     auto CaptureSeasonEventFlags(const PatchConfig &config) -> SeasonEventFlags {
         return {
-            config.events.IgrEnabled,
-            config.events.AnniversaryEnabled,
-            config.events.EasterEggWorldEnabled,
-            config.events.DoubleRiftKeystones,
-            config.events.DoubleBloodShards,
-            config.events.DoubleTreasureGoblins,
-            config.events.DoubleBountyBags,
-            config.events.RoyalGrandeur,
-            config.events.LegacyOfNightmares,
-            config.events.TriunesWill,
-            config.events.Pandemonium,
-            config.events.KanaiPowers,
-            config.events.TrialsOfTempests,
-            config.events.ShadowClones,
-            config.events.FourthKanaisCubeSlot,
-            config.events.EtherealItems,
-            config.events.SoulShards,
-            config.events.SwarmRifts,
-            config.events.SanctifiedItems,
-            config.events.DarkAlchemy,
-            config.events.NestingPortals,
+            .IgrEnabled            = config.events.IgrEnabled,
+            .AnniversaryEnabled    = config.events.AnniversaryEnabled,
+            .EasterEggWorldEnabled = config.events.EasterEggWorldEnabled,
+            .DoubleRiftKeystones   = config.events.DoubleRiftKeystones,
+            .DoubleBloodShards     = config.events.DoubleBloodShards,
+            .DoubleTreasureGoblins = config.events.DoubleTreasureGoblins,
+            .DoubleBountyBags      = config.events.DoubleBountyBags,
+            .RoyalGrandeur         = config.events.RoyalGrandeur,
+            .LegacyOfNightmares    = config.events.LegacyOfNightmares,
+            .TriunesWill           = config.events.TriunesWill,
+            .Pandemonium           = config.events.Pandemonium,
+            .KanaiPowers           = config.events.KanaiPowers,
+            .TrialsOfTempests      = config.events.TrialsOfTempests,
+            .ShadowClones          = config.events.ShadowClones,
+            .FourthKanaisCubeSlot  = config.events.FourthKanaisCubeSlot,
+            .EtherealItems         = config.events.EtherealItems,
+            .SoulShards            = config.events.SoulShards,
+            .SwarmRifts            = config.events.SwarmRifts,
+            .SanctifiedItems       = config.events.SanctifiedItems,
+            .DarkAlchemy           = config.events.DarkAlchemy,
+            .NestingPortals        = config.events.NestingPortals,
         };
     }
 
@@ -594,8 +596,8 @@ namespace {
             return false;
         }
 
-        std::string tmp_path = std::string(path) + ".tmp";
-        std::string bak_path = std::string(path) + ".bak";
+        std::string const tmp_path = std::string(path) + ".tmp";
+        std::string const bak_path = std::string(path) + ".bak";
 
         (void)nn::fs::DeleteFile(tmp_path.c_str());
 

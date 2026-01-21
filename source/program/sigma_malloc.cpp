@@ -45,8 +45,8 @@ namespace {
 
         size_t offset = s_boot_offset.load(std::memory_order_relaxed);
         while (true) {
-            size_t aligned_offset = AlignUp(offset, alignment);
-            size_t next_offset    = aligned_offset + size;
+            size_t const aligned_offset = AlignUp(offset, alignment);
+            size_t const next_offset    = aligned_offset + size;
             if (next_offset > kBootAllocSize) {
                 return nullptr;
             }

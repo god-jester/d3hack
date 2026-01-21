@@ -70,7 +70,7 @@ namespace d3::romfs {
                 return false;
             }
 
-            const size_t size_st = static_cast<size_t>(size);
+            const auto size_st = static_cast<size_t>(size);
             if (size_st > max_size) {
                 nn::fs::CloseFile(fh);
                 return false;
@@ -117,9 +117,10 @@ namespace d3::romfs {
             return false;
         }
 
-        // "romfs:/..." is a common convention in modding tools, but the game must have a corresponding
-        // mount name registered. We mount our own "romfs" device once, then only attempt OpenFile when
-        // the mount is known to be in place (some titles abort on invalid/unmounted device names).
+        // "romfs:/..." is a common convention in modding tools, but the game must
+        // have a corresponding mount name registered. We mount our own "romfs"
+        // device once, then only attempt OpenFile when the mount is known to be
+        // in place (some titles abort on invalid/unmounted device names).
         if (std::strncmp(path, "romfs:/", 7) == 0) {
             EnsureRomfsMountedOnce();
             if (!s_romfs_mounted) {
