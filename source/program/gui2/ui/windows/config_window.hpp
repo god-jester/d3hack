@@ -13,6 +13,7 @@ namespace d3::gui2::ui::windows {
         explicit ConfigWindow(ui::Overlay &overlay);
 
        protected:
+        void BeforeBegin() override;
         void AfterEnd() override;
         void RenderContents() override;
 

@@ -6,7 +6,7 @@ Checks: readability-*, modernize-*, android-*, google-*, bugprone-*, misc-*, per
   -clang-analyzer-alpha*, -clang-analyzer-deadcode*, -google-readability-braces-around-statements, -google-runtime-int, -google-readability-function-size, 
   -bugprone-easily-swappable-parameters, -bugprone-implicit-widening-of-multiplication-result, -bugprone-lambda-function-name, 
   -readability-non-const-parameter, -readability-uppercase-literal-suffix, -readability-magic-numbers, -readability-braces-around-statements, 
-  -readability-implicit-bool-cast, -readability-named-parameter, -modernize-use-scoped-lock, -performance-enum-size
+  -readability-implicit-bool-cast, -readability-named-parameter, -modernize-use-scoped-lock, -performance-enum-size, -performance-no-int-to-ptr
 # Checks: '-*,readability-isolate-declaration,readability-implicit-bool-conversion'
 # HeaderFilterRegex: '(nn/nlib/([^PC].+|threading/.+|unicode/.+|testing/.+|msgpack/.+|succinct/.+|oss/.+|succinct/.+))'
 # HeaderFilterRegex: '.+\.hpp'

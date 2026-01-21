@@ -422,7 +422,7 @@ namespace d3 {
             return scale;
         }
 
-        inline uint32 ScaleStencilDim(uint32 dim, float scale) {
+        inline auto ScaleStencilDim(uint32 dim, float scale) -> uint32 {
             auto scaled = static_cast<uint32>(dim * scale);
             scaled &= ~1u;
             scaled = std::max<uint32>(scaled, 2);

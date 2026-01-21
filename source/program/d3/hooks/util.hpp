@@ -4,6 +4,7 @@
 #include "lib/hook/inline.hpp"
 #include "lib/hook/replace.hpp"
 #include "lib/hook/trampoline.hpp"
+#include <oe.hpp>
 
 namespace nn::os {
     auto GetHostArgc() -> u64;
@@ -346,6 +347,24 @@ namespace d3 {
         static auto Callback() -> const char ** { return g_cmdArgs; }
     };
 
+    HOOK_DEFINE_TRAMPOLINE(SpoofDocked) {
+        static auto Callback() -> nn::oe::OperationMode {
+            if (global_config.resolution_hack.spoof_docked)
+                return nn::oe::OperationMode_Docked;
+            else
+                return Orig();
+        }
+    };
+
+    HOOK_DEFINE_TRAMPOLINE(SpoofPerfMode) {
+        static auto Callback() -> nn::oe::PerformanceMode {
+            if (global_config.resolution_hack.spoof_docked)
+                return nn::oe::PerformanceMode_Boost;
+            else
+                return Orig();
+        }
+    };
+
     void SetupUtilityHooks() {
         Enum_GB_Types::
             InstallAtFuncPtr(GBEnumerate);  // A relatively consistent call to refresh without spamming every frame
@@ -392,6 +411,9 @@ namespace d3 {
             FontStringDrawHook::
                 InstallAtSymbol("sym_font_string_draw_0010c8");
         }
+
+        SpoofPerfMode::InstallAtFuncPtr(nn::oe::GetPerformanceMode);
+        SpoofDocked::InstallAtFuncPtr(nn::oe::GetOperationMode);
     }
 
 }  // namespace d3

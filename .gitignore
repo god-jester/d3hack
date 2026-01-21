@@ -22,3 +22,4 @@ config.cmake
 misc/scripts/ryu_filter_logs.py
 **/__pycache__/
 *.pyc
+find_all_symbols_db*yaml

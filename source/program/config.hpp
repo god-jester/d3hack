@@ -18,11 +18,34 @@ struct PatchConfig {
         u32   target_resolution = 1080;   // boosted docked resolution
         float min_res_scale     = 85.0f;  // boosted; default is 70%
         bool  exp_scheduler     = true;
+        float output_target_handheld = 0.0f;  // 0.0 = keep stock 0.8f scale in RT resolution calc
+
+        struct ExtraConfig {
+            static constexpr s32 kUnset          = -1;
+            static constexpr s32 kMaxDimension   = 16384;
+            static constexpr s32 kMaxRefreshRate = 1000;
+            static constexpr s32 kMaxBitDepth    = 64;
+            static constexpr s32 kMaxMsaaLevel   = 16;
+
+            s32 window_left   = kUnset;
+            s32 window_top    = kUnset;
+            s32 window_width  = kUnset;
+            s32 window_height = kUnset;
+            s32 ui_opt_width  = kUnset;
+            s32 ui_opt_height = kUnset;
+            s32 render_width  = kUnset;
+            s32 render_height = kUnset;
+            s32 refresh_rate  = kUnset;
+            s32 bit_depth     = kUnset;
+            s32 msaa_level    = kUnset;
+        };
 
         static constexpr u32 kClampTextureResolutionDefault = 1152;
         static constexpr u32 kClampTextureResolutionMin     = 100;
         static constexpr u32 kClampTextureResolutionMax     = 9999;
         u32                  clamp_texture_resolution       = kClampTextureResolutionDefault;
+
+        ExtraConfig extra {};
 
         static constexpr float kAspectRatio = 16.0f / 9.0f;
 

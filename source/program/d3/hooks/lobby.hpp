@@ -7,7 +7,7 @@
 
 namespace d3 {
 
-    void ParagonGBIDTests() {
+    inline void ParagonGBIDTests() {
         // [[maybe_unused]] FastAttribKey v44;
         // try setting within normalish 20k bounds and see if it sticks with no codes
         std::vector<GBID> ids;
@@ -93,19 +93,19 @@ namespace d3 {
                 // AttribStringInfo(tKey, ret1);
                 // case ParagonCapEnabled:
                 return 0;
-            case PARAGON_BONUS:
+                // case PARAGON_BONUS:
                 // PRINT_EXPR("%s", AttribToStr(tKey))
                 // if (KeyGetParam(tKey) != -1) { PRINT_EXPR("%li", KeyGetParam(tKey))}
                 // AttribStringInfo(tKey, ret1);
-                return ret;
-            case PARAGONCAPENABLED:
+                //     return ret;
+                // case PARAGONCAPENABLED:
                 // AttribStringInfo(tKey, ret1);
                 // AttribToStr(tKey);
                 // ParamToStr(KeyGetFullAttrib(tKey), KeyGetParam(tKey));
                 // if (KeyGetParam(tKey) != -1) { PRINT_EXPR("%li", KeyGetParam(tKey))}
                 // CheckStringList(tKey.nValue, AttribToStr(tKey));
                 // CheckStringList(tKey.nValue, ParamToStr(KeyGetFullAttrib(tKey), KeyGetParam(tKey)));
-                return ret;
+                // return ret;
             default:
                 return ret;
             }
@@ -256,7 +256,7 @@ namespace d3 {
 
     HOOK_DEFINE_INLINE(CPlayerNewPlayerMsg) {
         static void Callback(exl::hook::InlineCtx *ctx) {
-            if (Player *ptP = reinterpret_cast<Player *>(ctx->X[20]); ptP != nullptr) {
+            if (auto *ptP = reinterpret_cast<Player *>(ctx->X[20]); ptP != nullptr) {
                 auto szN = ptP->tAccount.usName;
                 PRINT_EXPR("NEW PLAYER! %s %p->%lx ACD: %x", szN, ptP, ptP->uHeroId, ptP->idPlayerACD)
                 if (GameConnectionID idGameConnection = ptP->idGameConnection) {  //ServerGetOnlyGameConnection()) {
@@ -268,7 +268,7 @@ namespace d3 {
         }
     };
 
-    void SetupLobbyHooks() {
+    inline void SetupLobbyHooks() {
         SpecifiersFromModifier::
             InstallAtSymbol("sym_specifiers_from_modifier");
         EvalMod::

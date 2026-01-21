@@ -20,7 +20,7 @@ InlayHints:
 Diagnostics:
   UnusedIncludes: None
   ClangTidy:
-    FastCheckFilter: None
+    FastCheckFilter: Loose
     Remove: [readability*]
 ---
 If:

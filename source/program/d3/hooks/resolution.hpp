@@ -1,8 +1,10 @@
 #pragma once
 
+#include <d3/_util.hpp>
 #include <hook/trampoline.hpp>
 #include "../../config.hpp"
-#include "../../setting.hpp"
+#include "d3/setting.hpp"
+#include <symbols/common.hpp>
 #include "nvn.hpp"
 
 namespace d3 {
@@ -11,6 +13,7 @@ namespace d3 {
             return global_config.resolution_hack.active && global_config.resolution_hack.ClampTexturesEnabled();
         }
     }  // namespace
+
     HOOK_DEFINE_TRAMPOLINE(GfxWindowChangeDisplayModeHook) {
         // @ void __fastcall GfxWindowChangeDisplayMode(const DisplayMode *tMode)
         static void Callback(DisplayMode *tMode) {
@@ -29,11 +32,42 @@ namespace d3 {
                 tMode->dwUIOptWidth, tMode->dwUIOptHeight, tMode->dwWidth, tMode->dwHeight, tMode->nRefreshRate, tMode->dwBitDepth, tMode->dwMSAALevel
             )
             PRINT("  flAspectRatio=%f", tMode->flAspectRatio)
-            tMode->dwUIOptWidth = 1920, tMode->dwUIOptHeight = 1080,
-            tMode->dwMSAALevel = 4;
+            const auto &extra = global_config.resolution_hack.extra;
+            if (extra.window_left >= 0)
+                tMode->nWinLeft = extra.window_left;
+            if (extra.window_top >= 0)
+                tMode->nWinTop = extra.window_top;
+            if (extra.window_width > 0)
+                tMode->nWinWidth = extra.window_width;
+            if (extra.window_height > 0)
+                tMode->nWinHeight = extra.window_height;
+            if (extra.ui_opt_width > 0)
+                tMode->dwUIOptWidth = static_cast<u32>(extra.ui_opt_width);
+            if (extra.ui_opt_height > 0)
+                tMode->dwUIOptHeight = static_cast<u32>(extra.ui_opt_height);
+            bool refresh_aspect = false;
+            if (extra.render_width > 0) {
+                tMode->dwWidth = static_cast<u32>(extra.render_width);
+                refresh_aspect = true;
+            }
+            if (extra.render_height > 0) {
+                tMode->dwHeight = static_cast<u32>(extra.render_height);
+                refresh_aspect  = true;
+            }
+            if (extra.refresh_rate > 0)
+                tMode->nRefreshRate = extra.refresh_rate;
+            if (extra.bit_depth > 0)
+                tMode->dwBitDepth = static_cast<u32>(extra.bit_depth);
+            if (extra.msaa_level >= 0)
+                tMode->dwMSAALevel = static_cast<u32>(extra.msaa_level);
+            if (refresh_aspect && tMode->dwHeight != 0u)
+                tMode->flAspectRatio = static_cast<float>(tMode->dwWidth) / static_cast<float>(tMode->dwHeight);
 
             PRINT("POST: %u %u %u", tMode->dwUIOptWidth, tMode->dwUIOptHeight, tMode->dwMSAALevel);
             Orig(tMode);
+
+            if (g_ptGfxData != nullptr)
+                g_ptGfxData->dwFlags |= (1u << 6);  // force prefs-changed/reset by setting bit 6 (GfxHasPrefsChanged)
         }
     };
 

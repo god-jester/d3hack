@@ -17,6 +17,20 @@ ClampTextureResolution = 1200
 # Use Blizzard's experimental scheduler; can improve performance.
 ExperimentalScheduler = true
 
+[resolution_hack.extra]
+# Optional display mode overrides. Use -1 to keep game defaults.
+WindowLeft = -1
+WindowTop = -1
+WindowWidth = -1
+WindowHeight = -1
+UIOptWidth = -1
+UIOptHeight = -1
+RenderWidth = -1
+RenderHeight = -1
+RefreshRate = -1
+BitDepth = -1
+MSAALevel = -1
+
 [seasons]
 # Enable season overrides (SeasonNumber; SeasonMapMode lives under [events]).
 SectionEnabled = true

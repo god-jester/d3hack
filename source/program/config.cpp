@@ -52,6 +52,14 @@ namespace {
         return fallback;
     }
 
+    s32 ReadI32(const toml::table &table, std::initializer_list<std::string_view> keys, s32 fallback, s32 min_value, s32 max_value) {
+        if (auto value = ReadNumber(table, keys)) {
+            auto clamped = std::clamp(*value, static_cast<double>(min_value), static_cast<double>(max_value));
+            return static_cast<s32>(clamped);
+        }
+        return fallback;
+    }
+
     double ReadDouble(const toml::table &table, std::initializer_list<std::string_view> keys, double fallback, double min_value, double max_value) {
         if (auto value = ReadNumber(table, keys)) {
             return std::clamp(*value, min_value, max_value);
@@ -422,9 +430,23 @@ namespace {
             toml::table t;
             t.insert("SectionEnabled", config.resolution_hack.active);
             t.insert("OutputTarget", static_cast<int64_t>(config.resolution_hack.target_resolution));
+            t.insert("OutputTargetHandheld", static_cast<double>(config.resolution_hack.output_target_handheld));
             t.insert("MinResScale", static_cast<double>(config.resolution_hack.min_res_scale));
             t.insert("ClampTextureResolution", static_cast<int64_t>(config.resolution_hack.clamp_texture_resolution));
             t.insert("ExperimentalScheduler", config.resolution_hack.exp_scheduler);
+            toml::table extra;
+            extra.insert("WindowLeft", static_cast<int64_t>(config.resolution_hack.extra.window_left));
+            extra.insert("WindowTop", static_cast<int64_t>(config.resolution_hack.extra.window_top));
+            extra.insert("WindowWidth", static_cast<int64_t>(config.resolution_hack.extra.window_width));
+            extra.insert("WindowHeight", static_cast<int64_t>(config.resolution_hack.extra.window_height));
+            extra.insert("UIOptWidth", static_cast<int64_t>(config.resolution_hack.extra.ui_opt_width));
+            extra.insert("UIOptHeight", static_cast<int64_t>(config.resolution_hack.extra.ui_opt_height));
+            extra.insert("RenderWidth", static_cast<int64_t>(config.resolution_hack.extra.render_width));
+            extra.insert("RenderHeight", static_cast<int64_t>(config.resolution_hack.extra.render_height));
+            extra.insert("RefreshRate", static_cast<int64_t>(config.resolution_hack.extra.refresh_rate));
+            extra.insert("BitDepth", static_cast<int64_t>(config.resolution_hack.extra.bit_depth));
+            extra.insert("MSAALevel", static_cast<int64_t>(config.resolution_hack.extra.msaa_level));
+            t.insert("extra", std::move(extra));
             root.insert("resolution_hack", std::move(t));
         }
 
@@ -685,6 +707,11 @@ void PatchConfig::ApplyTable(const toml::table &table) {
             {"MinScale", "MinimumScale", "MinResScale", "MinimumResScale", "MinResolutionScale", "MinimumResolutionScale"},
             resolution_hack.min_res_scale, 10.0, 100.0
         );
+        resolution_hack.output_target_handheld = static_cast<float>(ReadDouble(
+            *resolution_section,
+            {"OutputTargetHandheld", "HandheldOutputTarget", "HandheldScale"},
+            resolution_hack.output_target_handheld, 0.0, 2.0
+        ));
         const u32 default_clamp  = resolution_hack.clamp_texture_resolution;
         u32       fallback_clamp = default_clamp;
         if (auto legacy = ReadValue<bool>(
@@ -715,6 +742,45 @@ void PatchConfig::ApplyTable(const toml::table &table) {
             resolution_hack.exp_scheduler
         );
         resolution_hack.clamp_texture_resolution = clamp_value;
+
+        if (const auto *extra = FindTable(*resolution_section, "extra")) {
+            using ExtraConfig = PatchConfig::ResolutionHackConfig::ExtraConfig;
+            const s32 min_value = ExtraConfig::kUnset;
+            const s32 max_dim   = ExtraConfig::kMaxDimension;
+            resolution_hack.extra.window_left = ReadI32(
+                *extra, {"WindowLeft", "WinLeft", "Left"}, resolution_hack.extra.window_left, min_value, max_dim
+            );
+            resolution_hack.extra.window_top = ReadI32(
+                *extra, {"WindowTop", "WinTop", "Top"}, resolution_hack.extra.window_top, min_value, max_dim
+            );
+            resolution_hack.extra.window_width = ReadI32(
+                *extra, {"WindowWidth", "WinWidth", "Width"}, resolution_hack.extra.window_width, min_value, max_dim
+            );
+            resolution_hack.extra.window_height = ReadI32(
+                *extra, {"WindowHeight", "WinHeight", "Height"}, resolution_hack.extra.window_height, min_value, max_dim
+            );
+            resolution_hack.extra.ui_opt_width = ReadI32(
+                *extra, {"UIOptWidth", "UIWidth", "UiWidth"}, resolution_hack.extra.ui_opt_width, min_value, max_dim
+            );
+            resolution_hack.extra.ui_opt_height = ReadI32(
+                *extra, {"UIOptHeight", "UIHeight", "UiHeight"}, resolution_hack.extra.ui_opt_height, min_value, max_dim
+            );
+            resolution_hack.extra.render_width = ReadI32(
+                *extra, {"RenderWidth", "DisplayWidth", "BackbufferWidth"}, resolution_hack.extra.render_width, min_value, max_dim
+            );
+            resolution_hack.extra.render_height = ReadI32(
+                *extra, {"RenderHeight", "DisplayHeight", "BackbufferHeight"}, resolution_hack.extra.render_height, min_value, max_dim
+            );
+            resolution_hack.extra.refresh_rate = ReadI32(
+                *extra, {"RefreshRate", "Hz"}, resolution_hack.extra.refresh_rate, min_value, ExtraConfig::kMaxRefreshRate
+            );
+            resolution_hack.extra.bit_depth = ReadI32(
+                *extra, {"BitDepth", "Bpp"}, resolution_hack.extra.bit_depth, min_value, ExtraConfig::kMaxBitDepth
+            );
+            resolution_hack.extra.msaa_level = ReadI32(
+                *extra, {"MSAALevel", "MSAA", "Msaa"}, resolution_hack.extra.msaa_level, min_value, ExtraConfig::kMaxMsaaLevel
+            );
+        }
     } else {
         resolution_hack.SetTargetRes(resolution_hack.target_resolution);
     }

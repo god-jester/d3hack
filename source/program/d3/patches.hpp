@@ -23,7 +23,7 @@ namespace d3 {
 
     inline auto PatchTable(const char *name) -> uintptr_t { return GameOffsetFromTable(name) - exl::util::modules::GetTargetStart(); }
 
-    void MakeAdrlPatch(const uintptr_t mainAddr, uintptr_t adrpTarget, const exl::armv8::reg::Register registerTarget) {
+    inline void MakeAdrlPatch(const uintptr_t mainAddr, uintptr_t adrpTarget, const exl::armv8::reg::Register registerTarget) {
         auto            jest       = patch::RandomAccessPatcher();
         uintptr_t const adrpOffset = mainAddr;
         auto            diff       = Adrp::GetDifference(GameOffset(adrpOffset), adrpTarget);
@@ -32,7 +32,7 @@ namespace d3 {
     }
 
     /* String swap and formatting for BuildLockerDrawWatermark() */
-    void PatchBuildlocker() {
+    inline void PatchBuildlocker() {
         if (!(global_config.overlays.active && global_config.overlays.buildlocker_watermark))
             return;
         auto jest = patch::RandomAccessPatcher();
@@ -72,7 +72,7 @@ namespace d3 {
     }
 
     /* String swap and formatting for APP_DRAW_VARIABLE_RES_DEBUG_BIT */
-    void PatchVarResLabel() {
+    inline void PatchVarResLabel() {
         auto jest = patch::RandomAccessPatcher();
         jest.Patch<Movz>(PatchTable("patch_var_res_label_01_movz"), W0, (8 + GLOBALSNO_FONT_EXOCETLIGHT));
         // 3CC78    movz x8, #0x42c8, lsl #16   --> 100.0f
@@ -84,7 +84,7 @@ namespace d3 {
         // AppDrawFlagSet(APP_DRAW_VARIABLE_RES_DEBUG_BIT, 1);     // Must be run each frame in another hook
     }
 
-    void PatchGraphicsPersistentHeapEarly() {
+    inline void PatchGraphicsPersistentHeapEarly() {
         auto jest = patch::RandomAccessPatcher();
         // SigmaMemoryInit (sSigmaMemoryInit, 0xA36A50): gptGraphicsPersistentMemoryHeap size.
         // 0xA36B34: MOV W19, #0x17400000
@@ -94,7 +94,7 @@ namespace d3 {
     }
 
     /* String swap and formatting for APP_DRAW_FPS_BIT */
-    void PatchReleaseFPSLabel() {
+    inline void PatchReleaseFPSLabel() {
         auto jest = patch::RandomAccessPatcher();
         jest.Patch<Movz>(PatchTable("patch_release_fps_label_01_movz"), W0, (8 + GLOBALSNO_FONT_EXOCETLIGHT));
         auto *szReleaseFPSFormat = reinterpret_cast<std::array<char, 10> *>(jest.RwFromAddr(PatchTable("data_release_fps_format_rw")));
@@ -120,7 +120,7 @@ namespace d3 {
         // AppDrawFlagSet(APP_DRAW_FPS_BIT, 1);  // Must be run each frame in another hook
     }
 
-    void PatchDDMLabels() {
+    inline void PatchDDMLabels() {
         auto jest = patch::RandomAccessPatcher();
         /* String swap and formatting for DDM_FPS_QA */
         jest.Patch<Movz>(PatchTable("patch_ddm_labels_01_movz"), W0, (8 + GLOBALSNO_FONT_SCRIPT));
@@ -137,7 +137,7 @@ namespace d3 {
         jest.Patch<Movz>(PatchTable("patch_ddm_labels_10_movz"), W7, 0x13);  // RENDERLAYER_UI_OVERLAY
     }
 
-    void PatchResolutionTargets() {
+    inline void PatchResolutionTargets() {
         auto jest = patch::RandomAccessPatcher();
         /* FontDefinition::GetPointSizeData (0x276A60/0x276A6C). */
         /* 0x276A60: MOV W9, #8   | 0x276A6C: MOV W8, #0x10 */
@@ -150,8 +150,8 @@ namespace d3 {
         // jest.Patch<Movz>(PatchTable("patch_resolution_targets_11_movz"), W0, 0);  // 0 = "Docked"
         // ShellInitialize (0x6678C8): BL nn::oe::GetPerformanceMode
         // ShellEventLoop (0x667B04): BL nn::oe::GetPerformanceMode
-        jest.Patch<Movz>(PatchTable("patch_resolution_targets_12_movz"), W0, 1);  // 1 = "Boost"
-        jest.Patch<Movz>(PatchTable("patch_resolution_targets_13_movz"), W0, 1);  // 1 = "Boost"
+        // jest.Patch<Movz>(PatchTable("patch_resolution_targets_12_movz"), W0, 1);  // 1 = "Boost"
+        // jest.Patch<Movz>(PatchTable("patch_resolution_targets_13_movz"), W0, 1);  // 1 = "Boost"
         if (!(global_config.resolution_hack.active))
             return;
 
@@ -171,37 +171,6 @@ namespace d3 {
             jest.Patch<Movz>(0x0E7770, W19, (heapSize >> 16), ShiftValue_16);
             jest.Patch<Movz>(0x0E77A0, W3, (maxAlloc >> 16), ShiftValue_16);
         }
-
-        // Force "GfxGetSystemID == 1?" branch to match ours (7) to apply resolution defaults
-        // GfxValidateDisplayMode() | 0x29A4F8: CMP W15, #1
-        jest.Patch<CmpImmediate>(0x29A4F8, W15, 7);
-        // Override resolution defaults (DisplayMode table @ 0xEB6D64 in 2.7.6).
-        const u32 modeFlags   = 10;
-        const u32 windowMode  = 0;
-        const u32 winLeft     = 0;
-        const u32 winTop      = 0;
-        const u32 winW        = outW;
-        const u32 winH        = outH;
-        const u32 uiW         = outW;
-        const u32 uiH         = outH;
-        const u32 refreshHz   = 60;
-        const u32 colorDepth  = 24;
-        const u32 msaaLevel   = 2;
-        const u32 msaaQuality = 2;
-        jest.Patch<u32>(0xEB6D64, modeFlags);    // dwFlags
-        jest.Patch<u32>(0xEB6D68, windowMode);   // dwWindowMode
-        jest.Patch<u32>(0xEB6D6C, winLeft);      // nWinLeft
-        jest.Patch<u32>(0xEB6D70, winTop);       // nWinTop
-        jest.Patch<u32>(0xEB6D74, winW);         // nWinWidth
-        jest.Patch<u32>(0xEB6D78, winH);         // nWinHeight
-        jest.Patch<u32>(0xEB6D7C, uiW);          // dwUIOptWidth
-        jest.Patch<u32>(0xEB6D80, uiH);          // dwUIOptHeight
-        jest.Patch<u32>(0xEB6D84, outW);         // dwWidth
-        jest.Patch<u32>(0xEB6D88, outH);         // dwHeight
-        jest.Patch<u32>(0xEB6D8C, refreshHz);    // nRefreshRate
-        jest.Patch<u32>(0xEB6D90, colorDepth);   // dwColorDepth
-        jest.Patch<u32>(0xEB6D94, msaaLevel);    // dwMSAALevel
-        jest.Patch<u32>(0xEB6D98, msaaQuality);  // dwMSAAQuality (paired)
 
         // Display mode pair (full). GFXNX64NVN::Init (0x0E7850).
         // 0x0E7858: MOV X8, #1600
@@ -228,7 +197,31 @@ namespace d3 {
         // jest.Patch<Movk>(PatchTable("patch_resolution_targets_07_movk"), X9, 0x3CF5, ShiftValue_48);  // 3% (0.03f) resolution adjust percentage
     }
 
-    void PatchDynamicSeasonal() {
+    inline void PatchRenderTargetCurrentResolutionScale(float scale) {
+        auto jest = patch::RandomAccessPatcher();
+        // GFXNX64NVN::GetRenderTargetCurrentResolution (0x0EBB40).
+        // 0x0EBB44: ADRP X8, #:pg_hi21:dword_EB0840
+        // 0x0EBB48: LDR  S1, [X8,#:lo12:dword_EB0840]  // 0.8f scale
+        auto *rt_scale = reinterpret_cast<float *>(jest.RoFromAddr(PatchTable("data_render_target_scale_ro")));
+        if (rt_scale == nullptr) {
+            return;
+        }
+
+        static float s_default_scale = 0.0f;
+        static bool  s_default_init  = false;
+        if (!s_default_init) {
+            s_default_scale = *rt_scale;
+            s_default_init  = true;
+        }
+
+        if (scale <= 0.0f) {
+            *rt_scale = s_default_scale;
+            return;
+        }
+        *rt_scale = scale;
+    }
+
+    inline void PatchDynamicSeasonal() {
         if (global_config.seasons.active) {
             PRINT("Setting active Season to %d", global_config.seasons.current_season)
             XVarUint32_Set(&g_varSeasonNum, global_config.seasons.current_season, 3u);
@@ -248,7 +241,7 @@ namespace d3 {
         }
     }
 
-    void PatchDynamicEvents() {
+    inline void PatchDynamicEvents() {
         if (!global_config.events.active)
             return;
 
@@ -302,7 +295,7 @@ namespace d3 {
         set_bool(&g_varParagonCap, false);  // ParagonCap off by default
     }
 
-    void PortCheatCodes() {
+    inline void PortCheatCodes() {
         if (!global_config.rare_cheats.active)
             return;
         auto jest = patch::RandomAccessPatcher();
@@ -452,7 +445,7 @@ namespace d3 {
         // 04000000 004F98DC D503201F
     }
 
-    void PatchBase() {
+    inline void PatchBase() {
         auto jest = patch::RandomAccessPatcher();
 
         PortCheatCodes();

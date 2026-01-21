@@ -27,13 +27,22 @@ namespace d3::gui2::ui::windows {
 
     ConfigWindow::ConfigWindow(ui::Overlay &overlay) :
         Window(D3HACK_VER), overlay_(overlay) {
-        SetDefaultPos(ImVec2(24.0f, 140.0f), ImGuiCond_Once);
-        SetDefaultSize(ImVec2(740.0f, 480.0f), ImGuiCond_Once);
         SetFlags(ImGuiWindowFlags_NoSavedSettings);
     }
 
     bool *ConfigWindow::GetOpenFlag() {
         return overlay_.overlay_visible_ptr();
+    }
+
+    void ConfigWindow::BeforeBegin() {
+        ImVec2 pos(24.0f, 140.0f);
+        ImVec2 size(740.0f, 480.0f);
+        if (const ImGuiViewport *viewport = ImGui::GetMainViewport()) {
+            pos  = ImVec2(viewport->Pos.x + 24.0f, viewport->Pos.y);
+            size = ImVec2(740.0f, viewport->Size.y);
+        }
+        ImGui::SetNextWindowPos(pos, ImGuiCond_Once);
+        ImGui::SetNextWindowSize(size, ImGuiCond_Once);
     }
 
     void ConfigWindow::AfterEnd() {
@@ -211,6 +220,12 @@ namespace d3::gui2::ui::windows {
                     cfg.resolution_hack.SetTargetRes(static_cast<u32>(target));
                     overlay_.set_ui_dirty(true);
                 }
+                float handheld_scale = cfg.resolution_hack.output_target_handheld;
+                if (ImGui::InputFloat(overlay_.tr("gui.resolution_output_target_handheld", "Handheld output scale (0=auto)"), &handheld_scale, 0.05f, 0.1f, "%.2f")) {
+                    handheld_scale                             = std::clamp(handheld_scale, 0.0f, 2.0f);
+                    cfg.resolution_hack.output_target_handheld = handheld_scale;
+                    overlay_.set_ui_dirty(true);
+                }
                 float min_scale = cfg.resolution_hack.min_res_scale;
                 if (ImGui::SliderFloat(overlay_.tr("gui.resolution_min_scale", "Minimum resolution scale"), &min_scale, 10.0f, 100.0f, "%.0f%%")) {
                     cfg.resolution_hack.min_res_scale = min_scale;
@@ -228,6 +243,65 @@ namespace d3::gui2::ui::windows {
                 }
                 mark_dirty(ImGui::Checkbox(overlay_.tr("gui.resolution_exp_scheduler", "Experimental scheduler"), &cfg.resolution_hack.exp_scheduler));
                 ImGui::Text(overlay_.tr("gui.resolution_output_size", "Output size: %ux%u"), cfg.resolution_hack.OutputWidthPx(), cfg.resolution_hack.OutputHeightPx());
+                ImGui::Separator();
+                ImGui::TextUnformatted(overlay_.tr("gui.resolution_extra_header", "Display mode overrides"));
+                ImGui::TextUnformatted(overlay_.tr("gui.resolution_extra_hint", "Set to -1 to keep the game's value."));
+
+                auto &extra      = cfg.resolution_hack.extra;
+                auto  edit_extra = [&](const char *label, s32 *value, int min_value, int max_value) {
+                    int v = *value;
+                    if (ImGui::InputInt(label, &v)) {
+                        v      = std::clamp(v, min_value, max_value);
+                        *value = static_cast<s32>(v);
+                        overlay_.set_ui_dirty(true);
+                    }
+                };
+
+                const int min_value = PatchConfig::ResolutionHackConfig::ExtraConfig::kUnset;
+                edit_extra(
+                    overlay_.tr("gui.resolution_extra_msaa", "MSAA level (-1=default)"), &extra.msaa_level,
+                    min_value, PatchConfig::ResolutionHackConfig::ExtraConfig::kMaxMsaaLevel
+                );
+                edit_extra(
+                    overlay_.tr("gui.resolution_extra_bit_depth", "Bit depth (-1=default)"), &extra.bit_depth,
+                    min_value, PatchConfig::ResolutionHackConfig::ExtraConfig::kMaxBitDepth
+                );
+                edit_extra(
+                    overlay_.tr("gui.resolution_extra_refresh", "Refresh rate (-1=default)"), &extra.refresh_rate,
+                    min_value, PatchConfig::ResolutionHackConfig::ExtraConfig::kMaxRefreshRate
+                );
+                edit_extra(
+                    overlay_.tr("gui.resolution_extra_win_left", "Window left (-1=default)"), &extra.window_left,
+                    min_value, PatchConfig::ResolutionHackConfig::ExtraConfig::kMaxDimension
+                );
+                edit_extra(
+                    overlay_.tr("gui.resolution_extra_win_top", "Window top (-1=default)"), &extra.window_top,
+                    min_value, PatchConfig::ResolutionHackConfig::ExtraConfig::kMaxDimension
+                );
+                edit_extra(
+                    overlay_.tr("gui.resolution_extra_win_width", "Window width (-1=default)"), &extra.window_width,
+                    min_value, PatchConfig::ResolutionHackConfig::ExtraConfig::kMaxDimension
+                );
+                edit_extra(
+                    overlay_.tr("gui.resolution_extra_win_height", "Window height (-1=default)"), &extra.window_height,
+                    min_value, PatchConfig::ResolutionHackConfig::ExtraConfig::kMaxDimension
+                );
+                edit_extra(
+                    overlay_.tr("gui.resolution_extra_ui_width", "UI width (-1=default)"), &extra.ui_opt_width,
+                    min_value, PatchConfig::ResolutionHackConfig::ExtraConfig::kMaxDimension
+                );
+                edit_extra(
+                    overlay_.tr("gui.resolution_extra_ui_height", "UI height (-1=default)"), &extra.ui_opt_height,
+                    min_value, PatchConfig::ResolutionHackConfig::ExtraConfig::kMaxDimension
+                );
+                edit_extra(
+                    overlay_.tr("gui.resolution_extra_render_width", "Render width (-1=default)"), &extra.render_width,
+                    min_value, PatchConfig::ResolutionHackConfig::ExtraConfig::kMaxDimension
+                );
+                edit_extra(
+                    overlay_.tr("gui.resolution_extra_render_height", "Render height (-1=default)"), &extra.render_height,
+                    min_value, PatchConfig::ResolutionHackConfig::ExtraConfig::kMaxDimension
+                );
                 ImGui::EndDisabled();
                 ImGui::EndTabItem();
             }

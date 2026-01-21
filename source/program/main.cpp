@@ -24,10 +24,6 @@
 #define FINDTRUNC(v, n)     (strstr(pBuf, v) && strlen(pBuf) >= (n))
 #define FINDTRUNCP(v, p, n) (strstr(pBuf, v) && strstr(pBuf, v) - pBuf == (p) && strlen(pBuf) >= (n))
 
-// namespace nn::oe {
-//     void SetCopyrightVisibility(bool);
-// };
-
 namespace d3 {
     namespace {
         auto VerifySignature() -> bool {
@@ -145,6 +141,10 @@ namespace d3 {
                 PRINT_LINE("ResolutionHack config: inactive");
             }
 
+            PatchRenderTargetCurrentResolutionScale(
+                global_config.resolution_hack.active ? global_config.resolution_hack.output_target_handheld : 0.0f
+            );
+
             // Apply patches based on config
             if (!g_configHooksInstalled) {
                 SetupUtilityHooks();
@@ -176,9 +176,6 @@ namespace d3 {
             Orig();
         }
     };
-    HOOK_DEFINE_TRAMPOLINE(StubCopyright) {
-        static void Callback(bool /*enabled*/) { Orig(false); }
-    };
 
     extern "C" void exl_main(void * /*x0*/, void * /*x1*/) {
         /* Setup hooking environment. */
@@ -197,7 +194,6 @@ namespace d3 {
         // GfxSetRenderAndDepthTargetSwapchainFix::InstallAtOffset(0x29C670);
         // GfxSetDepthTargetSwapchainFix::InstallAtOffset(0x29C4E0);
         // LobbyServiceIdleInternal::InstallAtFuncPtr(lobby_service_idle_internal);
-        // StubCopyright::InstallAtFuncPtr(nn::oe::SetCopyrightVisibility);
     }
 
     void ApplyPatchConfigRuntime(const PatchConfig &config, RuntimeApplyResult *out) {
@@ -248,6 +244,14 @@ namespace d3 {
             append_note("DDM labels");
         } else if ((prev.overlays.active && prev.overlays.ddm_labels) && !(global_config.overlays.active && global_config.overlays.ddm_labels)) {
             result.restart_required = true;
+        }
+
+        if (prev.resolution_hack.active != global_config.resolution_hack.active ||
+            prev.resolution_hack.output_target_handheld != global_config.resolution_hack.output_target_handheld) {
+            PatchRenderTargetCurrentResolutionScale(
+                global_config.resolution_hack.active ? global_config.resolution_hack.output_target_handheld : 0.0f
+            );
+            append_note("RT scale");
         }
 
         // Dynamic/runtime patches.
