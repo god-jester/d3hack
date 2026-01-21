@@ -32,6 +32,7 @@ namespace exl::reloc {
             /* Early hooks (main module). */
             { util::ModuleIndex::Main, 0x000480, "sym_main_init" },
             { util::ModuleIndex::Main, 0x298BD0, "sym_gfx_init" },
+            { util::ModuleIndex::Main, 0x042E30, "sym_scheck_gfx_ready" },
             { util::ModuleIndex::Main, 0x4CABA0, "sym_game_common_data_init" },
             { util::ModuleIndex::Main, 0x667830, "sym_shell_initialize" },
             { util::ModuleIndex::Main, 0x7B08A0, "sym_sgame_initialize" },
@@ -71,6 +72,7 @@ namespace exl::reloc {
             /* Globals (main module). */
             { util::ModuleIndex::Main, 0x17DE610, "main_rwindow" },
             { util::ModuleIndex::Main, 0x1830F68, "gfx_internal_data_ptr" },
+            { util::ModuleIndex::Main, 0x114C970, "gfx_nvn_globals_ptr" },
             { util::ModuleIndex::Main, 0x1905610, "app_globals" },
             { util::ModuleIndex::Main, 0x114AC90, "lobby_services_ptr" },
             { util::ModuleIndex::Main, 0x191CA70, "sigma_thread_data" },

@@ -4,6 +4,7 @@
 #include "symbols/hooks.hpp"
 SETUP_FUNC_PTR(main_init);
 SETUP_FUNC_PTR(gfx_init);
+SETUP_FUNC_PTR(scheck_gfx_ready);
 SETUP_FUNC_PTR(game_common_data_init);
 SETUP_FUNC_PTR(shell_initialize);
 SETUP_FUNC_PTR(sgame_initialize);

@@ -42,7 +42,12 @@
 
 // }  // namespace blz
 
+namespace GFXNX64NVN {
+    struct Globals;
+}
+
 namespace d3 {
+
     // NOTE: Keep this header-only and constant-initialized.
     // - Avoids dynamic initialization in a header (clang-tidy warning)
     // - Avoids depending on `std::string` at namespace-scope initialization time
@@ -55,6 +60,7 @@ namespace d3 {
     extern AppGlobals              &g_tAppGlobals;
     extern OnlineService::ItemId   &g_itemInvalid;
     extern WorldPlace              &g_cPlaceNull;
+    extern ::GFXNX64NVN::Globals   *g_ptGfxNVNGlobals;
     extern GameCommonData          *g_ptGCData;
     extern GfxInternalData         *g_ptGfxData;
     extern RWindow                 *g_ptMainRWindow;

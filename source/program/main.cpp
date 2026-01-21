@@ -11,6 +11,7 @@
 #include "d3/hooks/debug.hpp"
 #include "d3/hooks/season_events.hpp"
 #include "d3/hooks/lobby.hpp"
+#include "d3/types/gfx.hpp"
 #include "program/gui2/imgui_overlay.hpp"
 #include "program/runtime_apply.hpp"
 #include "idadefs.h"
@@ -65,6 +66,16 @@ namespace d3 {
         static auto Callback() -> BOOL {
             auto ret    = Orig();
             g_ptGfxData = *reinterpret_cast<GfxInternalData **const>(GameOffsetFromTable("gfx_internal_data_ptr"));
+            PRINT_EXPR("%d", g_ptGfxData->dwModeCount);
+            if (g_ptGfxNVNGlobals != nullptr) {
+                PRINT(
+                    "GFXNVN globals: dev=%ux%u reduced=%ux%u",
+                    g_ptGfxNVNGlobals->dwDeviceWidth,
+                    g_ptGfxNVNGlobals->dwDeviceHeight,
+                    g_ptGfxNVNGlobals->dwReducedDeviceWidth,
+                    g_ptGfxNVNGlobals->dwReducedDeviceHeight
+                )
+            }
             return ret;
         }
     };
@@ -142,7 +153,7 @@ namespace d3 {
             }
 
             PatchRenderTargetCurrentResolutionScale(
-                global_config.resolution_hack.active ? global_config.resolution_hack.output_target_handheld : 0.0f
+                global_config.resolution_hack.active ? global_config.resolution_hack.output_handheld_scale : 0.0f
             );
 
             // Apply patches based on config
@@ -247,9 +258,9 @@ namespace d3 {
         }
 
         if (prev.resolution_hack.active != global_config.resolution_hack.active ||
-            prev.resolution_hack.output_target_handheld != global_config.resolution_hack.output_target_handheld) {
+            prev.resolution_hack.output_handheld_scale != global_config.resolution_hack.output_handheld_scale) {
             PatchRenderTargetCurrentResolutionScale(
-                global_config.resolution_hack.active ? global_config.resolution_hack.output_target_handheld : 0.0f
+                global_config.resolution_hack.active ? global_config.resolution_hack.output_handheld_scale : 0.0f
             );
             append_note("RT scale");
         }
@@ -267,10 +278,20 @@ namespace d3 {
             result.restart_required = true;
         }
 
-        // Resolution output target is mostly static-patch-driven; avoid re-patching it mid-run.
-        if (prev.resolution_hack.active != global_config.resolution_hack.active ||
-            prev.resolution_hack.target_resolution != global_config.resolution_hack.target_resolution) {
+        if (prev.resolution_hack.active != global_config.resolution_hack.active) {
             result.restart_required = true;
+        }
+
+        const bool resolution_target_changed =
+            prev.resolution_hack.target_resolution != global_config.resolution_hack.target_resolution ||
+            prev.resolution_hack.OutputHandheldHeightPx() != global_config.resolution_hack.OutputHandheldHeightPx();
+        if (resolution_target_changed) {
+            if (global_config.resolution_hack.active) {
+                PatchResolutionTargetDeviceDims();
+                append_note("Resolution targets");
+            } else {
+                result.restart_required = true;
+            }
         }
 
         // Hooks/patches gated at boot.

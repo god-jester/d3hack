@@ -1,4 +1,5 @@
 #include "d3/_util.hpp"
+#include "d3/types/gfx.hpp"
 
 namespace d3 {
     // Keep runtime/relocation-backed globals in a single translation unit to avoid
@@ -6,11 +7,12 @@ namespace d3 {
 
     bool sg_bServerCode = true;
 
-    SigmaThreadLocalStorage &g_tThreadData  = *reinterpret_cast<SigmaThreadLocalStorage *const>(GameOffsetFromTable("sigma_thread_data"));
-    AttribDef *const         g_arAttribDefs = reinterpret_cast<AttribDef *const>(GameOffsetFromTable("attrib_defs"));
-    AppGlobals              &g_tAppGlobals  = *reinterpret_cast<AppGlobals *const>(GameOffsetFromTable("app_globals"));
-    OnlineService::ItemId   &g_itemInvalid  = *reinterpret_cast<OnlineService::ItemId *const>(GameOffsetFromTable("item_invalid"));
-    WorldPlace              &g_cPlaceNull   = *reinterpret_cast<WorldPlace *const>(GameOffsetFromTable("world_place_null"));
+    SigmaThreadLocalStorage &g_tThreadData     = *reinterpret_cast<SigmaThreadLocalStorage *const>(GameOffsetFromTable("sigma_thread_data"));
+    AttribDef *const         g_arAttribDefs    = reinterpret_cast<AttribDef *const>(GameOffsetFromTable("attrib_defs"));
+    AppGlobals              &g_tAppGlobals     = *reinterpret_cast<AppGlobals *const>(GameOffsetFromTable("app_globals"));
+    OnlineService::ItemId   &g_itemInvalid     = *reinterpret_cast<OnlineService::ItemId *const>(GameOffsetFromTable("item_invalid"));
+    WorldPlace              &g_cPlaceNull      = *reinterpret_cast<WorldPlace *const>(GameOffsetFromTable("world_place_null"));
+    GFXNX64NVN::Globals     *g_ptGfxNVNGlobals = *reinterpret_cast<GFXNX64NVN::Globals *const *>(GameOffsetFromTable("gfx_nvn_globals_ptr"));
 
     GameCommonData         *g_ptGCData               = nullptr;
     GfxInternalData        *g_ptGfxData              = nullptr;

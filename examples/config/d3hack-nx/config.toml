@@ -10,6 +10,12 @@ SectionEnabled = true
 # - 1440 -> 2560x1440 (aliases "1440p" | "QHD")
 # - 2160 -> 3840x2160 (aliases "2160p" | "4K" | "UHD")
 OutputTarget = 1080
+# Handheld output scale for render target resolution calc (0=auto/stock 0.8).
+OutputHandheldScale = 0.0
+# Handheld output target (vertical). Derived from OutputHandheldScale * OutputTarget.
+OutputTargetHandheld = 0
+# Spoof docked mode (forces docked mode when docked/handheld checks occur).
+SpoofDocked = false
 # Minimum resolution scale (percentage) to apply. 100% = locked resolution.
 MinResScale = 85
 # Clamp internal texture height (0=off, 100-9999)

@@ -157,6 +157,9 @@ namespace d3 {
 
         const u32 outW = global_config.resolution_hack.OutputWidthPx();
         const u32 outH = global_config.resolution_hack.OutputHeightPx();
+        const u32 handheldH = global_config.resolution_hack.OutputHandheldHeightPx();
+        const u32 fallbackW = handheldH != 0 ? global_config.resolution_hack.WidthForHeight(handheldH) : 1600u;
+        const u32 fallbackH = handheldH != 0 ? handheldH : 900u;
         // const u32 clampW = global_config.resolution_hack.ClampTextureWidthPx();
         // const u32 clampH = global_config.resolution_hack.ClampTextureHeightPx();
 
@@ -181,8 +184,8 @@ namespace d3 {
         // Fallback/base scale mode (same block).
         // 0x0E785C: MOV X9, #1280
         // 0x0E7864: MOVK X9, #720, LSL#32
-        // jest.Patch<Movz>(PatchTable("patch_resolution_targets_03_movz"), X9, out_w);
-        // jest.Patch<Movk>(PatchTable("patch_resolution_targets_04_movk"), X9, out_h, ShiftValue_32);
+        jest.Patch<Movz>(PatchTable("patch_resolution_targets_03_movz"), X9, fallbackW);
+        jest.Patch<Movk>(PatchTable("patch_resolution_targets_04_movk"), X9, fallbackH, ShiftValue_32);
 
         // if (global_config.resolution_hack.min_res_scale >= 100.0f) {
         // Too late to patch cdecl defaults at this point, and prefer the hook
@@ -195,6 +198,24 @@ namespace d3 {
 
         /* VariableResRWindowData->flPercentIncr = 0.05f - 0x03CBD4: MOVK X9, #0x3D4C, LSL#48 */
         // jest.Patch<Movk>(PatchTable("patch_resolution_targets_07_movk"), X9, 0x3CF5, ShiftValue_48);  // 3% (0.03f) resolution adjust percentage
+    }
+
+    inline void PatchResolutionTargetDeviceDims() {
+        if (!global_config.resolution_hack.active) {
+            return;
+        }
+
+        auto      jest      = patch::RandomAccessPatcher();
+        const u32 outW      = global_config.resolution_hack.OutputWidthPx();
+        const u32 outH      = global_config.resolution_hack.OutputHeightPx();
+        const u32 handheldH = global_config.resolution_hack.OutputHandheldHeightPx();
+        const u32 fallbackW = handheldH != 0 ? global_config.resolution_hack.WidthForHeight(handheldH) : 2048u;
+        const u32 fallbackH = handheldH != 0 ? handheldH : 1152u;
+
+        jest.Patch<Movz>(PatchTable("patch_resolution_targets_01_movz"), X8, outW);
+        jest.Patch<Movk>(PatchTable("patch_resolution_targets_02_movk"), X8, outH, ShiftValue_32);
+        jest.Patch<Movz>(PatchTable("patch_resolution_targets_03_movz"), X9, fallbackW);
+        jest.Patch<Movk>(PatchTable("patch_resolution_targets_04_movk"), X9, fallbackH, ShiftValue_32);
     }
 
     inline void PatchRenderTargetCurrentResolutionScale(float scale) {

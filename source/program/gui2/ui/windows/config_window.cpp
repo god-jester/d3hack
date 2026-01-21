@@ -220,12 +220,32 @@ namespace d3::gui2::ui::windows {
                     cfg.resolution_hack.SetTargetRes(static_cast<u32>(target));
                     overlay_.set_ui_dirty(true);
                 }
-                float handheld_scale = cfg.resolution_hack.output_target_handheld;
-                if (ImGui::InputFloat(overlay_.tr("gui.resolution_output_target_handheld", "Handheld output scale (0=auto)"), &handheld_scale, 0.05f, 0.1f, "%.2f")) {
-                    handheld_scale                             = std::clamp(handheld_scale, 0.0f, 2.0f);
-                    cfg.resolution_hack.output_target_handheld = handheld_scale;
-                    overlay_.set_ui_dirty(true);
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.resolution_spoof_docked", "Spoof docked"), &cfg.resolution_hack.spoof_docked));
+                float handheld_scale = cfg.resolution_hack.output_handheld_scale;
+                if (ImGui::SliderFloat(
+                        overlay_.tr("gui.resolution_output_handheld_scale", "Handheld output scale (0=auto)"),
+                        &handheld_scale,
+                        PatchConfig::ResolutionHackConfig::kHandheldScaleMin,
+                        PatchConfig::ResolutionHackConfig::kHandheldScaleMax,
+                        "%.2f",
+                        ImGuiSliderFlags_AlwaysClamp
+                    )) {
+                    handheld_scale = PatchConfig::ResolutionHackConfig::NormalizeHandheldScale(handheld_scale);
+                    if (handheld_scale != cfg.resolution_hack.output_handheld_scale) {
+                        cfg.resolution_hack.output_handheld_scale = handheld_scale;
+                        overlay_.set_ui_dirty(true);
+                    }
                 }
+                int handheld_target = static_cast<int>(cfg.resolution_hack.OutputHandheldHeightPx());
+                ImGui::BeginDisabled();
+                ImGui::InputInt(
+                    overlay_.tr("gui.resolution_output_target_handheld", "Handheld output target (vertical)"),
+                    &handheld_target,
+                    0,
+                    0,
+                    ImGuiInputTextFlags_ReadOnly
+                );
+                ImGui::EndDisabled();
                 float min_scale = cfg.resolution_hack.min_res_scale;
                 if (ImGui::SliderFloat(overlay_.tr("gui.resolution_min_scale", "Minimum resolution scale"), &min_scale, 10.0f, 100.0f, "%.0f%%")) {
                     cfg.resolution_hack.min_res_scale = min_scale;

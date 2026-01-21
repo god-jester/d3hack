@@ -430,7 +430,9 @@ namespace {
             toml::table t;
             t.insert("SectionEnabled", config.resolution_hack.active);
             t.insert("OutputTarget", static_cast<int64_t>(config.resolution_hack.target_resolution));
-            t.insert("OutputTargetHandheld", static_cast<double>(config.resolution_hack.output_target_handheld));
+            t.insert("OutputHandheldScale", static_cast<double>(config.resolution_hack.output_handheld_scale));
+            t.insert("OutputTargetHandheld", static_cast<int64_t>(config.resolution_hack.OutputHandheldHeightPx()));
+            t.insert("SpoofDocked", config.resolution_hack.spoof_docked);
             t.insert("MinResScale", static_cast<double>(config.resolution_hack.min_res_scale));
             t.insert("ClampTextureResolution", static_cast<int64_t>(config.resolution_hack.clamp_texture_resolution));
             t.insert("ExperimentalScheduler", config.resolution_hack.exp_scheduler);
@@ -707,11 +709,32 @@ void PatchConfig::ApplyTable(const toml::table &table) {
             {"MinScale", "MinimumScale", "MinResScale", "MinimumResScale", "MinResolutionScale", "MinimumResolutionScale"},
             resolution_hack.min_res_scale, 10.0, 100.0
         );
-        resolution_hack.output_target_handheld = static_cast<float>(ReadDouble(
+        resolution_hack.spoof_docked = ReadBool(
             *resolution_section,
-            {"OutputTargetHandheld", "HandheldOutputTarget", "HandheldScale"},
-            resolution_hack.output_target_handheld, 0.0, 2.0
+            {"SpoofDocked", "SpoofDock", "DockedSpoof"},
+            resolution_hack.spoof_docked
+        );
+        resolution_hack.output_handheld_scale = static_cast<float>(ReadDouble(
+            *resolution_section,
+            {"OutputHandheldScale", "HandheldScale", "HandheldOutputScale"},
+            resolution_hack.output_handheld_scale,
+            PatchConfig::ResolutionHackConfig::kHandheldScaleMin,
+            PatchConfig::ResolutionHackConfig::kHandheldScaleMax
         ));
+        if (auto handheld_target = ReadNumber(
+                *resolution_section,
+                {"OutputTargetHandheld", "HandheldOutputTarget", "HandheldTarget"}
+            )) {
+            if (resolution_hack.target_resolution > 0) {
+                const float scale = static_cast<float>(*handheld_target) / static_cast<float>(resolution_hack.target_resolution);
+                resolution_hack.output_handheld_scale = scale;
+            } else {
+                resolution_hack.output_handheld_scale = 0.0f;
+            }
+        }
+        resolution_hack.output_handheld_scale = PatchConfig::ResolutionHackConfig::NormalizeHandheldScale(
+            resolution_hack.output_handheld_scale
+        );
         const u32 default_clamp  = resolution_hack.clamp_texture_resolution;
         u32       fallback_clamp = default_clamp;
         if (auto legacy = ReadValue<bool>(

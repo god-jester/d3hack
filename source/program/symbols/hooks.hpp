@@ -5,6 +5,7 @@
 /* Early hooks (main module). */
 FUNC_PTR(main_init,                     void (*)());
 FUNC_PTR(gfx_init,                      BOOL (*)());
+FUNC_PTR(scheck_gfx_ready,              BOOL (*)(BOOL fProcessReset));
 FUNC_PTR(game_common_data_init,         void (*)(GameCommonData *, const GameParams *));
 FUNC_PTR(shell_initialize,              BOOL (*)(uint32, uint32));
 FUNC_PTR(sgame_initialize,              SGameID (*)(GameParams *, const OnlineService::PlayerResolveData *));

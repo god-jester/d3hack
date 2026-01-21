@@ -1,5 +1,6 @@
 #pragma once
 
+#include <d3/types/gfx.hpp>
 #include <d3/_util.hpp>
 #include <hook/trampoline.hpp>
 #include "../../config.hpp"
@@ -63,11 +64,21 @@ namespace d3 {
             if (refresh_aspect && tMode->dwHeight != 0u)
                 tMode->flAspectRatio = static_cast<float>(tMode->dwWidth) / static_cast<float>(tMode->dwHeight);
 
-            PRINT("POST: %u %u %u", tMode->dwUIOptWidth, tMode->dwUIOptHeight, tMode->dwMSAALevel);
+            // force prefs-changed/reset by setting bit 6 (GfxHasPrefsChanged)
+            // PRINT_EXPR("PRE : %u %u %u %u", g_ptGfxData->tCurrentMode.dwWidth, g_ptGfxData->tCurrentMode.dwHeight, g_ptGfxData->tCurrentMode.dwMSAALevel, g_ptGfxData->dwFlags);
+            // PRINT_EXPR("%u %u %u %u", tMode->dwWidth, tMode->dwHeight, tMode->dwMSAALevel, tMode->dwFlags);
+
             Orig(tMode);
 
-            if (g_ptGfxData != nullptr)
-                g_ptGfxData->dwFlags |= (1u << 6);  // force prefs-changed/reset by setting bit 6 (GfxHasPrefsChanged)
+            if (g_ptGfxData != nullptr) {
+                // g_ptGfxData->dwFlags |= 0x40u;
+                // g_ptGfxData->tCurrentMode = *tMode;
+                // PRINT_EXPR("POST: %u %u %u %u", g_ptGfxData->tCurrentMode.dwWidth, g_ptGfxData->tCurrentMode.dwHeight, g_ptGfxData->tCurrentMode.dwMSAALevel, g_ptGfxData->dwFlags);
+            }
+
+            PRINT_EXPR("%d", g_ptGfxNVNGlobals->bIsDocked);
+            Orig(tMode);
+            PRINT_EXPR("%d", scheck_gfx_ready(true));
         }
     };
 

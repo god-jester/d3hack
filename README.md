@@ -34,7 +34,8 @@ Current baseline (2026-01-20)
 - NX64NVNHeap EarlyInit headroom and largest pool max_alloc bumped when output height > 1280.
 
 How it works
-- **Config**: `[resolution_hack]` in `config.toml` sets OutputTarget, MinResScale, ClampTextureResolution (0=off, 100-9999), and ExperimentalScheduler.
+- **Config**: `[resolution_hack]` in `config.toml` sets OutputTarget, OutputHandheldScale (0=auto), OutputTargetHandheld (derived), SpoofDocked, MinResScale, ClampTextureResolution (0=off, 100-9999), and ExperimentalScheduler.
+- **Config (extra)**: `[resolution_hack.extra]` can override display mode fields (MSAALevel, BitDepth, RefreshRate, and window/UI/render dimensions).
 - **Patches**: PatchResolutionTargets rewrites the display mode table to match OutputTarget and applies NVN heap headroom when output height > 1280.
 - **Hooks**: NVNTexInfoCreateHook clamps oversized internal textures while keeping swapchain textures output-sized.
 - **Early heap**: PatchGraphicsPersistentHeapEarly bumps the graphics persistent heap before NVN init.
@@ -44,8 +45,19 @@ Recommended settings (ResHack)
 [resolution_hack]
 SectionEnabled = true
 OutputTarget = 2160
+OutputHandheldScale = 0.0
+OutputTargetHandheld = 0
+SpoofDocked = false
 ClampTextureResolution = 1152
 # MinResScale: keep your normal value (85 is a safe starting point).
+```
+
+Optional display mode overrides
+```
+[resolution_hack.extra]
+MSAALevel = -1
+BitDepth = -1
+RefreshRate = -1
 ```
 
 Notes
@@ -101,7 +113,8 @@ Place `config.toml` at:
 
 Key sections:
 
-- `[resolution_hack]`: OutputTarget, ClampTextureResolution, MinResScale, ExperimentalScheduler.
+- `[resolution_hack]`: OutputTarget, OutputHandheldScale, OutputTargetHandheld (derived), SpoofDocked, ClampTextureResolution, MinResScale, ExperimentalScheduler.
+- `[resolution_hack.extra]`: display mode overrides (MSAALevel, BitDepth, RefreshRate, window/UI/render dimensions).
 - `[seasons]`: SeasonNumber, AllowOnlinePlay, SpoofPtr.
 - `[events]`: seasonal flags + SeasonMapMode (MapOnly, OverlayConfig, Disabled).
 - `[challenge_rifts]`: enable/disable, randomize, or define a range.
