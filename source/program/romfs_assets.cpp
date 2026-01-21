@@ -19,7 +19,7 @@ namespace d3::romfs {
         static void  *s_romfs_mount_cache      = nullptr;
         static size_t s_romfs_mount_cache_size = 0;
 
-        static size_t AlignUp(size_t v, size_t a) {
+        static auto AlignUp(size_t v, size_t a) -> size_t {
             return (v + (a - 1)) & ~(a - 1);
         }
 
@@ -56,7 +56,7 @@ namespace d3::romfs {
             PRINT("[romfs] Mounted %s:/ (cache=%lu bytes)", kRomfsMountName, static_cast<unsigned long>(s_romfs_mount_cache_size));
         }
 
-        static bool ReadFileNnFs(const char *path, std::vector<unsigned char> &out, size_t max_size) {
+        static auto ReadFileNnFs(const char *path, std::vector<unsigned char> &out, size_t max_size) -> bool {
             nn::fs::FileHandle fh {};
             auto               rc = nn::fs::OpenFile(&fh, path, nn::fs::OpenMode_Read);
             if (R_FAILED(rc)) {
@@ -88,7 +88,7 @@ namespace d3::romfs {
             return true;
         }
 
-        static bool EndsWithCaseInsensitive(std::string_view s, std::string_view suffix) {
+        static auto EndsWithCaseInsensitive(std::string_view s, std::string_view suffix) -> bool {
             if (suffix.size() > s.size()) {
                 return false;
             }
@@ -110,7 +110,7 @@ namespace d3::romfs {
 
     }  // namespace
 
-    bool ReadFileToBytes(const char *path, std::vector<unsigned char> &out, size_t max_size) {
+    auto ReadFileToBytes(const char *path, std::vector<unsigned char> &out, size_t max_size) -> bool {
         out.clear();
 
         if (path == nullptr || path[0] == '\0') {
@@ -132,7 +132,7 @@ namespace d3::romfs {
         return ReadFileNnFs(path, out, max_size);
     }
 
-    bool ReadFileToString(const char *path, std::string &out, size_t max_size) {
+    auto ReadFileToString(const char *path, std::string &out, size_t max_size) -> bool {
         out.clear();
 
         std::vector<unsigned char> bytes;
@@ -144,7 +144,7 @@ namespace d3::romfs {
         return true;
     }
 
-    bool FindFirstFileWithSuffix(const char *dir_path, const char *suffix, std::string &out_path) {
+    auto FindFirstFileWithSuffix(const char *dir_path, const char *suffix, std::string &out_path) -> bool {
         out_path.clear();
 
         if (dir_path == nullptr || dir_path[0] == '\0' || suffix == nullptr || suffix[0] == '\0') {

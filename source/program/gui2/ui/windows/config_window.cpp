@@ -10,7 +10,7 @@
 namespace d3::gui2::ui::windows {
     namespace {
 
-        static const char *SeasonMapModeToString(PatchConfig::SeasonEventMapMode mode) {
+        static auto SeasonMapModeToString(PatchConfig::SeasonEventMapMode mode) -> const char * {
             switch (mode) {
             case PatchConfig::SeasonEventMapMode::MapOnly:
                 return "MapOnly";
@@ -30,7 +30,7 @@ namespace d3::gui2::ui::windows {
         SetFlags(ImGuiWindowFlags_NoSavedSettings);
     }
 
-    bool *ConfigWindow::GetOpenFlag() {
+    auto ConfigWindow::GetOpenFlag() -> bool * {
         return overlay_.overlay_visible_ptr();
     }
 
@@ -154,7 +154,7 @@ namespace d3::gui2::ui::windows {
         }
 
         if (ImGui::BeginTabBar("d3hack_cfg_tabs")) {
-            auto mark_dirty = [&](bool changed) {
+            auto mark_dirty = [&](bool changed) -> void {
                 if (changed) {
                     overlay_.set_ui_dirty(true);
                 }
@@ -221,7 +221,7 @@ namespace d3::gui2::ui::windows {
                     overlay_.set_ui_dirty(true);
                 }
                 mark_dirty(ImGui::Checkbox(overlay_.tr("gui.resolution_spoof_docked", "Spoof docked"), &cfg.resolution_hack.spoof_docked));
-                bool  handheld_auto  = cfg.resolution_hack.output_handheld_scale <= 0.0f;
+                bool handheld_auto = cfg.resolution_hack.output_handheld_scale <= 0.0f;
                 if (ImGui::Checkbox(
                         overlay_.tr("gui.resolution_output_handheld_auto", "Handheld output scale: auto (stock)"),
                         &handheld_auto
@@ -260,8 +260,8 @@ namespace d3::gui2::ui::windows {
                     ImGuiInputTextFlags_ReadOnly
                 );
                 ImGui::EndDisabled();
-                float min_scale  = cfg.resolution_hack.min_res_scale;
-                float max_scale  = cfg.resolution_hack.max_res_scale;
+                float min_scale   = cfg.resolution_hack.min_res_scale;
+                float max_scale   = cfg.resolution_hack.max_res_scale;
                 bool  scale_dirty = false;
                 if (ImGui::SliderFloat(
                         overlay_.tr("gui.resolution_min_scale", "Minimum resolution scale"),
@@ -307,7 +307,7 @@ namespace d3::gui2::ui::windows {
                 ImGui::TextUnformatted(overlay_.tr("gui.resolution_extra_hint", "Set to -1 to keep the game's value."));
 
                 auto &extra      = cfg.resolution_hack.extra;
-                auto  edit_extra = [&](const char *label, s32 *value, int min_value, int max_value) {
+                auto  edit_extra = [&](const char *label, s32 *value, int min_value, int max_value) -> void {
                     int v = *value;
                     if (ImGui::InputInt(label, &v)) {
                         v      = std::clamp(v, min_value, max_value);
@@ -396,7 +396,7 @@ namespace d3::gui2::ui::windows {
 
                 const char *mode_label = season_map_mode_label(cfg.events.SeasonMapMode);
                 if (ImGui::BeginCombo(overlay_.tr("gui.events_season_map_mode", "Season map mode"), mode_label)) {
-                    auto selectable_mode = [&](PatchConfig::SeasonEventMapMode mode) {
+                    auto selectable_mode = [&](PatchConfig::SeasonEventMapMode mode) -> void {
                         const char *label       = season_map_mode_label(mode);
                         const bool  is_selected = (cfg.events.SeasonMapMode == mode);
                         if (ImGui::Selectable(label, is_selected)) {

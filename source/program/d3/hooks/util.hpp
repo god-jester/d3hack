@@ -13,9 +13,9 @@ namespace nn::os {
 
 namespace d3 {
 
-    inline bool g_testRanOnce = false;
-    inline int  g_refCount    = 0;
-    inline int  g_drawCount   = 0;
+    inline bool g_testRanOnce         = false;
+    inline int  g_refCount            = 0;
+    inline int  g_drawCount           = 0;
     inline bool g_pending_perf_notify = false;
     inline bool g_pending_dock_notify = false;
 
@@ -165,8 +165,8 @@ namespace d3 {
         static void Callback(exl::hook::InlineCtx *ctx) {
             auto *ptVarRWindow = reinterpret_cast<VariableResRWindowData *>(ctx->X[19]);
             if (ptVarRWindow != nullptr && global_config.resolution_hack.active) {
-                const float min_pct = std::clamp(global_config.resolution_hack.min_res_scale, 10.0f, 100.0f);
-                const float max_pct = std::clamp(global_config.resolution_hack.max_res_scale, min_pct, 100.0f);
+                const float min_pct        = std::clamp(global_config.resolution_hack.min_res_scale, 10.0f, 100.0f);
+                const float max_pct        = std::clamp(global_config.resolution_hack.max_res_scale, min_pct, 100.0f);
                 ptVarRWindow->flMinPercent = min_pct * 0.01f;
                 ptVarRWindow->flMaxPercent = max_pct * 0.01f;
             }

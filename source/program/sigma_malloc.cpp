@@ -13,11 +13,11 @@ namespace {
     alignas(kSigmaMinAlign) unsigned char s_boot_alloc[kBootAllocSize];
     std::atomic<size_t> s_boot_offset {0};
 
-    size_t AlignUp(size_t value, size_t alignment) {
+    auto AlignUp(size_t value, size_t alignment) -> size_t {
         return (value + (alignment - 1)) & ~(alignment - 1);
     }
 
-    size_t NormalizeAlignment(size_t alignment) {
+    auto NormalizeAlignment(size_t alignment) -> size_t {
         if (alignment < kSigmaMinAlign) {
             alignment = kSigmaMinAlign;
         }
@@ -27,7 +27,7 @@ namespace {
         return alignment;
     }
 
-    void *BootAlloc(size_t size, size_t alignment) {
+    auto BootAlloc(size_t size, size_t alignment) -> void * {
         if (size == 0) {
             return nullptr;
         }
@@ -56,12 +56,12 @@ namespace {
         }
     }
 
-    bool IsBootPtr(const void *ptr) {
+    auto IsBootPtr(const void *ptr) -> bool {
         auto p = reinterpret_cast<const unsigned char *>(ptr);
         return p >= s_boot_alloc && p < (s_boot_alloc + kBootAllocSize);
     }
 
-    void *SigmaAlloc(size_t size, size_t alignment, bool clear) {
+    auto SigmaAlloc(size_t size, size_t alignment, bool clear) -> void * {
         if (size == 0) {
             return nullptr;
         }
@@ -90,15 +90,15 @@ namespace {
 
 }  // namespace
 
-extern "C" void *malloc(size_t size) {
+extern "C" auto malloc(size_t size) -> void * {
     return SigmaAlloc(size, kSigmaMinAlign, false);
 }
 
-extern "C" void *aligned_alloc(size_t alignment, size_t size) {
+extern "C" auto aligned_alloc(size_t alignment, size_t size) -> void * {
     return SigmaAlloc(size, alignment, false);
 }
 
-extern "C" void *calloc(size_t count, size_t size) {
+extern "C" auto calloc(size_t count, size_t size) -> void * {
     if (count == 0 || size == 0) {
         return nullptr;
     }

@@ -9,14 +9,14 @@
 PatchConfig global_config {};
 
 namespace {
-    const toml::table *FindTable(const toml::table &root, std::string_view key) {
+    auto FindTable(const toml::table &root, std::string_view key) -> const toml::table * {
         if (auto node = root.get(key); node && node->is_table())
             return node->as_table();
         return nullptr;
     }
 
     template<typename T>
-    std::optional<T> ReadValue(const toml::table &table, std::initializer_list<std::string_view> keys) {
+    auto ReadValue(const toml::table &table, std::initializer_list<std::string_view> keys) -> std::optional<T> {
         for (auto key : keys) {
             if (auto node = table.get(key)) {
                 if (auto value = node->value<T>())
@@ -26,13 +26,13 @@ namespace {
         return std::nullopt;
     }
 
-    bool ReadBool(const toml::table &table, std::initializer_list<std::string_view> keys, bool fallback) {
+    auto ReadBool(const toml::table &table, std::initializer_list<std::string_view> keys, bool fallback) -> bool {
         if (auto value = ReadValue<bool>(table, keys))
             return *value;
         return fallback;
     }
 
-    std::optional<double> ReadNumber(const toml::table &table, std::initializer_list<std::string_view> keys) {
+    auto ReadNumber(const toml::table &table, std::initializer_list<std::string_view> keys) -> std::optional<double> {
         for (auto key : keys) {
             if (auto node = table.get(key)) {
                 if (auto value = node->value<double>())
@@ -44,7 +44,7 @@ namespace {
         return std::nullopt;
     }
 
-    u32 ReadU32(const toml::table &table, std::initializer_list<std::string_view> keys, u32 fallback, u32 min_value, u32 max_value) {
+    auto ReadU32(const toml::table &table, std::initializer_list<std::string_view> keys, u32 fallback, u32 min_value, u32 max_value) -> u32 {
         if (auto value = ReadNumber(table, keys)) {
             auto clamped = std::clamp(*value, static_cast<double>(min_value), static_cast<double>(max_value));
             return static_cast<u32>(clamped);
@@ -52,7 +52,7 @@ namespace {
         return fallback;
     }
 
-    s32 ReadI32(const toml::table &table, std::initializer_list<std::string_view> keys, s32 fallback, s32 min_value, s32 max_value) {
+    auto ReadI32(const toml::table &table, std::initializer_list<std::string_view> keys, s32 fallback, s32 min_value, s32 max_value) -> s32 {
         if (auto value = ReadNumber(table, keys)) {
             auto clamped = std::clamp(*value, static_cast<double>(min_value), static_cast<double>(max_value));
             return static_cast<s32>(clamped);
@@ -60,20 +60,20 @@ namespace {
         return fallback;
     }
 
-    double ReadDouble(const toml::table &table, std::initializer_list<std::string_view> keys, double fallback, double min_value, double max_value) {
+    auto ReadDouble(const toml::table &table, std::initializer_list<std::string_view> keys, double fallback, double min_value, double max_value) -> double {
         if (auto value = ReadNumber(table, keys)) {
             return std::clamp(*value, min_value, max_value);
         }
         return fallback;
     }
 
-    std::string ReadString(const toml::table &table, std::initializer_list<std::string_view> keys, std::string fallback) {
+    auto ReadString(const toml::table &table, std::initializer_list<std::string_view> keys, std::string fallback) -> std::string {
         if (auto value = ReadValue<std::string>(table, keys))
             return *value;
         return fallback;
     }
 
-    std::string NormalizeKey(std::string_view input) {
+    auto NormalizeKey(std::string_view input) -> std::string {
         std::string out;
         out.reserve(input.size());
         for (char ch : input) {
@@ -85,7 +85,7 @@ namespace {
         return out;
     }
 
-    PatchConfig::SeasonEventMapMode ParseSeasonEventMapMode(std::string_view input, PatchConfig::SeasonEventMapMode fallback) {
+    auto ParseSeasonEventMapMode(std::string_view input, PatchConfig::SeasonEventMapMode fallback) -> PatchConfig::SeasonEventMapMode {
         auto normalized = NormalizeKey(input);
         if (normalized.empty())
             return fallback;
@@ -98,7 +98,7 @@ namespace {
         return fallback;
     }
 
-    PatchConfig::SeasonEventMapMode ReadSeasonEventMapMode(const toml::table &table, std::initializer_list<std::string_view> keys, PatchConfig::SeasonEventMapMode fallback) {
+    auto ReadSeasonEventMapMode(const toml::table &table, std::initializer_list<std::string_view> keys, PatchConfig::SeasonEventMapMode fallback) -> PatchConfig::SeasonEventMapMode {
         if (auto value = ReadValue<std::string>(table, keys))
             return ParseSeasonEventMapMode(*value, fallback);
         if (auto value = ReadValue<bool>(table, keys))
@@ -106,7 +106,7 @@ namespace {
         return fallback;
     }
 
-    u32 ParseResolutionHackOutputTarget(std::string_view input, u32 fallback) {
+    auto ParseResolutionHackOutputTarget(std::string_view input, u32 fallback) -> u32 {
         const auto normalized = NormalizeKey(input);
         if (normalized.empty())
             return fallback;
@@ -132,7 +132,7 @@ namespace {
         return fallback;
     }
 
-    u32 ReadResolutionHackOutputTarget(const toml::table &table, std::initializer_list<std::string_view> keys, u32 fallback) {
+    auto ReadResolutionHackOutputTarget(const toml::table &table, std::initializer_list<std::string_view> keys, u32 fallback) -> u32 {
         if (auto value = ReadValue<int64_t>(table, keys)) {
             if (*value > 0 && *value <= std::numeric_limits<u32>::max())
                 return static_cast<u32>(*value);
@@ -243,7 +243,7 @@ namespace {
         return out;
     }
 
-    bool BuildSeasonEventMap(u32 season, SeasonEventFlags &out) {
+    auto BuildSeasonEventMap(u32 season, SeasonEventFlags &out) -> bool {
         out = SeasonEventFlags {};
         switch (season) {
         case 14:
@@ -337,7 +337,7 @@ namespace {
         ApplySeasonEventFlags(config, merged);
     }
 
-    int AncientRankToValue(std::string_view input, int fallback) {
+    auto AncientRankToValue(std::string_view input, int fallback) -> int {
         auto normalized = NormalizeKey(input);
         if (normalized == "0" || normalized == "normal" || normalized == "none")
             return 0;
@@ -348,7 +348,7 @@ namespace {
         return fallback;
     }
 
-    std::string AncientRankCanonical(int value, std::string_view fallback) {
+    auto AncientRankCanonical(int value, std::string_view fallback) -> std::string {
         switch (value) {
         case 0:
             return "Normal";
@@ -361,13 +361,13 @@ namespace {
         }
     }
 
-    bool DoesFileExist(const char *path) {
+    auto DoesFileExist(const char *path) -> bool {
         nn::fs::DirectoryEntryType type {};
         auto                       rc = nn::fs::GetEntryType(&type, path);
         return R_SUCCEEDED(rc) && type == nn::fs::DirectoryEntryType_File;
     }
 
-    bool ReadAll(const char *path, std::string &out) {
+    auto ReadAll(const char *path, std::string &out) -> bool {
         if (!DoesFileExist(path))
             return false;
         nn::fs::FileHandle fh {};
@@ -388,7 +388,7 @@ namespace {
         return true;
     }
 
-    bool LoadFromPath(const char *path, PatchConfig &out, std::string &error_out) {
+    auto LoadFromPath(const char *path, PatchConfig &out, std::string &error_out) -> bool {
         std::string text;
         if (!ReadAll(path, text))
             return false;
@@ -410,7 +410,7 @@ namespace {
         return true;
     }
 
-    const char *SeasonMapModeToString(PatchConfig::SeasonEventMapMode mode) {
+    auto SeasonMapModeToString(PatchConfig::SeasonEventMapMode mode) -> const char * {
         switch (mode) {
         case PatchConfig::SeasonEventMapMode::MapOnly:
             return "MapOnly";
@@ -423,7 +423,7 @@ namespace {
         }
     }
 
-    toml::table BuildPatchConfigTable(const PatchConfig &config) {
+    auto BuildPatchConfigTable(const PatchConfig &config) -> toml::table {
         toml::table root;
 
         {
@@ -570,7 +570,7 @@ namespace {
         return root;
     }
 
-    bool EnsureConfigDirectories(const char *path, std::string &error_out) {
+    auto EnsureConfigDirectories(const char *path, std::string &error_out) -> bool {
         // Currently only supports the standard config directory layout.
         // Path is expected to be: sd:/config/d3hack-nx/config.toml
         (void)path;
@@ -589,7 +589,7 @@ namespace {
         return true;
     }
 
-    bool WriteAllAtomic(const char *path, const std::string &text, std::string &error_out) {
+    auto WriteAllAtomic(const char *path, const std::string &text, std::string &error_out) -> bool {
         if (!EnsureConfigDirectories(path, error_out)) {
             return false;
         }
@@ -739,6 +739,7 @@ void PatchConfig::ApplyTable(const toml::table &table) {
             )) {
             if (resolution_hack.target_resolution > 0) {
                 const float scale = static_cast<float>(*handheld_target) / static_cast<float>(resolution_hack.target_resolution);
+
                 resolution_hack.output_handheld_scale = scale * 100.0f;
             } else {
                 resolution_hack.output_handheld_scale = 0.0f;
@@ -771,9 +772,10 @@ void PatchConfig::ApplyTable(const toml::table &table) {
         resolution_hack.clamp_texture_resolution = clamp_value;
 
         if (const auto *extra = FindTable(*resolution_section, "extra")) {
-            using ExtraConfig = PatchConfig::ResolutionHackConfig::ExtraConfig;
+            using ExtraConfig   = PatchConfig::ResolutionHackConfig::ExtraConfig;
             const s32 min_value = ExtraConfig::kUnset;
             const s32 max_dim   = ExtraConfig::kMaxDimension;
+
             resolution_hack.extra.window_left = ReadI32(
                 *extra, {"WindowLeft", "WinLeft", "Left"}, resolution_hack.extra.window_left, min_value, max_dim
             );
@@ -895,14 +897,14 @@ void LoadPatchConfig() {
     PRINT("Config not found; using built-in defaults%s", ".");
 }
 
-PatchConfig NormalizePatchConfig(const PatchConfig &config) {
+auto NormalizePatchConfig(const PatchConfig &config) -> PatchConfig {
     const toml::table root = BuildPatchConfigTable(config);
     PatchConfig       out {};
     out.ApplyTable(root);
     return out;
 }
 
-bool LoadPatchConfigFromPath(const char *path, PatchConfig &out, std::string &error_out) {
+auto LoadPatchConfigFromPath(const char *path, PatchConfig &out, std::string &error_out) -> bool {
     out = PatchConfig {};
     if (LoadFromPath(path, out, error_out)) {
         return true;
@@ -910,7 +912,7 @@ bool LoadPatchConfigFromPath(const char *path, PatchConfig &out, std::string &er
     return false;
 }
 
-bool SavePatchConfigToPath(const char *path, const PatchConfig &config, std::string &error_out) {
+auto SavePatchConfigToPath(const char *path, const PatchConfig &config, std::string &error_out) -> bool {
     const PatchConfig normalized = NormalizePatchConfig(config);
     const toml::table root       = BuildPatchConfigTable(normalized);
 
@@ -919,7 +921,7 @@ bool SavePatchConfigToPath(const char *path, const PatchConfig &config, std::str
     return WriteAllAtomic(path, ss.str(), error_out);
 }
 
-bool SavePatchConfig(const PatchConfig &config) {
+auto SavePatchConfig(const PatchConfig &config) -> bool {
     const char *path = "sd:/config/d3hack-nx/config.toml";
     std::string error;
     if (!SavePatchConfigToPath(path, config, error)) {

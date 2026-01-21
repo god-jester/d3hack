@@ -11,9 +11,9 @@
 #include "lib/hook/trampoline.hpp"
 #include "lib/reloc/reloc.hpp"
 #include "lib/util/sys/mem_layout.hpp"
-#include "nn/fs.hpp"  // IWYU pragma: keep
+#include "nn/fs.hpp"   // IWYU pragma: keep
 #include "nn/hid.hpp"  // IWYU pragma: keep
-#include "nn/os.hpp"  // IWYU pragma: keep
+#include "nn/os.hpp"   // IWYU pragma: keep
 #include "program/romfs_assets.hpp"
 #include "program/gui2/ui/overlay.hpp"
 #include "program/gui2/ui/windows/notifications_window.hpp"
@@ -89,7 +89,7 @@ namespace d3::imgui_overlay {
             }
         }
 
-        void *ImGuiAlloc(size_t size, void *user_data) {
+        auto ImGuiAlloc(size_t size, void *user_data) -> void * {
             (void)user_data;
 
             if (SigmaMemoryNew != nullptr) {
@@ -114,7 +114,7 @@ namespace d3::imgui_overlay {
             std::free(ptr);
         }
 
-        bool ReadFileToImGuiBuffer(const char *path, unsigned char **out_data, size_t *out_size, size_t max_size) {
+        auto ReadFileToImGuiBuffer(const char *path, unsigned char **out_data, size_t *out_size, size_t max_size) -> bool {
             if (out_data == nullptr || out_size == nullptr) {
                 return false;
             }
@@ -182,7 +182,7 @@ namespace d3::imgui_overlay {
         std::atomic<int>       g_hid_passthrough_depth {0};
         std::atomic<uintptr_t> g_hid_passthrough_thread {0};
 
-        static uintptr_t GetCurrentThreadToken() {
+        static auto GetCurrentThreadToken() -> uintptr_t {
             const auto *thread = nn::os::GetCurrentThread();
             return reinterpret_cast<uintptr_t>(thread);
         }
@@ -234,7 +234,7 @@ namespace d3::imgui_overlay {
             }
         }
 
-        static bool ShouldBlockGamepadInput() {
+        static auto ShouldBlockGamepadInput() -> bool {
             if (!g_block_gamepad_input_to_game.load(std::memory_order_relaxed)) {
                 return false;
             }
@@ -259,7 +259,7 @@ namespace d3::imgui_overlay {
             bool                      have_stick_r = false;
         };
 
-        static float NormalizeStickComponent(s32 v) {
+        static auto NormalizeStickComponent(s32 v) -> float {
             constexpr float kMax = 32767.0f;
             float           out  = static_cast<float>(v) / kMax;
             if (out < -1.0f)
@@ -269,7 +269,7 @@ namespace d3::imgui_overlay {
             return out;
         }
 
-        static bool CombineNpadState(NpadCombinedState &out, uint port) {
+        static auto CombineNpadState(NpadCombinedState &out, uint port) -> bool {
             out = {};
 
             ScopedHidPassthroughForOverlay passthrough_guard;
@@ -292,7 +292,7 @@ namespace d3::imgui_overlay {
             out.buttons |= joy_left.mButtons.field[0];
             out.buttons |= joy_right.mButtons.field[0];
 
-            auto consider_stick = [](bool &have, nn::hid::AnalogStickState &dst, const nn::hid::AnalogStickState &src) {
+            auto consider_stick = [](bool &have, nn::hid::AnalogStickState &dst, const nn::hid::AnalogStickState &src) -> void {
                 const auto mag     = static_cast<u64>(std::abs(src.X)) + static_cast<u64>(std::abs(src.Y));
                 const auto dst_mag = static_cast<u64>(std::abs(dst.X)) + static_cast<u64>(std::abs(dst.Y));
                 if (!have || mag > dst_mag) {
@@ -316,12 +316,12 @@ namespace d3::imgui_overlay {
             return out.buttons != 0 || out.have_stick_l || out.have_stick_r;
         }
 
-        static bool NpadButtonDown(u64 buttons, nn::hid::NpadButton button) {
+        static auto NpadButtonDown(u64 buttons, nn::hid::NpadButton button) -> bool {
             const auto bit = static_cast<u64>(button);
             return (buttons & (1ULL << bit)) != 0;
         }
 
-        static bool KeyboardKeyDown(const nn::hid::KeyboardState &state, nn::hid::KeyboardKey key) {
+        static auto KeyboardKeyDown(const nn::hid::KeyboardState &state, nn::hid::KeyboardKey key) -> bool {
             return state.keys.isBitSet(key);
         }
 
@@ -338,7 +338,7 @@ namespace d3::imgui_overlay {
         static ImGuiStyle g_imgui_base_style {};
         static float      g_last_gui_scale = -1.0f;
 
-        static float ComputeGuiScale(ImVec2 viewport_size) {
+        static auto ComputeGuiScale(ImVec2 viewport_size) -> float {
             constexpr float kMinViewportH = 720.0f;
             constexpr float kMaxViewportH = 1440.0f;
             constexpr float kMinScale     = 0.9f;
@@ -597,18 +597,18 @@ namespace d3::imgui_overlay {
 
             ImGuiIO &io = ImGui::GetIO();
 
-            const bool ctrl_left = KeyboardKeyDown(st, nn::hid::KeyboardKey::LeftControl);
-            const bool ctrl_right = KeyboardKeyDown(st, nn::hid::KeyboardKey::RightControl);
-            const bool shift_left = KeyboardKeyDown(st, nn::hid::KeyboardKey::LeftShift);
+            const bool ctrl_left   = KeyboardKeyDown(st, nn::hid::KeyboardKey::LeftControl);
+            const bool ctrl_right  = KeyboardKeyDown(st, nn::hid::KeyboardKey::RightControl);
+            const bool shift_left  = KeyboardKeyDown(st, nn::hid::KeyboardKey::LeftShift);
             const bool shift_right = KeyboardKeyDown(st, nn::hid::KeyboardKey::RightShift);
-            const bool alt_left = KeyboardKeyDown(st, nn::hid::KeyboardKey::LeftAlt);
-            const bool alt_right = KeyboardKeyDown(st, nn::hid::KeyboardKey::RightAlt);
-            const bool gui_left = KeyboardKeyDown(st, nn::hid::KeyboardKey::LeftGui);
-            const bool gui_right = KeyboardKeyDown(st, nn::hid::KeyboardKey::RightGui);
-            const bool ctrl_mod = st.modifiers.isBitSet(nn::hid::KeyboardModifier::Control);
-            const bool shift_mod = st.modifiers.isBitSet(nn::hid::KeyboardModifier::Shift);
-            const bool alt_mod = st.modifiers.isBitSet(nn::hid::KeyboardModifier::LeftAlt) ||
-                st.modifiers.isBitSet(nn::hid::KeyboardModifier::RightAlt);
+            const bool alt_left    = KeyboardKeyDown(st, nn::hid::KeyboardKey::LeftAlt);
+            const bool alt_right   = KeyboardKeyDown(st, nn::hid::KeyboardKey::RightAlt);
+            const bool gui_left    = KeyboardKeyDown(st, nn::hid::KeyboardKey::LeftGui);
+            const bool gui_right   = KeyboardKeyDown(st, nn::hid::KeyboardKey::RightGui);
+            const bool ctrl_mod    = st.modifiers.isBitSet(nn::hid::KeyboardModifier::Control);
+            const bool shift_mod   = st.modifiers.isBitSet(nn::hid::KeyboardModifier::Shift);
+            const bool alt_mod     = st.modifiers.isBitSet(nn::hid::KeyboardModifier::LeftAlt) ||
+                                 st.modifiers.isBitSet(nn::hid::KeyboardModifier::RightAlt);
             const bool gui_mod = st.modifiers.isBitSet(nn::hid::KeyboardModifier::Gui);
 
             io.AddKeyEvent(ImGuiKey_LeftCtrl, ctrl_left || (ctrl_mod && !ctrl_right));
@@ -620,7 +620,7 @@ namespace d3::imgui_overlay {
             io.AddKeyEvent(ImGuiKey_LeftSuper, gui_left || (gui_mod && !gui_right));
             io.AddKeyEvent(ImGuiKey_RightSuper, gui_right);
 
-            auto set_key = [&](ImGuiKey key, nn::hid::KeyboardKey hid_key) {
+            auto set_key = [&](ImGuiKey key, nn::hid::KeyboardKey hid_key) -> void {
                 io.AddKeyEvent(key, KeyboardKeyDown(st, hid_key));
             };
 
@@ -691,10 +691,10 @@ namespace d3::imgui_overlay {
         using GetNpadStatesDetailJoyLeftFn  = int (*)(int *, nn::hid::NpadJoyLeftState *, int, uint const &);
         using GetNpadStatesDetailJoyRightFn = int (*)(int *, nn::hid::NpadJoyRightState *, int, uint const &);
 
-        using GetMouseStateFn = void (*)(nn::hid::MouseState *);
+        using GetMouseStateFn    = void (*)(nn::hid::MouseState *);
         using GetKeyboardStateFn = void (*)(nn::hid::KeyboardState *);
 
-        static void *LookupSymbolAddress(const char *name) {
+        static auto LookupSymbolAddress(const char *name) -> void * {
             for (int i = static_cast<int>(exl::util::ModuleIndex::Start);
                  i < static_cast<int>(exl::util::ModuleIndex::End);
                  ++i) {
@@ -824,15 +824,15 @@ namespace d3::imgui_overlay {
 
             const DetailHookEntry detail_hooks[] = {
                 {"_ZN2nn3hid6detail13GetNpadStatesEPiPNS0_16NpadFullKeyStateEiRKj",
-                 [](uintptr_t addr) { HidDetailGetNpadStatesFullKeyHook::InstallAtPtr(addr); }},
+                 [](uintptr_t addr) -> void { HidDetailGetNpadStatesFullKeyHook::InstallAtPtr(addr); }},
                 {"_ZN2nn3hid6detail13GetNpadStatesEPiPNS0_17NpadHandheldStateEiRKj",
-                 [](uintptr_t addr) { HidDetailGetNpadStatesHandheldHook::InstallAtPtr(addr); }},
+                 [](uintptr_t addr) -> void { HidDetailGetNpadStatesHandheldHook::InstallAtPtr(addr); }},
                 {"_ZN2nn3hid6detail13GetNpadStatesEPiPNS0_16NpadJoyDualStateEiRKj",
-                 [](uintptr_t addr) { HidDetailGetNpadStatesJoyDualHook::InstallAtPtr(addr); }},
+                 [](uintptr_t addr) -> void { HidDetailGetNpadStatesJoyDualHook::InstallAtPtr(addr); }},
                 {"_ZN2nn3hid6detail13GetNpadStatesEPiPNS0_16NpadJoyLeftStateEiRKj",
-                 [](uintptr_t addr) { HidDetailGetNpadStatesJoyLeftHook::InstallAtPtr(addr); }},
+                 [](uintptr_t addr) -> void { HidDetailGetNpadStatesJoyLeftHook::InstallAtPtr(addr); }},
                 {"_ZN2nn3hid6detail13GetNpadStatesEPiPNS0_17NpadJoyRightStateEiRKj",
-                 [](uintptr_t addr) { HidDetailGetNpadStatesJoyRightHook::InstallAtPtr(addr); }},
+                 [](uintptr_t addr) -> void { HidDetailGetNpadStatesJoyRightHook::InstallAtPtr(addr); }},
             };
 
             for (const auto &hook : detail_hooks) {
@@ -848,7 +848,7 @@ namespace d3::imgui_overlay {
             PRINT_LINE("[imgui_overlay] nn::hid input hooks installed");
         }
 
-        static NVNboolean CmdBufInitializeWrapper(NVNcommandBuffer *buffer, NVNdevice *device) {
+        static auto CmdBufInitializeWrapper(NVNcommandBuffer *buffer, NVNdevice *device) -> NVNboolean {
             if (g_cmd_buf == nullptr && buffer != nullptr) {
                 g_cmd_buf = buffer;
             }
@@ -1041,7 +1041,7 @@ namespace d3::imgui_overlay {
 
     }  // namespace
 
-    const d3::gui2::ui::GuiFocusState &GetGuiFocusState() {
+    auto GetGuiFocusState() -> const d3::gui2::ui::GuiFocusState & {
         return g_overlay.focus_state();
     }
 

@@ -14,7 +14,7 @@
 namespace d3::gui2::ui {
     namespace {
 
-        static std::string NormalizeLang(std::string_view in) {
+        static auto NormalizeLang(std::string_view in) -> std::string {
             std::string out;
             out.reserve(2);
 
@@ -37,7 +37,7 @@ namespace d3::gui2::ui {
             return out;
         }
 
-        static std::string NormalizeLocale(std::string_view locale) {
+        static auto NormalizeLocale(std::string_view locale) -> std::string {
             if (locale == "Invalid" || locale == "Global") {
                 return {};
             }
@@ -50,7 +50,7 @@ namespace d3::gui2::ui {
             return NormalizeLang(locale);
         }
 
-        static std::string ResolveGameLang() {
+        static auto ResolveGameLang() -> std::string {
             const auto *locale_ptr = reinterpret_cast<const unsigned long long *>(GameOffsetFromTable("unicode_text_current_locale"));
             if (locale_ptr == nullptr) {
                 return {};
@@ -72,7 +72,7 @@ namespace d3::gui2::ui {
         static void FlattenTomlStrings(const toml::node &node, std::string &prefix, std::unordered_map<std::string, std::string> &out) {
             if (node.is_table()) {
                 const auto *tbl = node.as_table();
-                tbl->for_each([&](const toml::key &k, const toml::node &v) {
+                tbl->for_each([&](const toml::key &k, const toml::node &v) -> void {
                     const auto key_str = std::string(k.str());
 
                     const auto old_len = prefix.size();
@@ -101,7 +101,7 @@ namespace d3::gui2::ui {
 
     Overlay::~Overlay() = default;
 
-    const char *Overlay::tr(const char *key, const char *fallback) {
+    auto Overlay::tr(const char *key, const char *fallback) -> const char * {
         if (key == nullptr || fallback == nullptr) {
             return fallback != nullptr ? fallback : "";
         }
@@ -234,7 +234,7 @@ namespace d3::gui2::ui {
         request_focus_ = true;
     }
 
-    bool Overlay::UpdateFrame(bool font_uploaded, int crop_w, int crop_h, int swapchain_texture_count, const ImVec2 &viewport_size, bool last_npad_valid, unsigned long long last_npad_buttons, int last_npad_stick_lx, int last_npad_stick_ly, int last_npad_stick_rx, int last_npad_stick_ry) {
+    auto Overlay::UpdateFrame(bool font_uploaded, int crop_w, int crop_h, int swapchain_texture_count, const ImVec2 &viewport_size, bool last_npad_valid, unsigned long long last_npad_buttons, int last_npad_stick_lx, int last_npad_stick_ly, int last_npad_stick_rx, int last_npad_stick_ry) -> bool {
         EnsureConfigLoaded();
         EnsureWindowsCreated();
 

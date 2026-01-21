@@ -260,9 +260,7 @@ namespace d3 {
 
         if (prev.resolution_hack.active != global_config.resolution_hack.active ||
             prev.resolution_hack.output_handheld_scale != global_config.resolution_hack.output_handheld_scale) {
-            PatchRenderTargetCurrentResolutionScale(
-                global_config.resolution_hack.active ? global_config.resolution_hack.HandheldScaleFraction() : 0.0f
-            );
+            result.restart_required = true;
             append_note("RT scale");
         }
 

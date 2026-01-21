@@ -25,7 +25,7 @@ namespace d3::gui2::ui::windows {
             n.ttl_s -= dt_s;
         }
 
-        notifications_.erase(std::remove_if(notifications_.begin(), notifications_.end(), [](const Notification &n) { return n.ttl_s <= 0.0f; }), notifications_.end());
+        notifications_.erase(std::remove_if(notifications_.begin(), notifications_.end(), [](const Notification &n) -> bool { return n.ttl_s <= 0.0f; }), notifications_.end());
 
         open_ = !notifications_.empty();
     }
@@ -54,7 +54,7 @@ namespace d3::gui2::ui::windows {
         open_ = true;
     }
 
-    bool *NotificationsWindow::GetOpenFlag() {
+    auto NotificationsWindow::GetOpenFlag() -> bool * {
         return &open_;
     }
 

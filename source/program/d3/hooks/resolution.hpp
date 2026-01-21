@@ -28,25 +28,25 @@ namespace d3 {
             if (!global_config.resolution_hack.active)
                 return Orig();
 
-            if (g_ptGfxNVNGlobals != nullptr) {
-                const u32 outW      = global_config.resolution_hack.OutputWidthPx();
-                const u32 outH      = global_config.resolution_hack.OutputHeightPx();
-                const u32 handheldH = global_config.resolution_hack.OutputHandheldHeightPx();
-                const u32 fallbackW = handheldH != 0 ? global_config.resolution_hack.WidthForHeight(handheldH) : 2048u;
-                const u32 fallbackH = handheldH != 0 ? handheldH : 1152u;
+            // if (g_ptGfxNVNGlobals != nullptr) {
+            //     const u32 outW      = global_config.resolution_hack.OutputWidthPx();
+            //     const u32 outH      = global_config.resolution_hack.OutputHeightPx();
+            //     const u32 handheldH = global_config.resolution_hack.OutputHandheldHeightPx();
+            //     const u32 fallbackW = handheldH != 0 ? global_config.resolution_hack.WidthForHeight(handheldH) : 2048u;
+            //     const u32 fallbackH = handheldH != 0 ? handheldH : 1152u;
 
-                g_ptGfxNVNGlobals->dwDeviceWidth         = outW;
-                g_ptGfxNVNGlobals->dwDeviceHeight        = outH;
-                g_ptGfxNVNGlobals->dwReducedDeviceWidth  = fallbackW;
-                g_ptGfxNVNGlobals->dwReducedDeviceHeight = fallbackH;
-            }
-            PRINT(
-                "POST GFXNVN globals: dev=%ux%u reduced=%ux%u",
-                g_ptGfxNVNGlobals->dwDeviceWidth,
-                g_ptGfxNVNGlobals->dwDeviceHeight,
-                g_ptGfxNVNGlobals->dwReducedDeviceWidth,
-                g_ptGfxNVNGlobals->dwReducedDeviceHeight
-            );
+            //     g_ptGfxNVNGlobals->dwDeviceWidth         = outW;
+            //     g_ptGfxNVNGlobals->dwDeviceHeight        = outH;
+            //     g_ptGfxNVNGlobals->dwReducedDeviceWidth  = fallbackW;
+            //     g_ptGfxNVNGlobals->dwReducedDeviceHeight = fallbackH;
+            // }
+            // PRINT(
+            //     "POST GFXNVN globals: dev=%ux%u reduced=%ux%u",
+            //     g_ptGfxNVNGlobals->dwDeviceWidth,
+            //     g_ptGfxNVNGlobals->dwDeviceHeight,
+            //     g_ptGfxNVNGlobals->dwReducedDeviceWidth,
+            //     g_ptGfxNVNGlobals->dwReducedDeviceHeight
+            // );
 
             auto result = Orig();
 
@@ -81,9 +81,9 @@ namespace d3 {
             if (refresh_aspect && result.dwHeight != 0u)
                 result.flAspectRatio = static_cast<float>(result.dwWidth) / static_cast<float>(result.dwHeight);
 
-            PatchRenderTargetCurrentResolutionScale(
-                global_config.resolution_hack.active ? global_config.resolution_hack.HandheldScaleFraction() : 0.0f
-            );
+            // PatchRenderTargetCurrentResolutionScale(
+            //     global_config.resolution_hack.active ? global_config.resolution_hack.HandheldScaleFraction() : 0.0f
+            // );
 
             return result;
         }

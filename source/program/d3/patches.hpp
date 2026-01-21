@@ -159,8 +159,8 @@ namespace d3 {
         // 0x667B10: B.EQ def_667A20
         // jest.Patch<Nop>(0x667B10);  // always fall through to re-init UI
 
-        const u32 outW = global_config.resolution_hack.OutputWidthPx();
-        const u32 outH = global_config.resolution_hack.OutputHeightPx();
+        const u32 outW      = global_config.resolution_hack.OutputWidthPx();
+        const u32 outH      = global_config.resolution_hack.OutputHeightPx();
         const u32 handheldH = global_config.resolution_hack.OutputHandheldHeightPx();
         const u32 fallbackW = handheldH != 0 ? global_config.resolution_hack.WidthForHeight(handheldH) : 1600u;
         const u32 fallbackH = handheldH != 0 ? handheldH : 900u;

@@ -6,7 +6,7 @@ namespace d3::gui2::ui {
         title_(std::move(title)), enabled_(enabled_default) {
     }
 
-    bool Window::Render() {
+    auto Window::Render() -> bool {
         if (!enabled_) {
             return false;
         }
@@ -38,7 +38,7 @@ namespace d3::gui2::ui {
         return window_visible;
     }
 
-    bool Window::IsEnabled() const {
+    auto Window::IsEnabled() const -> bool {
         return enabled_;
     }
 
@@ -56,12 +56,12 @@ namespace d3::gui2::ui {
         }
     }
 
-    bool Window::IsOpen() const {
+    auto Window::IsOpen() const -> bool {
         const bool *open = const_cast<Window *>(this)->GetOpenFlag();
         return (open == nullptr) || *open;
     }
 
-    const std::string &Window::GetTitle() const {
+    auto Window::GetTitle() const -> const std::string & {
         return title_;
     }
 
@@ -89,7 +89,7 @@ namespace d3::gui2::ui {
         has_default_size_ = false;
     }
 
-    ImGuiWindowFlags Window::GetFlags() const {
+    auto Window::GetFlags() const -> ImGuiWindowFlags {
         return flags_;
     }
 
@@ -97,7 +97,7 @@ namespace d3::gui2::ui {
         flags_ = flags;
     }
 
-    bool *Window::GetOpenFlag() {
+    auto Window::GetOpenFlag() -> bool * {
         return nullptr;
     }
 
