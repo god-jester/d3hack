@@ -155,6 +155,10 @@ namespace d3 {
         if (!(global_config.resolution_hack.active))
             return;
 
+        /* ►Always run perf-mode change handler on perf notify (skip v8 == gePerformanceMode check). */
+        // 0x667B10: B.EQ def_667A20
+        // jest.Patch<Nop>(0x667B10);  // always fall through to re-init UI
+
         const u32 outW = global_config.resolution_hack.OutputWidthPx();
         const u32 outH = global_config.resolution_hack.OutputHeightPx();
         const u32 handheldH = global_config.resolution_hack.OutputHandheldHeightPx();
@@ -201,19 +205,24 @@ namespace d3 {
     }
 
     inline void PatchResolutionTargetDeviceDims() {
-        if (!global_config.resolution_hack.active) {
+        if (!global_config.resolution_hack.active)
             return;
-        }
+        auto jest = patch::RandomAccessPatcher();
 
-        auto      jest      = patch::RandomAccessPatcher();
         const u32 outW      = global_config.resolution_hack.OutputWidthPx();
         const u32 outH      = global_config.resolution_hack.OutputHeightPx();
         const u32 handheldH = global_config.resolution_hack.OutputHandheldHeightPx();
         const u32 fallbackW = handheldH != 0 ? global_config.resolution_hack.WidthForHeight(handheldH) : 2048u;
         const u32 fallbackH = handheldH != 0 ? handheldH : 1152u;
 
+        // Display mode pair (full). GFXNX64NVN::Init (0x0E7850).
+        // 0x0E7858: MOV X8, #1600
+        // 0x0E7860: MOVK X8, #900, LSL#32
         jest.Patch<Movz>(PatchTable("patch_resolution_targets_01_movz"), X8, outW);
         jest.Patch<Movk>(PatchTable("patch_resolution_targets_02_movk"), X8, outH, ShiftValue_32);
+        // Fallback/base scale mode (same block).
+        // 0x0E785C: MOV X9, #1280
+        // 0x0E7864: MOVK X9, #720, LSL#32
         jest.Patch<Movz>(PatchTable("patch_resolution_targets_03_movz"), X9, fallbackW);
         jest.Patch<Movk>(PatchTable("patch_resolution_targets_04_movk"), X9, fallbackH, ShiftValue_32);
     }
@@ -239,6 +248,7 @@ namespace d3 {
             *rt_scale = s_default_scale;
             return;
         }
+        PRINT_EXPR("%f : %f", *rt_scale, scale);
         *rt_scale = scale;
     }
 

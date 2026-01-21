@@ -21,7 +21,7 @@ struct PatchConfig {
         float min_res_scale     = 85.0f;  // boosted; default is 70%
         bool  spoof_docked           = false;
         bool  exp_scheduler     = true;
-        float output_handheld_scale = 0.0f;  // 0.0 = keep stock 0.8f scale in RT resolution calc
+        float output_handheld_scale = 0.0;  // 0.0 = keep stock 80% scale in RT resolution calc
 
         struct ExtraConfig {
             static constexpr s32 kUnset          = -1;

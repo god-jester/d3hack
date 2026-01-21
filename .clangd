@@ -21,7 +21,7 @@ Diagnostics:
   UnusedIncludes: None
   ClangTidy:
     FastCheckFilter: Loose
-    Remove: [readability*]
+    Remove: [readability*, modernize-avoid-c-arrays]
 ---
 If:
   PathMatch: [.*\.h(pp)?, .*\.c(pp)?]

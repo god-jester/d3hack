@@ -1,5 +1,6 @@
 #pragma once
 
+#include <d3/patches.hpp>
 #include <d3/types/gfx.hpp>
 #include <d3/_util.hpp>
 #include <hook/trampoline.hpp>
@@ -14,79 +15,91 @@ namespace d3 {
             return global_config.resolution_hack.active && global_config.resolution_hack.ClampTexturesEnabled();
         }
     }  // namespace
+    HOOK_DEFINE_TRAMPOLINE(GfxGetDesiredDisplayModeHook) {
+        // @ DisplayMode *__struct_ptr GfxGetDesiredDisplayMode()
+        static auto Callback() -> DisplayMode {
+            PRINT(
+                "GFXNVN globals: dev=%ux%u reduced=%ux%u",
+                g_ptGfxNVNGlobals->dwDeviceWidth,
+                g_ptGfxNVNGlobals->dwDeviceHeight,
+                g_ptGfxNVNGlobals->dwReducedDeviceWidth,
+                g_ptGfxNVNGlobals->dwReducedDeviceHeight
+            );
+            if (!global_config.resolution_hack.active)
+                return Orig();
 
-    HOOK_DEFINE_TRAMPOLINE(GfxWindowChangeDisplayModeHook) {
-        // @ void __fastcall GfxWindowChangeDisplayMode(const DisplayMode *tMode)
-        static void Callback(DisplayMode *tMode) {
-            if (tMode == nullptr) {
-                PRINT_LINE("GfxWindowChangeDisplayMode X0=null");
-                Orig(tMode);
-                return;
+            if (g_ptGfxNVNGlobals != nullptr) {
+                const u32 outW      = global_config.resolution_hack.OutputWidthPx();
+                const u32 outH      = global_config.resolution_hack.OutputHeightPx();
+                const u32 handheldH = global_config.resolution_hack.OutputHandheldHeightPx();
+                const u32 fallbackW = handheldH != 0 ? global_config.resolution_hack.WidthForHeight(handheldH) : 2048u;
+                const u32 fallbackH = handheldH != 0 ? handheldH : 1152u;
+
+                g_ptGfxNVNGlobals->dwDeviceWidth         = outW;
+                g_ptGfxNVNGlobals->dwDeviceHeight        = outH;
+                g_ptGfxNVNGlobals->dwReducedDeviceWidth  = fallbackW;
+                g_ptGfxNVNGlobals->dwReducedDeviceHeight = fallbackH;
             }
-            PRINT("GfxWindowChangeDisplayMode X0=%p", tMode)
             PRINT(
-                "  dwFlags=0x%x dwWindowMode=%d nWinLeft=%d nWinTop=%d nWinWidth=%d nWinHeight=%d",
-                tMode->dwFlags, tMode->dwWindowMode, tMode->nWinLeft, tMode->nWinTop, tMode->nWinWidth, tMode->nWinHeight
-            )
-            PRINT(
-                "  dwUIOptWidth=%u dwUIOptHeight=%u dwWidth=%u dwHeight=%u nRefreshRate=%d dwBitDepth=%u dwMSAALevel=%u",
-                tMode->dwUIOptWidth, tMode->dwUIOptHeight, tMode->dwWidth, tMode->dwHeight, tMode->nRefreshRate, tMode->dwBitDepth, tMode->dwMSAALevel
-            )
-            PRINT("  flAspectRatio=%f", tMode->flAspectRatio)
+                "POST GFXNVN globals: dev=%ux%u reduced=%ux%u",
+                g_ptGfxNVNGlobals->dwDeviceWidth,
+                g_ptGfxNVNGlobals->dwDeviceHeight,
+                g_ptGfxNVNGlobals->dwReducedDeviceWidth,
+                g_ptGfxNVNGlobals->dwReducedDeviceHeight
+            );
+
+            auto result = Orig();
+
             const auto &extra = global_config.resolution_hack.extra;
             if (extra.window_left >= 0)
-                tMode->nWinLeft = extra.window_left;
+                result.nWinLeft = extra.window_left;
             if (extra.window_top >= 0)
-                tMode->nWinTop = extra.window_top;
+                result.nWinTop = extra.window_top;
             if (extra.window_width > 0)
-                tMode->nWinWidth = extra.window_width;
+                result.nWinWidth = extra.window_width;
             if (extra.window_height > 0)
-                tMode->nWinHeight = extra.window_height;
+                result.nWinHeight = extra.window_height;
             if (extra.ui_opt_width > 0)
-                tMode->dwUIOptWidth = static_cast<u32>(extra.ui_opt_width);
+                result.dwUIOptWidth = static_cast<u32>(extra.ui_opt_width);
             if (extra.ui_opt_height > 0)
-                tMode->dwUIOptHeight = static_cast<u32>(extra.ui_opt_height);
+                result.dwUIOptHeight = static_cast<u32>(extra.ui_opt_height);
             bool refresh_aspect = false;
             if (extra.render_width > 0) {
-                tMode->dwWidth = static_cast<u32>(extra.render_width);
+                result.dwWidth = static_cast<u32>(extra.render_width);
                 refresh_aspect = true;
             }
             if (extra.render_height > 0) {
-                tMode->dwHeight = static_cast<u32>(extra.render_height);
+                result.dwHeight = static_cast<u32>(extra.render_height);
                 refresh_aspect  = true;
             }
             if (extra.refresh_rate > 0)
-                tMode->nRefreshRate = extra.refresh_rate;
+                result.nRefreshRate = extra.refresh_rate;
             if (extra.bit_depth > 0)
-                tMode->dwBitDepth = static_cast<u32>(extra.bit_depth);
+                result.dwBitDepth = static_cast<u32>(extra.bit_depth);
             if (extra.msaa_level >= 0)
-                tMode->dwMSAALevel = static_cast<u32>(extra.msaa_level);
-            if (refresh_aspect && tMode->dwHeight != 0u)
-                tMode->flAspectRatio = static_cast<float>(tMode->dwWidth) / static_cast<float>(tMode->dwHeight);
+                result.dwMSAALevel = static_cast<u32>(extra.msaa_level);
+            if (refresh_aspect && result.dwHeight != 0u)
+                result.flAspectRatio = static_cast<float>(result.dwWidth) / static_cast<float>(result.dwHeight);
 
-            // force prefs-changed/reset by setting bit 6 (GfxHasPrefsChanged)
-            // PRINT_EXPR("PRE : %u %u %u %u", g_ptGfxData->tCurrentMode.dwWidth, g_ptGfxData->tCurrentMode.dwHeight, g_ptGfxData->tCurrentMode.dwMSAALevel, g_ptGfxData->dwFlags);
-            // PRINT_EXPR("%u %u %u %u", tMode->dwWidth, tMode->dwHeight, tMode->dwMSAALevel, tMode->dwFlags);
+            PatchRenderTargetCurrentResolutionScale(
+                global_config.resolution_hack.active ? global_config.resolution_hack.output_handheld_scale : 0.0f
+            );
 
-            Orig(tMode);
-
-            if (g_ptGfxData != nullptr) {
-                // g_ptGfxData->dwFlags |= 0x40u;
-                // g_ptGfxData->tCurrentMode = *tMode;
-                // PRINT_EXPR("POST: %u %u %u %u", g_ptGfxData->tCurrentMode.dwWidth, g_ptGfxData->tCurrentMode.dwHeight, g_ptGfxData->tCurrentMode.dwMSAALevel, g_ptGfxData->dwFlags);
-            }
-
-            PRINT_EXPR("%d", g_ptGfxNVNGlobals->bIsDocked);
-            Orig(tMode);
-            PRINT_EXPR("%d", scheck_gfx_ready(true));
+            return result;
         }
+    };
+
+    HOOK_DEFINE_TRAMPOLINE(GfxWindowChangeDisplayModeHook) {
+        // @ void __fastcall GfxWindowChangeDisplayMode(const DisplayMode *tMode)
+        static void Callback(DisplayMode *tMode) { Orig(tMode); }
     };
 
     inline void SetupResolutionHooks() {
         if (!global_config.resolution_hack.active)
             return;
 
-        GfxWindowChangeDisplayModeHook::InstallAtOffset(0x29B0E0);
+        GfxGetDesiredDisplayModeHook::InstallAtFuncPtr(GfxGetDesiredDisplayMode);
+        // GfxWindowChangeDisplayModeHook::InstallAtOffset(0x29B0E0);
 
         nvn::NVNTexInfoCreateHook::InstallAtOffset(0xE6B20);
 

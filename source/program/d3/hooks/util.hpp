@@ -16,6 +16,11 @@ namespace d3 {
     inline bool g_testRanOnce = false;
     inline int  g_refCount    = 0;
     inline int  g_drawCount   = 0;
+    inline bool g_pending_perf_notify = false;
+    inline bool g_pending_dock_notify = false;
+
+    inline void RequestPerfNotify() { g_pending_perf_notify = true; }
+    inline void RequestDockNotify() { g_pending_dock_notify = true; }
 
     inline constinit const char *g_cmdArgs[] = {
         "<<main>>",
@@ -283,6 +288,8 @@ namespace d3 {
             AppDrawFlagSet(APP_DRAW_FULL_BRIGHT_BIT, 1);
             // AppDrawFlagSet(APP_DRAW_DISABLE_LOS_BIT, 1);
             // AppDrawFlagSet(APP_DRAW_NO_CONSOLE_ICONS_BIT, 1);
+            AppDrawFlagSet(APP_DRAW_TEXTURE_MEMORY_BIT, 1);
+            AppDrawFlagSet(APP_DRAW_HWCLASS_UI_OUTLINES_BIT, 1);
             AppDrawFlagSet(APP_DRAW_HWCLASS_DISTORTIONS_BIT, 1);
             // AppGlobalFlagDisable(-1, 0u);
             g_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_ALL_HITS_CRIT_BIT);
@@ -320,7 +327,7 @@ namespace d3 {
 
             if (eType == GB_ITEMS) {
                 // int counter = 0;
-                PRINT_EXPR("%d", g_tAppGlobals.ptItemAppGlobals->nItems);
+                // PRINT_EXPR("%d", g_tAppGlobals.ptItemAppGlobals->nItems);
                 // PRINT_EXPR("%d", g_tAppGlobals.ptItemAppGlobals->tRootItemType.gbid)
                 // if (g_tAppGlobals.ptItemAppGlobals->nItems > 0) {
 
@@ -349,23 +356,45 @@ namespace d3 {
 
     HOOK_DEFINE_TRAMPOLINE(SpoofDocked) {
         static auto Callback() -> nn::oe::OperationMode {
-            if (global_config.resolution_hack.spoof_docked)
-                return nn::oe::OperationMode_Docked;
-            else
+            if (!global_config.resolution_hack.spoof_docked)
                 return Orig();
+            return nn::oe::OperationMode_Docked;
         }
     };
 
     HOOK_DEFINE_TRAMPOLINE(SpoofPerfMode) {
         static auto Callback() -> nn::oe::PerformanceMode {
-            if (global_config.resolution_hack.spoof_docked)
-                return nn::oe::PerformanceMode_Boost;
-            else
+            if (!global_config.resolution_hack.spoof_docked)
                 return Orig();
+            return nn::oe::PerformanceMode_Boost;
         }
     };
 
-    void SetupUtilityHooks() {
+    HOOK_DEFINE_TRAMPOLINE(TryPopNotificationMessageHook) {
+        static auto Callback(u32 *pOutMessage) -> bool {
+            const bool ret = Orig(pOutMessage);
+            if (ret && pOutMessage != nullptr) {
+                const auto msg = static_cast<u32>(*pOutMessage);
+                PRINT("TryPopNotificationMessage: %u (0x%x)", msg, msg)
+                return ret;
+            }
+            if (g_pending_dock_notify && pOutMessage != nullptr) {
+                g_pending_dock_notify = false;
+                *pOutMessage          = 0x1Eu;
+                PRINT_LINE("TryPopNotificationMessage: forced 0x1E");
+                return true;
+            }
+            if (g_pending_perf_notify && pOutMessage != nullptr) {
+                g_pending_perf_notify = false;
+                *pOutMessage          = 0x1Fu;
+                PRINT_LINE("TryPopNotificationMessage: forced 0x1F");
+                return true;
+            }
+            return ret;
+        }
+    };
+
+    inline void SetupUtilityHooks() {
         Enum_GB_Types::
             InstallAtFuncPtr(GBEnumerate);  // A relatively consistent call to refresh without spamming every frame
 
@@ -414,6 +443,7 @@ namespace d3 {
 
         SpoofPerfMode::InstallAtFuncPtr(nn::oe::GetPerformanceMode);
         SpoofDocked::InstallAtFuncPtr(nn::oe::GetOperationMode);
+        TryPopNotificationMessageHook::InstallAtFuncPtr(nn::oe::TryPopNotificationMessage);
     }
 
 }  // namespace d3

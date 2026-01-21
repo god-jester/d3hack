@@ -26,7 +26,14 @@ FUNC_PTR(GetGameMessageTypeAndSize,               BOOL (*)(GameMessageType eMess
 FUNC_PTR(DisplaySeasonEndingMessage,              void (*)(int32 nMin));
 FUNC_PTR(DisplayLongMessageForPlayer,             void (*)(const CRefString *sMessage, const Player *ptPlayer, const ImageTextureFrame *tImage, BOOL bUseLargeIcon));
 FUNC_PTR(DisplayGameMessageForAllPlayers,         void (*)(LPCSTR szStringDecoratedLabel, int nParam1, int nParam2));
+FUNC_PTR(GfxGetDesiredDisplayMode,         DisplayMode (*)());
+FUNC_PTR(GfxDeviceReset,                          void (*)());
+FUNC_PTR(GfxForceDeviceReset,                     void (*)(const BOOL fHardReset));
 FUNC_PTR(GfxWindowChangeDisplayMode,              void (*)(const DisplayMode *tMode));
+FUNC_PTR(CGameAsyncRenderFlush,                   void (*)());
+FUNC_PTR(CGameAsyncRenderGPUFlush,                void (*)());
+FUNC_PTR(SetUICConversionConstansts,              void (*)());
+FUNC_PTR(UI_GfxInit,                              void (*)());
 FUNC_PTR(ImageTextureFrame_ctor,                  void (*)(ImageTextureFrame *, LPCSTR szDecoratedLabel));
 FUNC_PTR(FormatTruncatedNumber,             CRefString (*)(float flValue, BOOL bUseMillions, BOOL bIncludeSpecialChar));
 FUNC_PTR(XVarBool_ToString,                blz::string (*)(uintptr_t * /* XVarBool *this */));

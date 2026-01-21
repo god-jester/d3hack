@@ -286,13 +286,16 @@ namespace d3 {
             prev.resolution_hack.target_resolution != global_config.resolution_hack.target_resolution ||
             prev.resolution_hack.OutputHandheldHeightPx() != global_config.resolution_hack.OutputHandheldHeightPx();
         if (resolution_target_changed) {
-            if (global_config.resolution_hack.active) {
-                PatchResolutionTargetDeviceDims();
-                append_note("Resolution targets");
-            } else {
-                result.restart_required = true;
-            }
+            append_note("Resolution targets");
+            result.restart_required = true;
         }
+        // PatchResolutionTargetDeviceDims();
+        // RequestDockNotify();
+        // RequestPerfNotify();
+        // g_ptGfxData->dwFlags &= ~0x400u;
+        // // GfxForceDeviceReset(true);
+        // // GfxDeviceReset();
+        // scheck_gfx_ready(true);
 
         // Hooks/patches gated at boot.
         if (!prev.debug.enable_crashes && global_config.debug.enable_crashes) {
