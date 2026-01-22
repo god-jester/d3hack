@@ -7,7 +7,21 @@ Seasons offline. Challenge Rifts without servers. Community events on demand. Lo
 **Current version: D3Hack v3.0**
 
 Want the full toggle list? Start with the example config: `examples/config/d3hack-nx/config.toml`.
-New: [Resolution Hack (ResHack) overview](#resolution-hack-reshack).
+See: [Resolution Hack (ResHack) overview](#resolution-hack-reshack).
+
+## Contents
+
+- [Highlights](#highlights-current)
+- [Resolution Hack (ResHack)](#resolution-hack-reshack)
+- [What It Does](#what-it-does)
+- [Quick Start](#quick-start)
+- [Season Theme Mapping](#season-theme-mapping-14-22-24-37)
+- [Building from Source](#building-from-source)
+- [Validation (Dev)](#validation-dev)
+- [Known Limits](#known-limits)
+- [Project Structure](#project-structure)
+- [Compatibility & Safety](#compatibility--safety)
+- [Feature Map (Code Pointers)](#feature-map-code-pointers)
 
 ---
 
@@ -19,7 +33,7 @@ New: [Resolution Hack (ResHack) overview](#resolution-hack-reshack).
 - **Challenge Rifts offline fix**: SD card protobufs now parse at full size (previous blz::string ctor issue resolved).
 - **Safer offline UX**: hides "Connect to Diablo Servers" and network hints when AllowOnlinePlay = false.
 - **Resolution Hack (ResHack)**: 1080p/1440p/2160p output is stable with internal RT clamping and extra heap headroom.
-- **CMake build**: CMake presets mirror the Makefile pipeline for devkitA64.
+- **CMake presets**: CMakePresets.json mirrors the Makefile pipeline for devkitA64.
 
 ---
 
@@ -27,13 +41,17 @@ New: [Resolution Hack (ResHack) overview](#resolution-hack-reshack).
 
 ResHack keeps the swapchain output at your chosen size while clamping internal render targets (RTs) for stability. It is designed for true high-res output, not UI-only scaling.
 
-Current baseline (2026-01-20)
+Terminology
+- OutputTarget and ClampTextureResolution are vertical heights in pixels; width is derived as 16:9.
+- OutputHandheldScale is a percent (0 = auto/stock), and OutputTargetHandheld is derived when set to 0.
+
+Current baseline (validated 2026-01-20)
 - OutputTarget = 2160 (3840x2160).
 - ClampTextureResolution = 1152 (2048x1152 internal).
 - Graphics persistent heap bumped early (+256 MB, always on).
 - NX64NVNHeap EarlyInit headroom and largest pool max_alloc bumped when output height > 1280.
 
-How it works
+### How it works
 
 - **Config**: `[resolution_hack]` in `config.toml` sets OutputTarget, OutputHandheldScale (percent; 0=auto/stock), OutputTargetHandheld (derived), SpoofDocked, MinResScale, MaxResScale, ClampTextureResolution (0=off, 100-9999), and ExperimentalScheduler.
 - **Config (extra)**: `[resolution_hack.extra]` can override display mode fields (MSAALevel, BitDepth, RefreshRate, and window/UI/render dimensions).
@@ -41,8 +59,8 @@ How it works
 - **Hooks**: NVNTexInfoCreateHook clamps oversized internal textures while keeping swapchain textures output-sized.
 - **Early heap**: PatchGraphicsPersistentHeapEarly bumps the graphics persistent heap before NVN init.
 
-Recommended settings (ResHack)
-```
+### Recommended settings (ResHack)
+```toml
 [resolution_hack]
 SectionEnabled = true
 OutputTarget = 2160
@@ -54,16 +72,16 @@ MaxResScale = 100 # Adjust max scale for better performance while keeping native
 MinResScale = 85 # Game default min scale is 70
 ```
 
-Optional display mode overrides
-```
+### Optional display mode overrides
+```toml
 [resolution_hack.extra]
 MSAALevel = -1
 BitDepth = -1
 RefreshRate = -1
 ```
 
-Notes
-- 1080 output stays at or below 2048x1152, so the clamp path is mostly inactive.
+### Notes
+- 1080 output stays at or below 2048x1152, so the clamp path is usually inactive.
 - If you raise the clamp too high at 1440/2160 output, the old crash signature can return (DisplayInternalError + InvalidMemoryRegionException).
 - Label overlays (FPS/resolution/DDM) can flicker white in the main menu; disable overlays if it bothers you.
 
@@ -91,7 +109,8 @@ d3hack-nx is an exlaunch-based module that hooks D3 at runtime. It modifies game
 ### 1) Install
 
 - Grab the latest release archive.
-- Copy `subsdk9` and `main.npdm` to the `exefs/` folder, and copy the `romfs/` folder (contains `d3gui/imgui.bin`, fonts, and translations).
+- From the archive, copy `exefs/subsdk9` and `exefs/main.npdm`, plus the entire `romfs/` folder (contains `d3gui/imgui.bin`, fonts, and translations).
+- Title ID: `01001B300B9BE000`.
 - Atmosphere exefs: `atmosphere/contents/01001b300b9be000/exefs/`
 - Atmosphere romfs: `atmosphere/contents/01001b300b9be000/romfs/`
 - Ryujinx (Windows) exefs: `%AppData%\Ryujinx\mods\contents\01001B300B9BE000\d3hack\exefs\`
@@ -105,7 +124,10 @@ d3hack-nx is an exlaunch-based module that hooks D3 at runtime. It modifies game
 
 ### 2) Configure
 
-Place `config.toml` at:
+Copy the example config to your target path, then edit:
+- Source: `examples/config/d3hack-nx/config.toml`
+
+Place the edited `config.toml` at:
 
 - `sd:/config/d3hack-nx/config.toml` (hardware)
 - Ryujinx (Windows): `%AppData%\Ryujinx\sdcard\config\d3hack-nx\config.toml`
@@ -125,7 +147,7 @@ Key sections:
 
 ### 3) (Optional) Challenge Rift data
 
-Put weekly files under `sd:/config/d3hack-nx/rift_data/`:
+Put weekly protobuf dumps under `sd:/config/d3hack-nx/rift_data/` (00-99):
 
 ```
 challengerift_config.dat
@@ -156,7 +178,7 @@ Set `[events].SeasonMapMode` to map the correct theme flags for a given season n
 
 ## Building from Source
 
-**Requirements**: devkitPro with devkitA64 + libnx (`$DEVKITPRO` set); Python 3 (optional `ftputil` for FTP deploys).
+**Requirements**: devkitPro with devkitA64 + libnx (`$DEVKITPRO` set); CMake >= 3.21; Python 3 (optional `ftputil` for FTP deploys).
 
 Fetch submodules once:
 
@@ -202,7 +224,6 @@ Outputs land in `deploy/`:
 - 2160 output is stable with internal RT clamping enabled.
 - Raising the clamp too high at 1440/2160 output can trigger DisplayInternalError + InvalidMemoryRegionException.
 - Label overlays (FPS/resolution/DDM) can flicker in the main menu; disable overlays if it bothers you.
-- Use offline; do not take mods into online play.
 
 ---
 
@@ -230,11 +251,12 @@ Outputs land in `deploy/`:
 ## Feature Map (Code Pointers)
 
 - **Config load + defaults**: `source/program/config.cpp` (LoadPatchConfig, ApplySeasonEventMapIfNeeded).
+- **Config schema + defaults**: `source/program/config.hpp` (PatchConfig, defaults).
 - **Season/event XVar toggles**: `source/program/d3/patches.hpp` (PatchDynamicSeasonal, PatchDynamicEvents).
 - **Season/event publisher overrides**: `source/program/d3/hooks/season_events.hpp` (ConfigFileRetrieved, SeasonsFileRetrieved, BlacklistFileRetrieved).
 - **Season theme map**: `source/program/config.cpp` (BuildSeasonEventMap).
 - **Challenge rifts**: `source/program/d3/_util.hpp` (PopulateChallengeRiftData) + `source/program/d3/hooks/debug.hpp` (ChallengeRiftCallback).
-- **Resolution hack (ResHack)**: `source/program/d3/hooks/resolution.hpp` + `source/program/d3/patches.hpp`.
+- **Resolution Hack (ResHack)**: `source/program/d3/hooks/resolution.hpp` + `source/program/d3/patches.hpp`.
 - **Overlays + watermark text**: `source/program/d3/patches.hpp` (PatchBuildlocker, PatchDDMLabels, PatchReleaseFPSLabel).
 - **Hook gating + boot flow**: `source/program/main.cpp` (MainInit, SetupSeasonEventHooks).
 - **ImGui romfs assets**: `data/` packaged to `deploy/romfs/d3gui/` by `misc/scripts/post-build.sh`.
