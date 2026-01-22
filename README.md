@@ -1,5 +1,9 @@
 # D3Hack
 
+<img width="2560" height="1440" alt="image" src="https://github.com/user-attachments/assets/5154f973-8ea4-46e8-b419-f8b06422ae28" />
+
+---
+
 **Runtime modding for Diablo III on Nintendo Switch.**
 
 Seasons offline. Challenge Rifts without servers. Community events on demand. Loot table tweaks, instant crafting, and quality-of-life tools. All running inside the game process via native C++ hooks.
