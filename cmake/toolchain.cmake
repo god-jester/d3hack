@@ -119,9 +119,9 @@ set_property(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS FALSE)
 
 add_definitions(-DSWITCH -D__SWITCH__ -D__RTLD_6XX__)
 
-set(ARCH "-march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIC -fvisibility=hidden")
+set(ARCH "-march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=el0 -fPIC -fvisibility=hidden")
 
-set(_d3hack_c_flags "-g -Wall -Werror -Ofast -ffunction-sections -fdata-sections -Wno-format-zero-length ${ARCH} --sysroot=${CMAKE_SYSROOT} ${DEVKITA64_STDLIB_INCLUDE_FLAGS}")
+set(_d3hack_c_flags "-g -Wall -Werror -O3 -ffast-math -ffunction-sections -fdata-sections -Wno-format-zero-length ${ARCH} --sysroot=${CMAKE_SYSROOT} ${DEVKITA64_STDLIB_INCLUDE_FLAGS}")
 set(_d3hack_cxx_flags "${_d3hack_c_flags} -fno-rtti -fno-exceptions -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-threadsafe-statics")
 
 set(CMAKE_C_FLAGS "${_d3hack_c_flags}" CACHE STRING "C flags" FORCE)

@@ -63,8 +63,8 @@ namespace d3::romfs {
                 return false;
             }
 
-            long size = 0;
-            rc        = nn::fs::GetFileSize(&size, fh);
+            s64 size = 0;
+            rc       = nn::fs::GetFileSize(&size, fh);
             if (R_FAILED(rc) || size <= 0) {
                 nn::fs::CloseFile(fh);
                 return false;
@@ -208,7 +208,7 @@ namespace d3::romfs {
             return false;
         }
 
-        std::sort(matches.begin(), matches.end());
+        std::ranges::sort(matches);
 
         out_path = dir_path;
         if (!out_path.empty() && out_path.back() != '/') {

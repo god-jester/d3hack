@@ -1,9 +1,10 @@
 #pragma once
 
+#include "d3/types/enums.hpp"
+#include "d3/types/maps.hpp"
+#include "d3/types/namespaces.hpp"
+
 #include <nvn/nvn_Cpp.h>
-#include "enums.hpp"
-#include "maps.hpp"
-#include "namespaces.hpp"
 
 struct XRemoteHeap;
 struct OcclusionQuery;

@@ -1,3 +1,4 @@
+#include <array>
 #include <atomic>
 #include <cstddef>
 #include <cstring>
@@ -10,7 +11,7 @@ namespace {
     constexpr size_t kSigmaMinAlign = 0x20;
     constexpr size_t kBootAllocSize = 0x4000;
 
-    alignas(kSigmaMinAlign) unsigned char s_boot_alloc[kBootAllocSize];
+    alignas(kSigmaMinAlign) std::array<unsigned char, kBootAllocSize> s_boot_alloc {};
     std::atomic<size_t> s_boot_offset {0};
 
     auto AlignUp(size_t value, size_t alignment) -> size_t {
@@ -51,14 +52,14 @@ namespace {
                 return nullptr;
             }
             if (s_boot_offset.compare_exchange_weak(offset, next_offset, std::memory_order_acq_rel)) {
-                return s_boot_alloc + aligned_offset;
+                return s_boot_alloc.data() + aligned_offset;
             }
         }
     }
 
     auto IsBootPtr(const void *ptr) -> bool {
         auto p = reinterpret_cast<const unsigned char *>(ptr);
-        return p >= s_boot_alloc && p < (s_boot_alloc + kBootAllocSize);
+        return p >= s_boot_alloc.data() && p < (s_boot_alloc.data() + kBootAllocSize);
     }
 
     auto SigmaAlloc(size_t size, size_t alignment, bool clear) -> void * {

@@ -1,7 +1,6 @@
 #pragma once
 
-#include "types.h"
-#include "idadefs.h"
+#include "d3/types/hexrays.hpp"
 
 struct ProfUIAppGlobals;
 struct FontGlobals;
@@ -60,14 +59,14 @@ using Act                    = int32;
 using bdUInt                 = int32;
 using bdUInt32               = int32;
 using bdTitleID              = int32;
-using bdUInt64               = uint64_t;
+using bdUInt64               = u64;
 using bdNChar8               = char;
 using bdUByte8               = unsigned char;
 using bdFloat32              = float;
 using bdBool                 = bool;
 
 struct XFourCC {
-    uint32 m_value;
+    u32 m_value;
 };
 
 enum ThreadIndex : int32 {

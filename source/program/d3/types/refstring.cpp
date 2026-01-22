@@ -52,7 +52,7 @@ CRefString::CRefString(const char *szString) {
 
 CRefString::CRefString(const char *szString, int nLength) { CRefString_CommonCtorBody(this, szString, nLength); }
 CRefString::CRefString(const char *szString, uint nLength) { CRefString_CommonCtorBody(this, szString, static_cast<int>(nLength)); }
-CRefString::CRefString(const char *szString, long nLength) { CRefString_CommonCtorBody(this, szString, static_cast<int>(nLength)); }
+CRefString::CRefString(const char *szString, s64 nLength) { CRefString_CommonCtorBody(this, szString, static_cast<int>(nLength)); }
 
 CRefString::~CRefString() {
     if (this->m_pData != static_cast<CRefStringData *>(nullptr))

@@ -38,7 +38,7 @@ namespace {
             if (auto node = table.get(key)) {
                 if (auto value = node->value<double>())
                     return value;
-                if (auto value = node->value<int64_t>())
+                if (auto value = node->value<s64>())
                     return static_cast<double>(*value);
             }
         }
@@ -64,6 +64,15 @@ namespace {
     auto ReadDouble(const toml::table &table, std::initializer_list<std::string_view> keys, double fallback, double min_value, double max_value) -> double {
         if (auto value = ReadNumber(table, keys)) {
             return std::clamp(*value, min_value, max_value);
+        }
+        return fallback;
+    }
+
+    auto ReadFloat(const toml::table &table, std::initializer_list<std::string_view> keys, float fallback, float min_value, float max_value) -> float {
+        if (auto value = ReadNumber(table, keys)) {
+            auto clamped = std::clamp(*value, static_cast<double>(min_value), static_cast<double>(max_value));
+            // NOLINTNEXTLINE(bugprone-narrowing-conversions)
+            return static_cast<float>(clamped);
         }
         return fallback;
     }
@@ -134,7 +143,7 @@ namespace {
     }
 
     auto ReadResolutionHackOutputTarget(const toml::table &table, std::initializer_list<std::string_view> keys, u32 fallback) -> u32 {
-        if (auto value = ReadValue<int64_t>(table, keys)) {
+        if (auto value = ReadValue<s64>(table, keys)) {
             if (*value > 0 &&
                 std::cmp_less_equal(*value, std::numeric_limits<u32>::max()))
                 return static_cast<u32>(*value);
@@ -420,9 +429,8 @@ namespace {
             return "OverlayConfig";
         case PatchConfig::SeasonEventMapMode::Disabled:
             return "Disabled";
-        default:
-            return "Disabled";
         }
+        return "Disabled";
     }
 
     auto BuildPatchConfigTable(const PatchConfig &config) -> toml::table {
@@ -431,26 +439,26 @@ namespace {
         {
             toml::table t;
             t.insert("SectionEnabled", config.resolution_hack.active);
-            t.insert("OutputTarget", static_cast<int64_t>(config.resolution_hack.target_resolution));
+            t.insert("OutputTarget", static_cast<s64>(config.resolution_hack.target_resolution));
             t.insert("OutputHandheldScale", static_cast<double>(config.resolution_hack.output_handheld_scale));
-            t.insert("OutputTargetHandheld", static_cast<int64_t>(config.resolution_hack.OutputHandheldHeightPx()));
+            t.insert("OutputTargetHandheld", static_cast<s64>(config.resolution_hack.OutputHandheldHeightPx()));
             t.insert("SpoofDocked", config.resolution_hack.spoof_docked);
             t.insert("MinResScale", static_cast<double>(config.resolution_hack.min_res_scale));
             t.insert("MaxResScale", static_cast<double>(config.resolution_hack.max_res_scale));
-            t.insert("ClampTextureResolution", static_cast<int64_t>(config.resolution_hack.clamp_texture_resolution));
+            t.insert("ClampTextureResolution", static_cast<s64>(config.resolution_hack.clamp_texture_resolution));
             t.insert("ExperimentalScheduler", config.resolution_hack.exp_scheduler);
             toml::table extra;
-            extra.insert("WindowLeft", static_cast<int64_t>(config.resolution_hack.extra.window_left));
-            extra.insert("WindowTop", static_cast<int64_t>(config.resolution_hack.extra.window_top));
-            extra.insert("WindowWidth", static_cast<int64_t>(config.resolution_hack.extra.window_width));
-            extra.insert("WindowHeight", static_cast<int64_t>(config.resolution_hack.extra.window_height));
-            extra.insert("UIOptWidth", static_cast<int64_t>(config.resolution_hack.extra.ui_opt_width));
-            extra.insert("UIOptHeight", static_cast<int64_t>(config.resolution_hack.extra.ui_opt_height));
-            extra.insert("RenderWidth", static_cast<int64_t>(config.resolution_hack.extra.render_width));
-            extra.insert("RenderHeight", static_cast<int64_t>(config.resolution_hack.extra.render_height));
-            extra.insert("RefreshRate", static_cast<int64_t>(config.resolution_hack.extra.refresh_rate));
-            extra.insert("BitDepth", static_cast<int64_t>(config.resolution_hack.extra.bit_depth));
-            extra.insert("MSAALevel", static_cast<int64_t>(config.resolution_hack.extra.msaa_level));
+            extra.insert("WindowLeft", static_cast<s64>(config.resolution_hack.extra.window_left));
+            extra.insert("WindowTop", static_cast<s64>(config.resolution_hack.extra.window_top));
+            extra.insert("WindowWidth", static_cast<s64>(config.resolution_hack.extra.window_width));
+            extra.insert("WindowHeight", static_cast<s64>(config.resolution_hack.extra.window_height));
+            extra.insert("UIOptWidth", static_cast<s64>(config.resolution_hack.extra.ui_opt_width));
+            extra.insert("UIOptHeight", static_cast<s64>(config.resolution_hack.extra.ui_opt_height));
+            extra.insert("RenderWidth", static_cast<s64>(config.resolution_hack.extra.render_width));
+            extra.insert("RenderHeight", static_cast<s64>(config.resolution_hack.extra.render_height));
+            extra.insert("RefreshRate", static_cast<s64>(config.resolution_hack.extra.refresh_rate));
+            extra.insert("BitDepth", static_cast<s64>(config.resolution_hack.extra.bit_depth));
+            extra.insert("MSAALevel", static_cast<s64>(config.resolution_hack.extra.msaa_level));
             t.insert("extra", std::move(extra));
             root.insert("resolution_hack", std::move(t));
         }
@@ -459,7 +467,7 @@ namespace {
             toml::table t;
             t.insert("SectionEnabled", config.seasons.active);
             t.insert("AllowOnlinePlay", config.seasons.allow_online);
-            t.insert("SeasonNumber", static_cast<int64_t>(config.seasons.current_season));
+            t.insert("SeasonNumber", static_cast<s64>(config.seasons.current_season));
             t.insert("SpoofPtr", config.seasons.spoof_ptr);
             root.insert("seasons", std::move(t));
         }
@@ -468,8 +476,8 @@ namespace {
             toml::table t;
             t.insert("SectionEnabled", config.challenge_rifts.active);
             t.insert("MakeRiftsRandom", config.challenge_rifts.random);
-            t.insert("RiftRangeStart", static_cast<int64_t>(config.challenge_rifts.range_start));
-            t.insert("RiftRangeEnd", static_cast<int64_t>(config.challenge_rifts.range_end));
+            t.insert("RiftRangeStart", static_cast<s64>(config.challenge_rifts.range_start));
+            t.insert("RiftRangeEnd", static_cast<s64>(config.challenge_rifts.range_end));
             root.insert("challenge_rifts", std::move(t));
         }
 
@@ -543,8 +551,8 @@ namespace {
             t.insert("DisableTormentDrops", config.loot_modifiers.DisableTormentDrops);
             t.insert("DisableTormentCheck", config.loot_modifiers.DisableTormentCheck);
             t.insert("SuppressGiftGeneration", config.loot_modifiers.SuppressGiftGeneration);
-            t.insert("ForcedILevel", static_cast<int64_t>(config.loot_modifiers.ForcedILevel));
-            t.insert("TieredLootRunLevel", static_cast<int64_t>(config.loot_modifiers.TieredLootRunLevel));
+            t.insert("ForcedILevel", static_cast<s64>(config.loot_modifiers.ForcedILevel));
+            t.insert("TieredLootRunLevel", static_cast<s64>(config.loot_modifiers.TieredLootRunLevel));
             t.insert("AncientRank", std::string(AncientRankCanonical(config.loot_modifiers.AncientRankValue, config.loot_modifiers.AncientRank)));
             root.insert("loot_modifiers", std::move(t));
         }
@@ -707,15 +715,15 @@ void PatchConfig::ApplyTable(const toml::table &table) {
             resolution_hack.target_resolution
         );
         resolution_hack.SetTargetRes(target_resolution);
-        resolution_hack.min_res_scale = ReadDouble(
+        resolution_hack.min_res_scale = ReadFloat(
             *resolution_section,
             {"MinScale", "MinimumScale", "MinResScale", "MinimumResScale", "MinResolutionScale", "MinimumResolutionScale"},
-            resolution_hack.min_res_scale, 10.0, 100.0
+            resolution_hack.min_res_scale, 10.0f, 100.0f
         );
-        resolution_hack.max_res_scale = ReadDouble(
+        resolution_hack.max_res_scale = ReadFloat(
             *resolution_section,
             {"MaxScale", "MaximumScale", "MaxResScale", "MaximumResScale", "MaxResolutionScale", "MaximumResolutionScale"},
-            resolution_hack.max_res_scale, 10.0, 100.0
+            resolution_hack.max_res_scale, 10.0f, 100.0f
         );
         if (resolution_hack.max_res_scale < resolution_hack.min_res_scale) {
             resolution_hack.max_res_scale = resolution_hack.min_res_scale;
@@ -725,13 +733,13 @@ void PatchConfig::ApplyTable(const toml::table &table) {
             {"SpoofDocked", "SpoofDock", "DockedSpoof"},
             resolution_hack.spoof_docked
         );
-        resolution_hack.output_handheld_scale = static_cast<float>(ReadDouble(
+        resolution_hack.output_handheld_scale = ReadFloat(
             *resolution_section,
             {"OutputHandheldScale", "HandheldScale", "HandheldOutputScale"},
             resolution_hack.output_handheld_scale,
-            0.0,
+            0.0f,
             PatchConfig::ResolutionHackConfig::kHandheldScaleMax
-        ));
+        );
         if (resolution_hack.output_handheld_scale > 0.0f && resolution_hack.output_handheld_scale <= 1.0f) {
             resolution_hack.output_handheld_scale *= 100.0f;
         }
@@ -853,8 +861,8 @@ void PatchConfig::ApplyTable(const toml::table &table) {
         loot_modifiers.DisableTormentDrops       = ReadBool(*section, {"DisableTormentDrops"}, loot_modifiers.DisableTormentDrops);
         loot_modifiers.DisableTormentCheck       = ReadBool(*section, {"DisableTormentCheck"}, loot_modifiers.DisableTormentCheck);
         loot_modifiers.SuppressGiftGeneration    = ReadBool(*section, {"SuppressGiftGeneration"}, loot_modifiers.SuppressGiftGeneration);
-        loot_modifiers.ForcedILevel              = ReadU32(*section, {"ForcedILevel"}, loot_modifiers.ForcedILevel, 0, 70);
-        loot_modifiers.TieredLootRunLevel        = ReadU32(*section, {"TieredLootRunLevel"}, loot_modifiers.TieredLootRunLevel, 0, 150);
+        loot_modifiers.ForcedILevel              = ReadI32(*section, {"ForcedILevel"}, loot_modifiers.ForcedILevel, 0, 70);
+        loot_modifiers.TieredLootRunLevel        = ReadI32(*section, {"TieredLootRunLevel"}, loot_modifiers.TieredLootRunLevel, 0, 150);
         loot_modifiers.AncientRank               = ReadString(*section, {"AncientRank"}, loot_modifiers.AncientRank);
         loot_modifiers.AncientRankValue          = AncientRankToValue(loot_modifiers.AncientRank, loot_modifiers.AncientRankValue);
         loot_modifiers.AncientRank               = AncientRankCanonical(loot_modifiers.AncientRankValue, loot_modifiers.AncientRank);

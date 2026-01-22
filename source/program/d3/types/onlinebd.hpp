@@ -1,4 +1,9 @@
-#include "enums.hpp"
+#pragma once
+
+#include "d3/types/enums.hpp"
+
+#include <array>
+#include <cstddef>
 
 namespace bdTaskOld {
     enum bdStatus : int32 {

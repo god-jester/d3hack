@@ -11,8 +11,8 @@ FUNC_PTR(ACDInventoryItemAllowedInSlot,      GameError (*)(const ActorCommonData
 FUNC_PTR(ACDAddToInventory,                       void (*)(ActorCommonData *tACDItem, const InventoryLocation *tLocation, const BOOL bMarkItemAsDirty, InventorySlotType eCameFrom));
 FUNC_PTR(SACDInventoryPickupOrSpillOntoGround,    BOOL (*)(ActorCommonData *tACDPlayer, ActorCommonData *tACDItem, const BOOL bTryStashFirst, ACDID *pidACDStackDest, const BOOL bAllowAutoEquip));
 FUNC_PTR(ItemHasLabel,                            BOOL (*)(const GBID gbidItem, const ItemLabel eItemLabel));
-FUNC_PTR(SetBindingLevel,                         void (*)(ActorCommonData *tACD, int32_t eBindingType));
-FUNC_PTR(SetRecipient,                            void (*)(ActorCommonData *tACDItem, int32_t nPlayerIndex));
+FUNC_PTR(SetBindingLevel,                         void (*)(ActorCommonData *tACD, s32 eBindingType));
+FUNC_PTR(SetRecipient,                            void (*)(ActorCommonData *tACDItem, s32 nPlayerIndex));
 FUNC_PTR(PopulateGenerator,                       void (*)(ActorCommonData *tACDItem, D3::Items::Generator *tGenerator, BOOL bSetRestoredBit));
 FUNC_PTR(CItemGenerate,                          ACDID (*)(ACDNetworkName ann, D3::Items::Generator *tGenerator, ItemAffixFastAttribMap *arAffixSpecificAttributes));
 FUNC_PTR(ItemsGenerator_ctor,                     void (*)(D3::Items::Generator *));

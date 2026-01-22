@@ -269,7 +269,7 @@ Outputs land in `deploy/`:
 
 ## Technical Highlights
 
-- **Type Database**: Over 1.2MB of reverse-engineered structs and enums in `source/program/d3/types/`.
+- **Type Database**: Over 1.2MB of reverse-engineered structs and enums in `source/program/d3/types/` (now split into focused modules with `namespaces.hpp` as the aggregator).
 - **Hooking**: Uses `exl::hook::Trampoline` and `exl::hook::MakeInline` for clean detours.
 - **Offsets**: Centralized in a versioned lookup table (DEFAULT pinned to 2.7.6.90885); signature guard + version checks abort on mismatch.
 - **Config**: Runtime TOML parsing via tomlplusplus, mapped directly to the global PatchConfig struct.

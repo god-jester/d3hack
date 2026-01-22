@@ -1,5 +1,6 @@
 ---
-ExtraArgs: ["-Wno-unknown-attributes", "-std=gnu++23"]
+ExtraArgs: ["-include", "clangd_compat.hpp"]
+ExtraArgsBefore: ["-Wno-unknown-attributes", "-std=gnu++23", "-stdlib=libstdc++", "-fgnuc-version=15.2.0"]
 # bugprone-implicit-widening-of-multiplication-resultは64bitのみの対応で良くなれば追加することが可能
 Checks: readability-*, modernize-*, android-*, google-*, bugprone-*, misc-*, performance-*, clang-analyzer-*, 
   -cert-dcl50-cpp, -cert-err58-cpp, -bugprone-sizeof-expression, -misc-no-recursion, -misc-non-private-member-variables-in-classes, -misc-include-cleaner, 

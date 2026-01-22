@@ -1,5 +1,6 @@
 #include "program/gui2/ui/windows/notifications_window.hpp"
 
+#include <array>
 #include <algorithm>
 #include <cstdarg>
 #include <cstdio>
@@ -25,7 +26,8 @@ namespace d3::gui2::ui::windows {
             n.ttl_s -= dt_s;
         }
 
-        notifications_.erase(std::remove_if(notifications_.begin(), notifications_.end(), [](const Notification &n) -> bool { return n.ttl_s <= 0.0f; }), notifications_.end());
+        auto removed = std::ranges::remove_if(notifications_, [](const Notification &n) -> bool { return n.ttl_s <= 0.0f; });
+        notifications_.erase(removed.begin(), removed.end());
 
         open_ = !notifications_.empty();
     }
@@ -36,17 +38,17 @@ namespace d3::gui2::ui::windows {
     }
 
     void NotificationsWindow::AddNotification(const ImVec4 &color, float ttl_s, const char *fmt, ...) {
-        char buf[512] {};
+        std::array<char, 512> buf {};
 
         va_list vl;
         va_start(vl, fmt);
-        vsnprintf(buf, sizeof(buf), fmt, vl);
+        vsnprintf(buf.data(), buf.size(), fmt, vl);
         va_end(vl);
 
-        buf[sizeof(buf) - 1] = '\0';
+        buf.back() = '\0';
 
         Notification n {};
-        n.text          = buf;
+        n.text          = buf.data();
         n.color         = color;
         n.ttl_s         = ttl_s;
         n.ttl_initial_s = ttl_s;

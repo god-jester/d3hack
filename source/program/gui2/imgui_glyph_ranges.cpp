@@ -3,8 +3,9 @@
 #include <cstring>
 
 namespace d3::imgui_overlay::glyph_ranges {
+    // NOLINTBEGIN(modernize-avoid-c-arrays)
     namespace {
-        void UnpackAccumulativeOffsetsIntoRanges(int base_codepoint, const short *accumulative_offsets, int accumulative_offsets_count, ImWchar *out_ranges) {
+        void UnpackAccumulativeOffsetsIntoRanges(int base_codepoint, const s16 *accumulative_offsets, int accumulative_offsets_count, ImWchar *out_ranges) {
             for (int n = 0; n < accumulative_offsets_count; n++, out_ranges += 2) {
                 out_ranges[0] = out_ranges[1] = static_cast<ImWchar>(base_codepoint + accumulative_offsets[n]);
                 base_codepoint += accumulative_offsets[n];
@@ -38,7 +39,7 @@ namespace d3::imgui_overlay::glyph_ranges {
     }
 
     auto GetChineseSimplifiedCommon() -> const ImWchar * {
-        static const short accumulative_offsets_from_0x4E00[] = {
+        static const s16 accumulative_offsets_from_0x4E00[] = {
             // clang-format off
         0,1,2,4,1,1,1,1,2,1,3,2,1,2,2,1,1,1,1,1,5,2,1,2,3,3,3,2,2,4,1,1,1,2,1,5,2,3,1,2,1,2,1,1,2,1,1,2,2,1,4,1,1,1,1,5,10,1,2,19,2,1,2,1,2,1,2,1,2,
         1,5,1,6,3,2,1,2,2,1,1,1,4,8,5,1,1,4,1,1,3,1,2,1,5,1,2,1,1,1,10,1,1,5,2,4,6,1,4,2,2,2,12,2,1,1,6,1,1,1,4,1,1,4,6,5,1,4,2,2,4,10,7,1,1,4,2,4,
@@ -103,7 +104,7 @@ namespace d3::imgui_overlay::glyph_ranges {
     }
 
     auto GetJapanese() -> const ImWchar * {
-        static const short accumulative_offsets_from_0x4E00[] = {
+        static const s16 accumulative_offsets_from_0x4E00[] = {
             0, 1, 2, 4, 1, 1, 1, 1, 2, 1, 3, 3, 2, 2, 1, 5, 3, 5, 7, 5, 6, 1, 2, 1, 7, 2, 6, 3, 1, 8, 1, 1, 4, 1, 1, 18, 2, 11, 2, 6, 2, 1, 2, 1, 5, 1, 2, 1, 3, 1, 2, 1, 2, 3, 3, 1, 1, 2, 3, 1, 1, 1, 12, 7, 9, 1, 4, 5, 1,
             1, 2, 1, 10, 1, 1, 9, 2, 2, 4, 5, 6, 9, 3, 1, 1, 1, 1, 9, 3, 18, 5, 2, 2, 2, 2, 1, 6, 3, 7, 1, 1, 1, 1, 2, 2, 4, 2, 1, 23, 2, 10, 4, 3, 5, 2, 4, 10, 2, 4, 13, 1, 6, 1, 9, 3, 1, 1, 6, 6, 7, 6, 3, 1, 2, 11, 3,
             2, 2, 3, 2, 15, 2, 2, 5, 4, 3, 6, 4, 1, 2, 5, 2, 12, 16, 6, 13, 9, 13, 2, 1, 1, 7, 16, 4, 7, 1, 19, 1, 5, 1, 2, 2, 7, 7, 8, 2, 6, 5, 4, 9, 18, 7, 4, 5, 9, 13, 11, 8, 15, 2, 1, 1, 1, 2, 1, 2, 2, 1, 2, 2, 8,
@@ -180,4 +181,5 @@ namespace d3::imgui_overlay::glyph_ranges {
         return &ranges[0];
     }
 
+    // NOLINTEND(modernize-avoid-c-arrays)
 }  // namespace d3::imgui_overlay::glyph_ranges

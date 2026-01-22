@@ -1,5 +1,6 @@
 #include "program/gui2/imgui_overlay.hpp"
 
+#include <array>
 #include <algorithm>
 #include <atomic>
 #include <cstdint>
@@ -29,7 +30,7 @@
 // NVN C++ proc loader (fills pfncpp_* function pointers).
 #include "nvn/nvn_CppFuncPtrImpl.h"
 
-extern "C" PFNNVNGENERICFUNCPTRPROC nvnBootstrapLoader(const char *);
+extern "C" auto nvnBootstrapLoader(const char *) -> PFNNVNGENERICFUNCPTRPROC;
 
 struct RWindow;
 namespace d3 {
@@ -81,9 +82,9 @@ namespace d3::imgui_overlay {
         // Captured game command buffer (preferred vs creating our own).
         NVNcommandBuffer *g_cmd_buf = nullptr;
 
-        constexpr int       kMaxSwapchainTextures = 8;
-        const nvn::Texture *g_swapchain_textures[kMaxSwapchainTextures] {};
-        int                 g_swapchain_texture_count = 0;
+        constexpr int                                           kMaxSwapchainTextures = 8;
+        std::array<const nvn::Texture *, kMaxSwapchainTextures> g_swapchain_textures {};
+        int                                                     g_swapchain_texture_count = 0;
 
         NvnWindowBuilderSetTexturesFn g_orig_window_builder_set_textures = nullptr;
         NvnWindowSetCropFn            g_orig_window_set_crop             = nullptr;
@@ -688,44 +689,45 @@ namespace d3::imgui_overlay {
             return nullptr;
         }
 
-#define DEFINE_HID_GET_STATE_HOOK(HOOK_NAME, STATE_TYPE)                    \
-    HOOK_DEFINE_TRAMPOLINE(HOOK_NAME) {                                     \
-        static void Callback(nn::hid::STATE_TYPE * out, uint const &port) { \
-            if (ShouldBlockGamepadInput()) {                                \
-                ResetNpadState(out);                                        \
-    return;                                                                 \
-    }                                                                       \
-    Orig(out, port);                                                        \
-    }                                                                       \
-    }                                                                       \
-    ;
+        // clang-format off
+#define DEFINE_HID_GET_STATE_HOOK(HOOK_NAME, STATE_TYPE)                           \
+    HOOK_DEFINE_TRAMPOLINE(HOOK_NAME) {                                            \
+        static auto Callback(nn::hid::STATE_TYPE *out, uint const &port) -> void { \
+            if (ShouldBlockGamepadInput()) {                                       \
+                ResetNpadState(out);                                               \
+                return;                                                            \
+            }                                                                      \
+            Orig(out, port);                                                       \
+        }                                                                          \
+    };
 
-#define DEFINE_HID_GET_STATES_HOOK(HOOK_NAME, STATE_TYPE)                              \
-    HOOK_DEFINE_TRAMPOLINE(HOOK_NAME) {                                                \
-        static void Callback(nn::hid::STATE_TYPE * out, int count, uint const &port) { \
-            if (ShouldBlockGamepadInput()) {                                           \
-                ResetNpadStates(out, count);                                           \
-    return;                                                                            \
-    }                                                                                  \
-    Orig(out, count, port);                                                            \
-    }                                                                                  \
-    }                                                                                  \
-    ;
+#define DEFINE_HID_GET_STATES_HOOK(HOOK_NAME, STATE_TYPE)                               \
+    HOOK_DEFINE_TRAMPOLINE(HOOK_NAME) {                                                 \
+        static auto Callback(nn::hid::STATE_TYPE *out, int count, uint const &port)     \
+            -> void {                                                                   \
+            if (ShouldBlockGamepadInput()) {                                            \
+                ResetNpadStates(out, count);                                            \
+                return;                                                                 \
+            }                                                                           \
+            Orig(out, count, port);                                                     \
+        }                                                                               \
+    };
 
-#define DEFINE_HID_DETAIL_GET_STATES_HOOK(HOOK_NAME, STATE_TYPE)                                     \
-    HOOK_DEFINE_TRAMPOLINE(HOOK_NAME) {                                                              \
-        static int Callback(int *out_count, nn::hid::STATE_TYPE *out, int count, uint const &port) { \
-            if (ShouldBlockGamepadInput()) {                                                         \
-                if (out_count != nullptr) {                                                          \
-                        *out_count = 0;                                                              \
-    }                                                                                                \
-    ResetNpadStates(out, count);                                                                     \
-    return 0;                                                                                        \
-    }                                                                                                \
-    return Orig(out_count, out, count, port);                                                        \
-    }                                                                                                \
-    }                                                                                                \
-    ;
+#define DEFINE_HID_DETAIL_GET_STATES_HOOK(HOOK_NAME, STATE_TYPE)                        \
+    HOOK_DEFINE_TRAMPOLINE(HOOK_NAME) {                                                 \
+        static auto Callback(int *out_count, nn::hid::STATE_TYPE *out, int count,       \
+                             uint const &port) -> int {                                 \
+            if (ShouldBlockGamepadInput()) {                                            \
+                if (out_count != nullptr) {                                             \
+                    *out_count = 0;                                                     \
+                }                                                                       \
+                ResetNpadStates(out, count);                                            \
+                return 0;                                                               \
+            }                                                                           \
+            return Orig(out_count, out, count, port);                                   \
+        }                                                                               \
+    };
+        // clang-format on
 
         DEFINE_HID_GET_STATE_HOOK(HidGetNpadStateFullKeyHook, NpadFullKeyState)
         DEFINE_HID_GET_STATE_HOOK(HidGetNpadStateHandheldHook, NpadHandheldState)
@@ -746,7 +748,7 @@ namespace d3::imgui_overlay {
         DEFINE_HID_DETAIL_GET_STATES_HOOK(HidDetailGetNpadStatesJoyRightHook, NpadJoyRightState)
 
         HOOK_DEFINE_TRAMPOLINE(HidGetMouseStateHook) {
-            static void Callback(nn::hid::MouseState *out) {
+            static auto Callback(nn::hid::MouseState *out) -> void {
                 if (ShouldBlockGamepadInput()) {
                     if (out != nullptr) {
                         *out = {};
@@ -758,7 +760,7 @@ namespace d3::imgui_overlay {
         };
 
         HOOK_DEFINE_TRAMPOLINE(HidGetKeyboardStateHook) {
-            static void Callback(nn::hid::KeyboardState *out) {
+            static auto Callback(nn::hid::KeyboardState *out) -> void {
                 if (ShouldBlockGamepadInput()) {
                     if (out != nullptr) {
                         *out = {};
@@ -798,7 +800,7 @@ namespace d3::imgui_overlay {
                 void (*install)(uintptr_t);
             };
 
-            const DetailHookEntry detail_hooks[] = {
+            const std::array<DetailHookEntry, 5> detail_hooks = {{
                 {.name    = "_ZN2nn3hid6detail13GetNpadStatesEPiPNS0_"
                             "16NpadFullKeyStateEiRKj",
                  .install = [](uintptr_t addr) -> void {
@@ -824,7 +826,7 @@ namespace d3::imgui_overlay {
                  .install = [](uintptr_t addr) -> void {
                      HidDetailGetNpadStatesJoyRightHook::InstallAtPtr(addr);
                  }},
-            };
+            }};
 
             for (const auto &hook : detail_hooks) {
                 void const *addr = LookupSymbolAddress(hook.name);
@@ -985,7 +987,7 @@ namespace d3::imgui_overlay {
 
         // Hook nvnDeviceGetProcAddress directly (works even when nvnBootstrapLoader isn't in dynsym).
         HOOK_DEFINE_TRAMPOLINE(DeviceGetProcAddressHook) {
-            static PFNNVNGENERICFUNCPTRPROC Callback(const NVNdevice *device, const char *name) {
+            static auto Callback(const NVNdevice *device, const char *name) -> PFNNVNGENERICFUNCPTRPROC {
                 if (g_device == nullptr && device != nullptr) {
                     g_device = const_cast<NVNdevice *>(device);
                 }
@@ -1036,13 +1038,13 @@ namespace d3::imgui_overlay {
             return;
         }
 
-        char    buf[1024];
-        va_list ap;
+        std::array<char, 1024> buf {};
+        va_list                ap;
         va_start(ap, fmt);
-        vsnprintf(buf, sizeof(buf), fmt, ap);
+        vsnprintf(buf.data(), buf.size(), fmt, ap);
         va_end(ap);
 
-        notifications->AddNotification(color, ttl_s, "%s", buf);
+        notifications->AddNotification(color, ttl_s, "%s", buf.data());
     }
 
     void Initialize() {
@@ -1124,7 +1126,7 @@ namespace d3::imgui_overlay {
         g_font_build_in_progress = true;
         struct ScopedClearInProgress {
             ~ScopedClearInProgress() { g_font_build_in_progress = false; }
-        } clear_in_progress {};
+        } const clear_in_progress {};
 
         g_font_build_attempted = true;
 
@@ -1166,7 +1168,7 @@ namespace d3::imgui_overlay {
         ImFont const *font             = nullptr;
         bool          used_shared_font = false;
 
-        const ImWchar nvn_ext_ranges[] = {0xE000, 0xE152, 0};
+        const std::array<ImWchar, 3> nvn_ext_ranges = {0xE000, 0xE152, 0};
 
         const bool is_chinese = (desired_lang == "zh");
 
@@ -1212,7 +1214,7 @@ namespace d3::imgui_overlay {
                 ImFontConfig ext_cfg         = font_cfg;
                 ext_cfg.MergeMode            = true;
                 ext_cfg.FontDataOwnedByAtlas = false;
-                ext_cfg.GlyphRanges          = is_chinese ? s_font_ranges.Data : nvn_ext_ranges;
+                ext_cfg.GlyphRanges          = is_chinese ? s_font_ranges.Data : nvn_ext_ranges.data();
                 if (io.Fonts->AddFontFromMemoryTTF(const_cast<void *>(shared_ext_font), static_cast<int>(shared_ext_size), ext_cfg.SizePixels, &ext_cfg) == nullptr) {
                     PRINT_LINE("[imgui_overlay] ERROR: AddFontFromMemoryTTF failed for shared extension font");
                 } else {
@@ -1230,7 +1232,7 @@ namespace d3::imgui_overlay {
                 ImFontConfig ext_cfg         = font_cfg;
                 ext_cfg.MergeMode            = true;
                 ext_cfg.FontDataOwnedByAtlas = false;
-                ext_cfg.GlyphRanges          = nvn_ext_ranges;
+                ext_cfg.GlyphRanges          = nvn_ext_ranges.data();
                 if (io.Fonts->AddFontFromMemoryTTF(const_cast<void *>(nvn_ext_font), static_cast<int>(nvn_ext_size), ext_cfg.SizePixels, &ext_cfg) == nullptr) {
                     PRINT_LINE("[imgui_overlay] ERROR: AddFontFromMemoryTTF failed for shared Nintendo extension");
                 } else {

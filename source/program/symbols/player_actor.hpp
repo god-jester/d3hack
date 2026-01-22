@@ -15,7 +15,7 @@ FUNC_PTR(PlayerListGetAllInGame,                 void  (*)(PlayerList *listPlaye
 FUNC_PTR(SPlayerIsLocal,                         BOOL  (*)(const Player *ptPlayer));
 FUNC_PTR(ACD_AttributesGetInt,                  int64  (*)(ActorCommonData *tACD, FastAttribKey tKey));
 FUNC_PTR(ACD_AttributesGetFloat,                float  (*)(ActorCommonData *tACD, FastAttribKey tKey));
-FUNC_PTR(ACD_AttributesSetInt,                   void  (*)(ActorCommonData *tACD, FastAttribKey tKey, int32_t nValue));
+FUNC_PTR(ACD_AttributesSetInt,                   void  (*)(ActorCommonData *tACD, FastAttribKey tKey, s32 nValue));
 FUNC_PTR(ACD_AttributesSetFloat,                 void  (*)(ActorCommonData *tACD, FastAttribKey tKey, float flValue));
 FUNC_PTR(ACD_ModifyCurrencyAmount,               BOOL  (*)(ActorCommonData *tACD, const int64 nAmount, const CurrencyType eCurrencyType, const GoldModifiedReason eReason, const BOOL bForceNoSound));
 FUNC_PTR(ACD_SetCurrencyAmount,                  void  (*)(ActorCommonData *tACD, const int64 nAmount, const CurrencyType eCurrencyType, const GoldModifiedReason eReason));

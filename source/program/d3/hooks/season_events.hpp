@@ -13,19 +13,19 @@ namespace d3 {
         }
 
         void ClearConfigRequestFlag() {
-            auto *flag_ptr = reinterpret_cast<uint32_t **>(GameOffsetFromTable("season_config_request_flag_ptr"));
+            auto *flag_ptr = reinterpret_cast<u32 **>(GameOffsetFromTable("season_config_request_flag_ptr"));
             if ((flag_ptr != nullptr) && (*flag_ptr != nullptr))
                 **flag_ptr = 0;
         }
 
         void ClearSeasonsRequestFlag() {
-            auto *flag_ptr = reinterpret_cast<uint8_t **>(GameOffsetFromTable("season_seasons_request_flag_ptr"));
+            auto *flag_ptr = reinterpret_cast<u8 **>(GameOffsetFromTable("season_seasons_request_flag_ptr"));
             if ((flag_ptr != nullptr) && (*flag_ptr != nullptr))
                 **flag_ptr = 0;
         }
 
         void ClearBlacklistRequestFlag() {
-            auto *flag_ptr = reinterpret_cast<uint8_t **>(GameOffsetFromTable("season_blacklist_request_flag_ptr"));
+            auto *flag_ptr = reinterpret_cast<u8 **>(GameOffsetFromTable("season_blacklist_request_flag_ptr"));
             if ((flag_ptr != nullptr) && (*flag_ptr != nullptr))
                 **flag_ptr = 0;
         }

@@ -1,17 +1,20 @@
 #pragma once
 
-#include <array>
-#include <string_view>
-#include <vector>
-#include "sys/types.h"
-#include "lib/util/ptr_path.hpp"
-#include "lib/diag/assert.hpp"
-#include <lib/reloc/reloc.hpp>
-#include "d3/types/maps.hpp"
-#include "program/offsets.hpp"
+#include "d3/types/containers.hpp"
 #include "d3/types/enums.hpp"
 #include "d3/types/namespaces.hpp"
 #include "d3/types/onlinebd.hpp"
+#include "d3/types/online_service.hpp"
+#include "lib/diag/assert.hpp"
+#include "lib/reloc/reloc.hpp"
+#include "lib/util/ptr_path.hpp"
+#include "program/offsets.hpp"
+
+#include <array>
+#include <cstddef>
+#include <string_view>
+#include <vector>
+#include <sys/types.h>
 
 using DOMVersionFunc           = int32 (*)(const int32, const struct CXMLNode *, void *);
 using TranslateStringToIntFunc = int32 (*)(LPCSTR);
@@ -208,7 +211,7 @@ struct BannerRenderData {
 };
 
 struct FastAttribKey {
-    int32_t nValue;
+    s32 nValue;
 };
 
 struct SNOName {

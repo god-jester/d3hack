@@ -1,5 +1,6 @@
 #include "program/gui2/ui/windows/config_window.hpp"
 
+#include <array>
 #include <algorithm>
 #include <string>
 
@@ -18,9 +19,8 @@ namespace d3::gui2::ui::windows {
                 return "OverlayConfig";
             case PatchConfig::SeasonEventMapMode::Disabled:
                 return "Disabled";
-            default:
-                return "Disabled";
             }
+            return "Disabled";
         }
 
     }  // namespace
@@ -183,7 +183,7 @@ namespace d3::gui2::ui::windows {
                         const char *label;
                         const char *code;
                     };
-                    const Lang kLangs[] = {
+                    const std::array<Lang, 9> kLangs = {{
                         {.label = overlay_.tr("gui.lang_auto", "Auto (game)"),
                          .code  = ""},
                         {.label = overlay_.tr("gui.lang_en", "English"),
@@ -202,7 +202,7 @@ namespace d3::gui2::ui::windows {
                          .code  = "ko"},
                         {.label = overlay_.tr("gui.lang_zh", "Chinese"),
                          .code  = "zh"},
-                    };
+                    }};
 
                     for (const auto &lang : kLangs) {
                         const bool is_selected = (cfg.gui.language_override == lang.code);
@@ -514,24 +514,24 @@ namespace d3::gui2::ui::windows {
                 mark_dirty(ImGui::Checkbox(overlay_.tr("gui.loot_disable_torment_check", "Disable torment check"), &cfg.loot_modifiers.DisableTormentCheck));
                 mark_dirty(ImGui::Checkbox(overlay_.tr("gui.loot_suppress_gift", "Suppress gift generation"), &cfg.loot_modifiers.SuppressGiftGeneration));
 
-                int forced_ilevel = static_cast<int>(cfg.loot_modifiers.ForcedILevel);
+                int forced_ilevel = cfg.loot_modifiers.ForcedILevel;
                 if (ImGui::SliderInt(overlay_.tr("gui.loot_forced_ilevel", "Forced iLevel"), &forced_ilevel, 0, 70)) {
-                    cfg.loot_modifiers.ForcedILevel = static_cast<u32>(forced_ilevel);
+                    cfg.loot_modifiers.ForcedILevel = forced_ilevel;
                     overlay_.set_ui_dirty(true);
                 }
-                int tiered_level = static_cast<int>(cfg.loot_modifiers.TieredLootRunLevel);
+                int tiered_level = cfg.loot_modifiers.TieredLootRunLevel;
                 if (ImGui::SliderInt(overlay_.tr("gui.loot_tiered_run_level", "Tiered loot run level"), &tiered_level, 0, 150)) {
-                    cfg.loot_modifiers.TieredLootRunLevel = static_cast<u32>(tiered_level);
+                    cfg.loot_modifiers.TieredLootRunLevel = tiered_level;
                     overlay_.set_ui_dirty(true);
                 }
 
-                const char *ranks[] = {
+                const std::array<const char *, 3> ranks = {
                     overlay_.tr("gui.loot_rank_normal", "Normal"),
                     overlay_.tr("gui.loot_rank_ancient", "Ancient"),
                     overlay_.tr("gui.loot_rank_primal", "Primal"),
                 };
                 int rank_value = cfg.loot_modifiers.AncientRankValue;
-                if (ImGui::Combo(overlay_.tr("gui.loot_ancient_rank", "Ancient rank"), &rank_value, ranks, static_cast<int>(IM_ARRAYSIZE(ranks)))) {
+                if (ImGui::Combo(overlay_.tr("gui.loot_ancient_rank", "Ancient rank"), &rank_value, ranks.data(), static_cast<int>(ranks.size()))) {
                     cfg.loot_modifiers.AncientRankValue = rank_value;
                     overlay_.set_ui_dirty(true);
                 }

@@ -43,6 +43,7 @@ all:
 clean:
 	@echo clean ...
 	@rm -fr $(BUILD_DIR) $(NAME).nso $(NAME).npdm $(NAME).elf
+	@$(SHELL) $(SCRIPTS_PATH)/pre-build.sh
 
 include $(MK_PATH)/deploy.mk
 include $(MK_PATH)/npdm.mk
