@@ -53,9 +53,11 @@ namespace nn::pl {
     };
 
     void RequestSharedFontLoad(SharedFontType sharedFontType) noexcept;
-    SharedFontLoadState GetSharedFontLoadState(SharedFontType sharedFontType) noexcept;
-    const void *GetSharedFontAddress(SharedFontType sharedFontType) noexcept;
-    size_t GetSharedFontSize(SharedFontType sharedFontType) noexcept;
+    auto GetSharedFontLoadState(SharedFontType sharedFontType) noexcept
+        -> SharedFontLoadState;
+    auto GetSharedFontAddress(SharedFontType sharedFontType) noexcept -> const
+        void *;
+    auto GetSharedFontSize(SharedFontType sharedFontType) noexcept -> size_t;
 }  // namespace nn::pl
 
 namespace d3::imgui_overlay {
@@ -969,8 +971,9 @@ namespace d3::imgui_overlay {
 
                     ImGui::Render();
                     ImguiNvnBackend::renderDrawData(ImGui::GetDrawData());
-                    ImFontAtlas *fonts = ImGui::GetIO().Fonts;
-                    ImTextureData *font_tex = fonts ? fonts->TexData : nullptr;
+                    ImFontAtlas const *fonts = ImGui::GetIO().Fonts;
+                    ImTextureData const *font_tex =
+                        fonts ? fonts->TexData : nullptr;
                     g_font_uploaded = (font_tex != nullptr && font_tex->Status == ImTextureStatus_OK);
                 }
             }

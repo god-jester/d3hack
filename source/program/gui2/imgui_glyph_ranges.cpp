@@ -14,41 +14,33 @@ namespace {
     }
 }
 
-const ImWchar *GetDefault() {
-    static const ImWchar ranges[] = {
-        0x0020, 0x00FF,
-        0,
-    };
-    return &ranges[0];
+auto GetDefault() -> const ImWchar * {
+  static const ImWchar ranges[] = {
+      0x0020,
+      0x00FF,
+      0,
+  };
+  return &ranges[0];
 }
 
-const ImWchar *GetKorean() {
-    static const ImWchar ranges[] = {
-        0x0020, 0x00FF,
-        0x3131, 0x3163,
-        0xAC00, 0xD7A3,
-        0xFFFD, 0xFFFD,
-        0,
-    };
-    return &ranges[0];
+auto GetKorean() -> const ImWchar * {
+  static const ImWchar ranges[] = {
+      0x0020, 0x00FF, 0x3131, 0x3163, 0xAC00, 0xD7A3, 0xFFFD, 0xFFFD, 0,
+  };
+  return &ranges[0];
 }
 
-const ImWchar *GetChineseFull() {
-    static const ImWchar ranges[] = {
-        0x0020, 0x00FF,
-        0x2000, 0x206F,
-        0x3000, 0x30FF,
-        0x31F0, 0x31FF,
-        0xFF00, 0xFFEF,
-        0xFFFD, 0xFFFD,
-        0x4E00, 0x9FAF,
-        0,
-    };
-    return &ranges[0];
+auto GetChineseFull() -> const ImWchar * {
+  static const ImWchar ranges[] = {
+      0x0020, 0x00FF, 0x2000, 0x206F, 0x3000, 0x30FF, 0x31F0, 0x31FF,
+      0xFF00, 0xFFEF, 0xFFFD, 0xFFFD, 0x4E00, 0x9FAF, 0,
+  };
+  return &ranges[0];
 }
 
-const ImWchar *GetChineseSimplifiedCommon() {
-    static const short accumulative_offsets_from_0x4E00[] = {
+auto GetChineseSimplifiedCommon() -> const ImWchar * {
+  static const short accumulative_offsets_from_0x4E00[] = {
+      // clang-format off
         0,1,2,4,1,1,1,1,2,1,3,2,1,2,2,1,1,1,1,1,5,2,1,2,3,3,3,2,2,4,1,1,1,2,1,5,2,3,1,2,1,2,1,1,2,1,1,2,2,1,4,1,1,1,1,5,10,1,2,19,2,1,2,1,2,1,2,1,2,
         1,5,1,6,3,2,1,2,2,1,1,1,4,8,5,1,1,4,1,1,3,1,2,1,5,1,2,1,1,1,10,1,1,5,2,4,6,1,4,2,2,2,12,2,1,1,6,1,1,1,4,1,1,4,6,5,1,4,2,2,4,10,7,1,1,4,2,4,
         2,1,4,3,6,10,12,5,7,2,14,2,9,1,1,6,7,10,4,7,13,1,5,4,8,4,1,1,2,28,5,6,1,1,5,2,5,20,2,2,9,8,11,2,9,17,1,8,6,8,27,4,6,9,20,11,27,6,68,2,2,1,1,
@@ -89,27 +81,32 @@ const ImWchar *GetChineseSimplifiedCommon() {
         3,2,3,1,1,2,5,1,4,15,11,19,1,1,1,1,5,4,5,1,1,2,5,3,5,12,1,2,5,1,11,1,1,15,9,1,4,5,3,26,8,2,1,3,1,1,15,19,2,12,1,2,5,2,7,2,19,2,20,6,26,7,5,
         2,2,7,34,21,13,70,2,128,1,1,2,1,1,2,1,1,3,2,2,2,15,1,4,1,3,4,42,10,6,1,49,85,8,1,2,1,1,4,4,2,3,6,1,5,7,4,3,211,4,1,2,1,2,5,1,2,4,2,2,6,5,6,
         10,3,4,48,100,6,2,16,296,5,27,387,2,2,3,7,16,8,5,38,15,39,21,9,10,3,7,59,13,27,21,47,5,21,6
-    };
-    static ImWchar base_ranges[] = {
-        0x0020, 0x00FF, // Basic Latin + Latin Supplement
-        0x2000, 0x206F, // General Punctuation
-        0x3000, 0x30FF, // CJK Symbols and Punctuations, Hiragana, Katakana
-        0x31F0, 0x31FF, // Katakana Phonetic Extensions
-        0xFF00, 0xFFEF, // Half-width characters
-        0xFFFD, 0xFFFD  // Invalid
-    };
-    static ImWchar full_ranges[IM_COUNTOF(base_ranges) + IM_COUNTOF(accumulative_offsets_from_0x4E00) * 2 + 1] = { 0 };
-    if (!full_ranges[0]) {
-        memcpy(full_ranges, base_ranges, sizeof(base_ranges));
-        UnpackAccumulativeOffsetsIntoRanges(0x4E00, accumulative_offsets_from_0x4E00,
-                                            IM_COUNTOF(accumulative_offsets_from_0x4E00),
-                                            full_ranges + IM_COUNTOF(base_ranges));
-    }
-    return &full_ranges[0];
+      // clang-format on
+  };
+  static ImWchar base_ranges[] = {
+      0x0020, 0x00FF, // Basic Latin + Latin Supplement
+      0x2000, 0x206F, // General Punctuation
+      0x3000, 0x30FF, // CJK Symbols and Punctuations, Hiragana, Katakana
+      0x31F0, 0x31FF, // Katakana Phonetic Extensions
+      0xFF00, 0xFFEF, // Half-width characters
+      0xFFFD, 0xFFFD  // Invalid
+  };
+  static ImWchar full_ranges[IM_COUNTOF(base_ranges) +
+                             IM_COUNTOF(accumulative_offsets_from_0x4E00) * 2 +
+                             1] = {0};
+  if (!full_ranges[0]) {
+    memcpy(full_ranges, base_ranges, sizeof(base_ranges));
+    UnpackAccumulativeOffsetsIntoRanges(
+        0x4E00, accumulative_offsets_from_0x4E00,
+        IM_COUNTOF(accumulative_offsets_from_0x4E00),
+        full_ranges + IM_COUNTOF(base_ranges));
+  }
+  return &full_ranges[0];
 }
 
-const ImWchar *GetJapanese() {
-    static const short accumulative_offsets_from_0x4E00[] = {
+auto GetJapanese() -> const ImWchar * {
+  static const short accumulative_offsets_from_0x4E00[] = {
+      // clang-format off
         0,1,2,4,1,1,1,1,2,1,3,3,2,2,1,5,3,5,7,5,6,1,2,1,7,2,6,3,1,8,1,1,4,1,1,18,2,11,2,6,2,1,2,1,5,1,2,1,3,1,2,1,2,3,3,1,1,2,3,1,1,1,12,7,9,1,4,5,1,
         1,2,1,10,1,1,9,2,2,4,5,6,9,3,1,1,1,1,9,3,18,5,2,2,2,2,1,6,3,7,1,1,1,1,2,2,4,2,1,23,2,10,4,3,5,2,4,10,2,4,13,1,6,1,9,3,1,1,6,6,7,6,3,1,2,11,3,
         2,2,3,2,15,2,2,5,4,3,6,4,1,2,5,2,12,16,6,13,9,13,2,1,1,7,16,4,7,1,19,1,5,1,2,2,7,7,8,2,6,5,4,9,18,7,4,5,9,13,11,8,15,2,1,1,1,2,1,2,2,1,2,2,8,
@@ -158,33 +155,33 @@ const ImWchar *GetJapanese() {
         1,29,7,22,10,3,78,16,12,20,18,4,67,11,5,1,3,15,6,21,31,32,27,18,13,71,35,5,142,4,10,1,2,50,19,33,16,35,37,16,19,27,7,1,133,19,1,4,8,7,20,1,4,
         4,1,10,3,1,6,1,2,51,5,40,15,24,43,22928,11,1,13,154,70,3,1,1,7,4,10,1,2,1,1,2,1,2,1,2,2,1,1,2,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1,1,1,
         3,2,1,1,1,1,2,1,1,
-    };
-    static ImWchar base_ranges[] = {
-        0x0020, 0x00FF, // Basic Latin + Latin Supplement
-        0x3000, 0x30FF, // CJK Symbols and Punctuations, Hiragana, Katakana
-        0x31F0, 0x31FF, // Katakana Phonetic Extensions
-        0xFF00, 0xFFEF, // Half-width characters
-        0xFFFD, 0xFFFD  // Invalid
-    };
-    static ImWchar full_ranges[IM_COUNTOF(base_ranges) + IM_COUNTOF(accumulative_offsets_from_0x4E00) * 2 + 1] = { 0 };
-    if (!full_ranges[0]) {
-        memcpy(full_ranges, base_ranges, sizeof(base_ranges));
-        UnpackAccumulativeOffsetsIntoRanges(0x4E00, accumulative_offsets_from_0x4E00,
-                                            IM_COUNTOF(accumulative_offsets_from_0x4E00),
-                                            full_ranges + IM_COUNTOF(base_ranges));
-    }
-    return &full_ranges[0];
+      // clang-format on
+  };
+  static ImWchar base_ranges[] = {
+      0x0020, 0x00FF, // Basic Latin + Latin Supplement
+      0x3000, 0x30FF, // CJK Symbols and Punctuations, Hiragana, Katakana
+      0x31F0, 0x31FF, // Katakana Phonetic Extensions
+      0xFF00, 0xFFEF, // Half-width characters
+      0xFFFD, 0xFFFD  // Invalid
+  };
+  static ImWchar full_ranges[IM_COUNTOF(base_ranges) +
+                             IM_COUNTOF(accumulative_offsets_from_0x4E00) * 2 +
+                             1] = {0};
+  if (!full_ranges[0]) {
+    memcpy(full_ranges, base_ranges, sizeof(base_ranges));
+    UnpackAccumulativeOffsetsIntoRanges(
+        0x4E00, accumulative_offsets_from_0x4E00,
+        IM_COUNTOF(accumulative_offsets_from_0x4E00),
+        full_ranges + IM_COUNTOF(base_ranges));
+  }
+  return &full_ranges[0];
 }
 
-const ImWchar *GetCyrillic() {
-    static const ImWchar ranges[] = {
-        0x0020, 0x00FF,
-        0x0400, 0x052F,
-        0x2DE0, 0x2DFF,
-        0xA640, 0xA69F,
-        0,
-    };
-    return &ranges[0];
+auto GetCyrillic() -> const ImWchar * {
+  static const ImWchar ranges[] = {
+      0x0020, 0x00FF, 0x0400, 0x052F, 0x2DE0, 0x2DFF, 0xA640, 0xA69F, 0,
+  };
+  return &ranges[0];
 }
 
 }  // namespace d3::imgui_overlay::glyph_ranges
