@@ -15,6 +15,8 @@ AlignTrailingComments:
   Kind:            Always
   OverEmptyLines:  1
   # AlignPPAndNotPP: false
+AllowAllArgumentsOnNextLine: true
+AllowAllParametersOfDeclarationOnNextLine: true
 AllowShortFunctionsOnASingleLine: All
 AllowShortIfStatementsOnASingleLine: Never
 AllowShortLoopsOnASingleLine: true
@@ -23,6 +25,7 @@ AlwaysBreakBeforeMultilineStrings: false
 AlwaysBreakTemplateDeclarations: true
 BinPackArguments: true
 BinPackParameters: OnePerLine
+BinPackLongBracedList: true
 BreakBeforeBinaryOperators: None
 BreakBeforeBraces: Attach
 BreakBeforeTernaryOperators: true
@@ -31,7 +34,7 @@ BreakInheritanceList: AfterColon
 BreakStringLiterals: false
 ColumnLimit: 0
 CommentPragmas: "^ jx pragma:"
-PackConstructorInitializers: NextLineOnly
+PackConstructorInitializers: NextLine
 ConstructorInitializerIndentWidth: 4
 ContinuationIndentWidth: 4
 Cpp11BracedListStyle: true

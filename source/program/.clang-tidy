@@ -4,7 +4,7 @@ ExtraArgs: ["-Wno-unknown-attributes", "-std=gnu++23"]
 Checks: readability-*, modernize-*, android-*, google-*, bugprone-*, misc-*, performance-*, clang-analyzer-*, 
   -cert-dcl50-cpp, -cert-err58-cpp, -bugprone-sizeof-expression, -misc-no-recursion, -misc-non-private-member-variables-in-classes, -misc-include-cleaner, 
   -clang-analyzer-alpha*, -clang-analyzer-deadcode*, -google-readability-braces-around-statements, -google-runtime-int, -google-readability-function-size, 
-  -bugprone-easily-swappable-parameters, -bugprone-implicit-widening-of-multiplication-result, -bugprone-lambda-function-name, 
+  -bugprone-easily-swappable-parameters, -bugprone-implicit-widening-of-multiplication-result, -bugprone-lambda-function-name, -bugprone-multi-level-*, 
   -readability-non-const-parameter, -readability-uppercase-literal-suffix, -readability-magic-numbers, -readability-braces-around-statements, 
   -readability-implicit-bool-cast, -readability-named-parameter, -modernize-use-scoped-lock, -performance-enum-size, -performance-no-int-to-ptr
 # Checks: '-*,readability-isolate-declaration,readability-implicit-bool-conversion'

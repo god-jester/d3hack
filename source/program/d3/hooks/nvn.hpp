@@ -10,168 +10,166 @@
 #include "nvn/nvn.h"
 
 namespace d3::nvn {
-    namespace {
-        struct NVNTexInfo {
-            u32 eTexFormat;
-            u32 dwMSAALevel;
-            u32 dwLastFrameUsed;
-            u32 eType;
-            u32 dwPixelWidth;
-            u32 dwPixelHeight;
-            u32 dwPixelDepth;
-            u32 dwMipLevels;
-            u8  tMemory[0x38];
-            u32 bTargetUpdated;
-            u32 bIsWindowTexture;
-        };
+    struct NVNTexInfo {
+        u32 eTexFormat;
+        u32 dwMSAALevel;
+        u32 dwLastFrameUsed;
+        u32 eType;
+        u32 dwPixelWidth;
+        u32 dwPixelHeight;
+        u32 dwPixelDepth;
+        u32 dwMipLevels;
+        u8  tMemory[0x38];
+        u32 bTargetUpdated;
+        u32 bIsWindowTexture;
+    };
 
-        static_assert(offsetof(NVNTexInfo, bIsWindowTexture) == 0x5C);
+    static_assert(offsetof(NVNTexInfo, bIsWindowTexture) == 0x5C);
 
-        inline auto ClampTexturesEnabled() -> bool {
-            return global_config.resolution_hack.active && global_config.resolution_hack.ClampTexturesEnabled();
-        }
+    inline auto ClampTexturesEnabled() -> bool {
+        return global_config.resolution_hack.active && global_config.resolution_hack.ClampTexturesEnabled();
+    }
 
-        inline auto GetClampDims(u32 &limitW, u32 &limitH) -> bool {
-            if (!ClampTexturesEnabled())
-                return false;
-            limitH = global_config.resolution_hack.ClampTextureHeightPx();
-            limitW = global_config.resolution_hack.ClampTextureWidthPx();
-            return limitW != 0 && limitH != 0;
-        }
+    inline auto GetClampDims(u32 &limitW, u32 &limitH) -> bool {
+        if (!ClampTexturesEnabled())
+            return false;
+        limitH = global_config.resolution_hack.ClampTextureHeightPx();
+        limitW = global_config.resolution_hack.ClampTextureWidthPx();
+        return limitW != 0 && limitH != 0;
+    }
 
-        inline auto IsDepthFormat(u32 fmt) -> bool {
-            switch (fmt) {
-            case NVN_FORMAT_STENCIL8:
-            case NVN_FORMAT_DEPTH16:
-            case NVN_FORMAT_DEPTH24:
-            case NVN_FORMAT_DEPTH32F:
-            case NVN_FORMAT_DEPTH24_STENCIL8:
-            case NVN_FORMAT_DEPTH32F_STENCIL8:
-                return true;
-            default:
-                return false;
-            }
-        }
-
-        inline auto LocalCalcRenderScale(u32 width, u32 height, u32 limitW, u32 limitH) -> float {
-            if (width == 0 || height == 0)
-                return 1.0f;
-            float scale = 1.0f;
-            if (width > limitW)
-                scale = static_cast<float>(limitW) / static_cast<float>(width);
-            if (height > limitH) {
-                const float hscale = static_cast<float>(limitH) / static_cast<float>(height);
-                scale              = std::min(hscale, scale);
-            }
-            scale = std::min(scale, 1.0f);
-            if (scale <= 0.0f)
-                scale = 1.0f;
-            return scale;
-        }
-
-        inline auto LocalScaleDim(u32 dim, float scale) -> u32 {
-            auto scaled = static_cast<u32>(dim * scale);
-            scaled &= ~1u;  // keep even
-            scaled = std::max<u32>(scaled, 2);
-            return scaled;
-        }
-
-        constexpr uintptr_t kSwapchainTexCreateLrOffsets[] = {
-            0xE6988,
-            0xE69BC,
-            0xE69F0,
-        };
-
-        inline auto IsSwapchainTexCreateLR(uintptr_t lrOffset) -> bool {
-            for (const auto lr : kSwapchainTexCreateLrOffsets) {
-                if (lrOffset == lr || lrOffset + 4 == lr)
-                    return true;
-            }
+    inline auto IsDepthFormat(u32 fmt) -> bool {
+        switch (fmt) {
+        case NVN_FORMAT_STENCIL8:
+        case NVN_FORMAT_DEPTH16:
+        case NVN_FORMAT_DEPTH24:
+        case NVN_FORMAT_DEPTH32F:
+        case NVN_FORMAT_DEPTH24_STENCIL8:
+        case NVN_FORMAT_DEPTH32F_STENCIL8:
+            return true;
+        default:
             return false;
         }
+    }
 
-        struct TexDefCallInfo {
-            u32       fmt;
-            u32       width;
-            u32       height;
-            u32       usage;
-            u32       flags;
-            uintptr_t namePtr;
-            bool      hasName;
-            bool      valid;
-            char      name[64];
-        };
-
-        inline TexDefCallInfo g_lastTexDef = {};
-
-        inline auto TexDefNameContains(const TexDefCallInfo &info, const char *needle) -> bool {
-            if (!info.hasName || info.name[0] == '\0' || (needle == nullptr) || needle[0] == '\0')
-                return false;
-            return std::strstr(info.name, needle) != nullptr;
+    inline auto LocalCalcRenderScale(u32 width, u32 height, u32 limitW, u32 limitH) -> float {
+        if (width == 0 || height == 0)
+            return 1.0f;
+        float scale = 1.0f;
+        if (width > limitW)
+            scale = static_cast<float>(limitW) / static_cast<float>(width);
+        if (height > limitH) {
+            const float hscale = static_cast<float>(limitH) / static_cast<float>(height);
+            scale              = std::min(hscale, scale);
         }
+        scale = std::min(scale, 1.0f);
+        if (scale <= 0.0f)
+            scale = 1.0f;
+        return scale;
+    }
 
-        inline auto IsBackbufferDepthName(const TexDefCallInfo &info) -> bool {
-            return TexDefNameContains(info, "BACKBUFFER_DEPTH") || TexDefNameContains(info, "BACKBUFFER");
+    inline auto LocalScaleDim(u32 dim, float scale) -> u32 {
+        auto scaled = static_cast<u32>(dim * scale);
+        scaled &= ~1u;  // keep even
+        scaled = std::max<u32>(scaled, 2);
+        return scaled;
+    }
+
+    constexpr uintptr_t kSwapchainTexCreateLrOffsets[] = {
+        0xE6988,
+        0xE69BC,
+        0xE69F0,
+    };
+
+    inline auto IsSwapchainTexCreateLR(uintptr_t lrOffset) -> bool {
+        for (const auto lr : kSwapchainTexCreateLrOffsets) {
+            if (lrOffset == lr || lrOffset + 4 == lr)
+                return true;
         }
+        return false;
+    }
 
-        inline auto IsFullResEffectName(const TexDefCallInfo &info) -> bool {
-            if (TexDefNameContains(info, "BACKBUFFER"))
-                return true;
-            if (TexDefNameContains(info, "SCREEN_"))
-                return true;
+    struct TexDefCallInfo {
+        u32       fmt;
+        u32       width;
+        u32       height;
+        u32       usage;
+        u32       flags;
+        uintptr_t namePtr;
+        bool      hasName;
+        bool      valid;
+        char      name[64];
+    };
+
+    inline TexDefCallInfo g_lastTexDef = {};
+
+    inline auto TexDefNameContains(const TexDefCallInfo &info, const char *needle) -> bool {
+        if (!info.hasName || info.name[0] == '\0' || (needle == nullptr) || needle[0] == '\0')
             return false;
-        }
+        return std::strstr(info.name, needle) != nullptr;
+    }
 
-        inline auto IsCriticalDepthName(const TexDefCallInfo &info) -> bool {
-            if (IsBackbufferDepthName(info))
-                return true;
-            if (TexDefNameContains(info, "DEPTH Effect RT"))
-                return true;
-            return false;
-        }
+    inline auto IsBackbufferDepthName(const TexDefCallInfo &info) -> bool {
+        return TexDefNameContains(info, "BACKBUFFER_DEPTH") || TexDefNameContains(info, "BACKBUFFER");
+    }
 
-        inline auto IsClampableDepthName(const TexDefCallInfo &info) -> bool {
-            if (TexDefNameContains(info, "Shadow"))
-                return true;
-            if (TexDefNameContains(info, "DepthTarget"))
-                return true;
-            return false;
-        }
+    inline auto IsFullResEffectName(const TexDefCallInfo &info) -> bool {
+        if (TexDefNameContains(info, "BACKBUFFER"))
+            return true;
+        if (TexDefNameContains(info, "SCREEN_"))
+            return true;
+        return false;
+    }
 
-        inline void CaptureTexDefCreateCall(exl::hook::InlineCtx *ctx) {
-            if (ctx == nullptr)
-                return;
+    inline auto IsCriticalDepthName(const TexDefCallInfo &info) -> bool {
+        if (IsBackbufferDepthName(info))
+            return true;
+        if (TexDefNameContains(info, "DEPTH Effect RT"))
+            return true;
+        return false;
+    }
 
-            TexDefCallInfo info = {};
-            info.fmt            = ctx->W[1];
-            info.width          = ctx->W[2];
-            info.height         = ctx->W[3];
-            info.usage          = ctx->W[5];
-            info.flags          = ctx->W[6];
+    inline auto IsClampableDepthName(const TexDefCallInfo &info) -> bool {
+        if (TexDefNameContains(info, "Shadow"))
+            return true;
+        if (TexDefNameContains(info, "DepthTarget"))
+            return true;
+        return false;
+    }
 
-            const auto namePtr = static_cast<uintptr_t>(ctx->X[20]);
-            info.namePtr       = namePtr;
-            info.hasName       = false;
-            info.name[0]       = '\0';
-            if (namePtr != 0) {
-                const auto *module = exl::util::TryGetModule(namePtr);
-                if (module != nullptr) {
-                    const char *name = reinterpret_cast<const char *>(namePtr);
-                    for (u32 i = 0; i + 1 < static_cast<u32>(sizeof(info.name)); ++i) {
-                        const char c = name[i];
-                        info.name[i] = c;
-                        if (c == '\0')
-                            break;
-                    }
-                    info.name[sizeof(info.name) - 1] = '\0';
-                    info.hasName                     = true;
+    inline void CaptureTexDefCreateCall(exl::hook::InlineCtx *ctx) {
+        if (ctx == nullptr)
+            return;
+
+        TexDefCallInfo info = {};
+        info.fmt            = ctx->W[1];
+        info.width          = ctx->W[2];
+        info.height         = ctx->W[3];
+        info.usage          = ctx->W[5];
+        info.flags          = ctx->W[6];
+
+        const auto namePtr = static_cast<uintptr_t>(ctx->X[20]);
+        info.namePtr       = namePtr;
+        info.hasName       = false;
+        info.name[0]       = '\0';
+        if (namePtr != 0) {
+            const auto *module = exl::util::TryGetModule(namePtr);
+            if (module != nullptr) {
+                const char *name = reinterpret_cast<const char *>(namePtr);
+                for (u32 i = 0; i + 1 < static_cast<u32>(sizeof(info.name)); ++i) {
+                    const char c = name[i];
+                    info.name[i] = c;
+                    if (c == '\0')
+                        break;
                 }
+                info.name[sizeof(info.name) - 1] = '\0';
+                info.hasName                     = true;
             }
-
-            info.valid   = true;
-            g_lastTexDef = info;
         }
-    }  // namespace
+
+        info.valid   = true;
+        g_lastTexDef = info;
+    }
 
     HOOK_DEFINE_INLINE(TexDefCreateCallHook) {
         // @ 0x0028365C: sTextureDefinitionCreate callsite into TextureCreate.

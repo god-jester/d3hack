@@ -394,8 +394,8 @@ namespace d3::imgui_overlay {
             colors[ImGuiCol_SeparatorHovered] = ImVec4(kAccent.x, kAccent.y, kAccent.z, 1.00f);
             colors[ImGuiCol_SeparatorActive]  = ImVec4(kAccentHi.x, kAccentHi.y, kAccentHi.z, 1.00f);
 
-            colors[ImGuiCol_Tab]                = ImVec4(0.13f, 0.13f, 0.14f, 1.00f);
-            colors[ImGuiCol_TabHovered]         = ImVec4(kAccent.x, kAccent.y, kAccent.z, 0.55f);
+            colors[ImGuiCol_Tab]               = ImVec4(0.13f, 0.13f, 0.14f, 1.00f);
+            colors[ImGuiCol_TabHovered]        = ImVec4(kAccent.x, kAccent.y, kAccent.z, 0.55f);
             colors[ImGuiCol_TabSelected]       = ImVec4(0.20f, 0.20f, 0.22f, 1.00f);
             colors[ImGuiCol_TabDimmed]         = ImVec4(0.10f, 0.10f, 0.11f, 1.00f);
             colors[ImGuiCol_TabDimmedSelected] = ImVec4(0.16f, 0.16f, 0.18f, 1.00f);
@@ -424,7 +424,7 @@ namespace d3::imgui_overlay {
             style.ScaleAllSizes(scale);
 
             style.FontScaleMain = scale;
-            g_last_gui_scale               = scale;
+            g_last_gui_scale    = scale;
         }
 
         static void PushImGuiGamepadInputs(float dt_s) {
@@ -971,7 +971,7 @@ namespace d3::imgui_overlay {
 
                     ImGui::Render();
                     ImguiNvnBackend::renderDrawData(ImGui::GetDrawData());
-                    ImFontAtlas const *fonts = ImGui::GetIO().Fonts;
+                    ImFontAtlas const   *fonts = ImGui::GetIO().Fonts;
                     ImTextureData const *font_tex =
                         fonts ? fonts->TexData : nullptr;
                     g_font_uploaded = (font_tex != nullptr && font_tex->Status == ImTextureStatus_OK);
@@ -1088,12 +1088,11 @@ namespace d3::imgui_overlay {
         static std::string s_font_lang;
         static std::string s_ranges_lang;
         if (g_font_atlas_built && s_font_lang != desired_lang) {
-            PRINT("[imgui_overlay] Font lang changed (%s -> %s); rebuilding atlas",
-                  s_font_lang.c_str(), desired_lang.c_str());
+            PRINT("[imgui_overlay] Font lang changed (%s -> %s); rebuilding atlas", s_font_lang.c_str(), desired_lang.c_str());
             ImGuiIO &io = ImGui::GetIO();
             io.Fonts->Clear();
-            g_font_atlas_built = false;
-            g_font_uploaded = false;
+            g_font_atlas_built     = false;
+            g_font_uploaded        = false;
             g_font_build_attempted = false;
             s_ranges_lang.clear();
         }
@@ -1160,11 +1159,11 @@ namespace d3::imgui_overlay {
             builder.AddRanges(glyph_ranges::GetCyrillic());
             builder.BuildRanges(&s_font_ranges);
             s_font_ranges_built = true;
-            s_ranges_lang = desired_lang;
+            s_ranges_lang       = desired_lang;
         }
         font_cfg.GlyphRanges = s_font_ranges.Data;
 
-        ImFont const *font = nullptr;
+        ImFont const *font             = nullptr;
         bool          used_shared_font = false;
 
         const ImWchar nvn_ext_ranges[] = {0xE000, 0xE152, 0};
@@ -1188,14 +1187,12 @@ namespace d3::imgui_overlay {
             nn::pl::GetSharedFontLoadState(nn::pl::SharedFontType_NintendoExtension) == nn::pl::SharedFontLoadState_Loaded;
 
         if (shared_base_ready) {
-            const void *shared_font = nn::pl::GetSharedFontAddress(shared_base);
+            const void  *shared_font = nn::pl::GetSharedFontAddress(shared_base);
             const size_t shared_size = nn::pl::GetSharedFontSize(shared_base);
             if (shared_font != nullptr && shared_size > 0) {
                 font_cfg.FontDataOwnedByAtlas = false;
-                font = io.Fonts->AddFontFromMemoryTTF(const_cast<void *>(shared_font),
-                                                      static_cast<int>(shared_size),
-                                                      font_cfg.SizePixels, &font_cfg);
-                used_shared_font = (font != nullptr);
+                font                          = io.Fonts->AddFontFromMemoryTTF(const_cast<void *>(shared_font), static_cast<int>(shared_size), font_cfg.SizePixels, &font_cfg);
+                used_shared_font              = (font != nullptr);
                 if (used_shared_font) {
                     PRINT("[imgui_overlay] Loaded Nintendo shared system font (base=%d)", static_cast<int>(shared_base));
                 } else {
@@ -1209,16 +1206,14 @@ namespace d3::imgui_overlay {
         }
 
         if (used_shared_font && shared_ext_ready) {
-            const void *shared_ext_font = nn::pl::GetSharedFontAddress(shared_ext);
+            const void  *shared_ext_font = nn::pl::GetSharedFontAddress(shared_ext);
             const size_t shared_ext_size = nn::pl::GetSharedFontSize(shared_ext);
             if (shared_ext_font != nullptr && shared_ext_size > 0) {
-                ImFontConfig ext_cfg = font_cfg;
-                ext_cfg.MergeMode = true;
+                ImFontConfig ext_cfg         = font_cfg;
+                ext_cfg.MergeMode            = true;
                 ext_cfg.FontDataOwnedByAtlas = false;
-                ext_cfg.GlyphRanges = is_chinese ? s_font_ranges.Data : nvn_ext_ranges;
-                if (io.Fonts->AddFontFromMemoryTTF(const_cast<void *>(shared_ext_font),
-                                                   static_cast<int>(shared_ext_size),
-                                                   ext_cfg.SizePixels, &ext_cfg) == nullptr) {
+                ext_cfg.GlyphRanges          = is_chinese ? s_font_ranges.Data : nvn_ext_ranges;
+                if (io.Fonts->AddFontFromMemoryTTF(const_cast<void *>(shared_ext_font), static_cast<int>(shared_ext_size), ext_cfg.SizePixels, &ext_cfg) == nullptr) {
                     PRINT_LINE("[imgui_overlay] ERROR: AddFontFromMemoryTTF failed for shared extension font");
                 } else {
                     PRINT("[imgui_overlay] Loaded Nintendo shared system font (ext=%d)", static_cast<int>(shared_ext));
@@ -1229,16 +1224,14 @@ namespace d3::imgui_overlay {
         }
 
         if (used_shared_font && shared_nvn_ext_ready) {
-            const void *nvn_ext_font = nn::pl::GetSharedFontAddress(nn::pl::SharedFontType_NintendoExtension);
+            const void  *nvn_ext_font = nn::pl::GetSharedFontAddress(nn::pl::SharedFontType_NintendoExtension);
             const size_t nvn_ext_size = nn::pl::GetSharedFontSize(nn::pl::SharedFontType_NintendoExtension);
             if (nvn_ext_font != nullptr && nvn_ext_size > 0) {
-                ImFontConfig ext_cfg = font_cfg;
-                ext_cfg.MergeMode = true;
+                ImFontConfig ext_cfg         = font_cfg;
+                ext_cfg.MergeMode            = true;
                 ext_cfg.FontDataOwnedByAtlas = false;
-                ext_cfg.GlyphRanges = nvn_ext_ranges;
-                if (io.Fonts->AddFontFromMemoryTTF(const_cast<void *>(nvn_ext_font),
-                                                   static_cast<int>(nvn_ext_size),
-                                                   ext_cfg.SizePixels, &ext_cfg) == nullptr) {
+                ext_cfg.GlyphRanges          = nvn_ext_ranges;
+                if (io.Fonts->AddFontFromMemoryTTF(const_cast<void *>(nvn_ext_font), static_cast<int>(nvn_ext_size), ext_cfg.SizePixels, &ext_cfg) == nullptr) {
                     PRINT_LINE("[imgui_overlay] ERROR: AddFontFromMemoryTTF failed for shared Nintendo extension");
                 } else {
                     PRINT_LINE("[imgui_overlay] Loaded Nintendo shared system font (NintendoExtension)");
@@ -1251,7 +1244,7 @@ namespace d3::imgui_overlay {
         }
 
         g_font_atlas_built = true;
-        s_font_lang = desired_lang;
+        s_font_lang        = desired_lang;
         PRINT_LINE("[imgui_overlay] ImGui font atlas prepared");
     }
 

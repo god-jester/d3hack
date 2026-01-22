@@ -158,7 +158,7 @@ struct ALIGNED(8) XPooledMap {
     BOOL                                                             m_ConstructorCalled;
 };
 
-typedef XPooledMap<unsigned int, unsigned int, __int64, __int64, 32> InventoryMap;
+using InventoryMap = XPooledMap<unsigned int, unsigned int, __int64, __int64, 32>;
 
 template<typename T1, typename T2, typename T3, typename T4>
 struct XGrowableMap_Sub : XBaseMap<T1, T2, T3, T4, XMapMemoryPool<T1, T3>, XGrowableArray<XMapAssoc<T1, T3> *, XMapAssoc<T2, T4> *>> {};  // , XChainedFixedBlockAllocator<XMapAssoc<int, int>>, XGrowableArray<XMapAssoc<int, int> *, XMapAssoc<int, int> *>, 0> {

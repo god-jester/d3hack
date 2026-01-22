@@ -21,11 +21,11 @@ Diagnostics:
   UnusedIncludes: None
   ClangTidy:
     FastCheckFilter: Loose
-    Remove: [readability*, modernize-avoid-c-arrays]
+    Remove: [readability*, modernize-avoid-c-arrays, bugprone-dynamic-static-initializers]
 ---
 If:
   PathMatch: [.*\.h(pp)?, .*\.c(pp)?]
-  PathExclude: source/program/d3/.*
+  PathExclude: source/program/.*
 Diagnostics:
   Suppress: '*'
   ClangTidy:

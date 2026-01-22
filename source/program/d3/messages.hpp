@@ -38,12 +38,12 @@ namespace d3 {
         // SigmaMemoryClear(&_pMessage, 8uLL);
     }
 
-    void ShowError(const Player *tTarget, int32 eError) {
+    void ShowError(const Player * /*tTarget*/, int32 eError) {
         if (!_HOSTCHK)
             return;
         PlayerList     pList;
         IntDataMessage _pMessage {};
-        size_t         nMsgSize = sizeof(IntDataMessage);
+        size_t const   nMsgSize = sizeof(IntDataMessage);
 
         memset(&_pMessage, 0, nMsgSize);
         _pMessage.nData = eError;
@@ -57,7 +57,7 @@ namespace d3 {
             return;
         PlayerList       pList;
         DWordDataMessage _pMessage {};
-        size_t           nMsgSize = sizeof(DWordDataMessage);
+        size_t const     nMsgSize = sizeof(DWordDataMessage);
 
         memset(&_pMessage, 0, nMsgSize);
         _pMessage.dwData = uDigestFlags;

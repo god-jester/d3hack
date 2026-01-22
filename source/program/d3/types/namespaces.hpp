@@ -83,7 +83,7 @@ namespace Blizzard {
             char                          *pathname;
         };
 
-        typedef StreamRecord *Stream;
+        using Stream = StreamRecord *;
 
     }  // namespace File
 

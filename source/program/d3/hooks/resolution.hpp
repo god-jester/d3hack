@@ -10,11 +10,9 @@
 #include "nvn.hpp"
 
 namespace d3 {
-    namespace {
-        inline auto ClampTexturesEnabled() -> bool {
-            return global_config.resolution_hack.active && global_config.resolution_hack.ClampTexturesEnabled();
-        }
-    }  // namespace
+    inline auto ClampTexturesEnabled() -> bool {
+        return global_config.resolution_hack.active && global_config.resolution_hack.ClampTexturesEnabled();
+    }
     HOOK_DEFINE_TRAMPOLINE(GfxGetDesiredDisplayModeHook) {
         // @ DisplayMode *__struct_ptr GfxGetDesiredDisplayMode()
         static auto Callback() -> DisplayMode {

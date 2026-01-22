@@ -6,9 +6,9 @@
 #include "nn/os/impl/os_timeout_helper.hpp"
 
 namespace d3 {
-    inline RareItemName g_tRareItemName = {0, _rarenamestrings_prefix_dex, 16, 33};  //33 for goat, 22 for Leo
+    inline RareItemName g_tRareItemName = {.fItemNameIsPrefix = 0, .snoAffixStringList = _rarenamestrings_prefix_dex, .nAffixStringListIndex = 16, .nItemStringListIndex = 33};  //33 for goat, 22 for Leo
 
-    void AppGlobalFlagDisable(int8 idx, uint32 flag) {
+    inline void AppGlobalFlagDisable(int8 idx, uint32 flag) {
         return;
         switch (idx) {
         case -1:
@@ -21,19 +21,21 @@ namespace d3 {
             g_tAppGlobals.dwDebugFlags2 ^= ~(1 << flag);
         case 3:
             g_tAppGlobals.dwDebugFlags3 ^= ~(1 << flag);
+        default:
+            return;
         }
     }
 
-    void EnumGBIDUnlocks(GameBalanceType eType, Player *ptSPlayer) {
-        ACDID     idPlayerACD = ptSPlayer->idPlayerACD;
-        GameError errorCode   = GAMEERROR_NONE;
+    inline void EnumGBIDUnlocks(GameBalanceType eType, Player *ptSPlayer) {
+        ACDID const idPlayerACD = ptSPlayer->idPlayerACD;
+        GameError   errorCode   = GAMEERROR_NONE;
         // s32       nCosCount   = 0;
         GBID eItem;
 
         XBaseListNode<GBHandle> *p_gbH;
 
         GBHandleList listResults = {};
-        memset((void *)&listResults, 0, 20);
+        memset(static_cast<void *>(&listResults), 0, 20);
         listResults.m_list.m_ptNodeAllocator = reinterpret_cast<XListMemoryPool<GBHandle> *>(GBGetHandlePool());
         listResults.m_ConstructorCalled      = 1;
         GBEnumerate(eType, &listResults);
@@ -47,7 +49,7 @@ namespace d3 {
                 // _SERVERCODE_ON
                 // if (eItem == 0 || eItem == -1)
                 //     continue;
-                if (CosmeticItemType eType = GetCosmeticItemType(eItem); eType != COSMETIC_ITEM_INVALID) {
+                if (CosmeticItemType const eType = GetCosmeticItemType(eItem); eType != COSMETIC_ITEM_INVALID) {
                     if (eType == COSMETIC_ITEM_PET) {
                         SCosmeticItems_LearnPet(idPlayerACD, eItem, false);
                     } else {
@@ -65,7 +67,7 @@ namespace d3 {
         }
     }
 
-    void UnbindACD(ActorCommonData *tACD) {
+    inline void UnbindACD(ActorCommonData *tACD) {
         if (!_HOSTCHK)
             return;
         _SERVERCODE_ON
@@ -80,7 +82,7 @@ namespace d3 {
         _SERVERCODE_OFF
     }
 
-    void FlagsAreFun() {
+    inline void FlagsAreFun() {
         g_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_ALL_HITS_CRIT_BIT);
         // g_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_FLYTHROUGH_BIT);
         // g_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_FORCE_SPAWN_ALL_GIZMO_LOCATIONS);
@@ -102,12 +104,12 @@ namespace d3 {
         // g_tAppGlobals.dwDebugFlags3 = 0xFFFFFFFF;
     }
 
-    void UnlockAll() {
+    inline void UnlockAll() {
         if (!_HOSTCHK)
             return;
         // _SERVERCODE_ON
         ActorCommonData *ptACDCurPlayer = nullptr;
-        Actor           *ptActorPlayer  = nullptr;
+        Actor const     *ptActorPlayer  = nullptr;
         ACDID            idCurPlayer    = ACDID_INVALID;
         // GameError        errorCode      = GAMEERROR_NONE;
         // auto             nTimer         = nn::TimeSpan::FromMilliSeconds(10);
@@ -153,6 +155,7 @@ namespace d3 {
                 auto *p_uDigestFlags = &ptSPlayer->tAccount.uDigestFlags;
                 *p_uDigestFlags      = 0xFFF;
                 SyncFlags(ptSPlayer, *p_uDigestFlags);
+                auto kParam = static_cast<int>(0xFEFEFEFE);
 
                 // ExperienceDropLootForAll(ptACDCurPlayer, idCurPlayer, 0xFFFFFFFF, 0, 14 + 7.0);
                 // ShowError(ptSPlayer, (6 + GAMEERROR_BNET_MULTIPLAYER_GAMENOTPAUSED));
@@ -166,9 +169,9 @@ namespace d3 {
                 //     PRINT_EXPR("Created arbitrary item, GBID: %i", &hGB.gbid)
                 //     FlippyDropCreateOnActor(ptACDCurPlayer->id, tACDItem->id, &tPlace);
                 // }  // SACDInventoryPickupOrSpillOntoGround(tACDCurPlayer, tACDItem, 0, 0LL, 1);
-                DisplayGameMessageForAllPlayers("RareNameStrings_Prefix_Dex:Dex 17", 0xFEFEFEFE, 0xFEFEFEFE);
+                DisplayGameMessageForAllPlayers("RareNameStrings_Prefix_Dex:Dex 17", kParam, kParam);
                 // nn::os::SleepThread(nTimer);
-                // DisplayGameMessageForAllPlayers("UIToolTips:Seasonal", 0xFEFEFEFE, 0xFEFEFEFE);
+                // DisplayGameMessageForAllPlayers("UIToolTips:Seasonal", kParam, kParam);
 
                 ImageTextureFrame iframe;
                 ImageTextureFrame_ctor(&iframe, "UI:ConsoleSeasonJourneyRingLeaf");
@@ -188,8 +191,8 @@ namespace d3 {
                 msg = "Enjoy!";
                 DisplayLongMessageForPlayer(&msg, ptSPlayer, &iframe, 0);
                 // nn::os::SleepThread(nTimer);
-                // DisplayGameMessageForAllPlayers("UIToolTips:Gold", 0xFEFEFEFE, 0xFEFEFEFE);
-                DisplayGameMessageForAllPlayers("ConsoleUI:AutosaveWarningScreenText_Switch", 0xFEFEFEFE, 0xFEFEFEFE);
+                // DisplayGameMessageForAllPlayers("UIToolTips:Gold", kParam, kParam);
+                DisplayGameMessageForAllPlayers("ConsoleUI:AutosaveWarningScreenText_Switch", kParam, kParam);
                 if (!g_mapLobby[idCurPlayer]) {
                     // g_mapLobby[idCurPlayer] = true;
                     /* Mod stash slots to maximum of 910 */
@@ -250,7 +253,7 @@ namespace d3 {
         // _SERVERCODE_OFF
     }
 
-    void CreateFlippy(ActorCommonData *tACDPlayer, ActorCommonData *tACDNewItem) {
+    inline void CreateFlippy(ActorCommonData *tACDPlayer, ActorCommonData *tACDNewItem) {
         if (!_HOSTCHK)
             return;
         _SERVERCODE_ON
@@ -261,7 +264,7 @@ namespace d3 {
         _SERVERCODE_OFF
     }
 
-    auto DupeItem(ActorCommonData * /*tACDPlayer*/, ActorCommonData *tACDItem, bool /*bCreateFlippy*/ = false) -> ActorCommonData * {
+    inline auto DupeItem(ActorCommonData * /*tACDPlayer*/, ActorCommonData *tACDItem, bool /*bCreateFlippy*/ = false) -> ActorCommonData * {
         if (!_HOSTCHK || (ItemHasLabel(tACDItem->hGB.gbid, 114) != 0))
             return nullptr;
         D3::Items::Generator tGenerator;

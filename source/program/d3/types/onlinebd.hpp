@@ -10,7 +10,7 @@ namespace bdTaskOld {
         BD_CANCELLED  = 0x5,
         BD_MAX_STATUS = 0x6,
     };
-};
+}  // namespace bdTaskOld
 
 template<typename T>
 struct bdReference {

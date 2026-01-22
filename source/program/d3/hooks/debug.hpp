@@ -13,7 +13,7 @@
 namespace d3 {
 
     HOOK_DEFINE_INLINE(Store_AttribDefs) {
-        static void Callback(exl::hook::InlineCtx *ctx) {
+        static void Callback(exl::hook::InlineCtx * /*ctx*/) {
             return;
             // ParagonCapEnabled
             /*
@@ -44,7 +44,6 @@ namespace d3 {
     HOOK_DEFINE_INLINE(Print_SavedAttribs) {
         static void Callback(exl::hook::InlineCtx *ctx) {
             return;
-            namespace exl_ptr = exl::util::pointer_path;
             /* FastAttribSetValue(AttributeGroup, tKey, &tValue); */
             auto  nSavedAttribId      = static_cast<Attrib>(ctx->W[10]);                    // paAttribsToSave[v13].nSavedAttribId
             auto  ptCurAttrib         = *(&ctx->X[19]);                                     // tSavedAttributes->attributes_.elements_[v18];
@@ -217,7 +216,7 @@ namespace d3 {
     }
 
     HOOK_DEFINE_TRAMPOLINE(ParsePartialFromStringHook) {
-        static bool Callback(google::protobuf::MessageLite *msg, const blz::string *data) {
+        static auto Callback(google::protobuf::MessageLite *msg, const blz::string *data) -> bool {
             const u32  size = data ? static_cast<u32>(data->m_size) : 0u;
             const bool ok   = Orig(msg, data);
             if (data) {
@@ -238,7 +237,7 @@ namespace d3 {
 
     static int g_nCosCount = 0;
     HOOK_DEFINE_INLINE(CountCosmetics) {
-        static void Callback(exl::hook::InlineCtx *ctx) {
+        static void Callback(exl::hook::InlineCtx * /*ctx*/) {
             ++g_nCosCount;
             if ((g_nCosCount % 1000) == 0)
                 PRINT_EXPR("Cosmetics so far: %d", g_nCosCount)
@@ -262,7 +261,6 @@ namespace d3 {
             PRINT("GAMETEXT: %s", (char *)(ctx->X[1]))
             // auto g_ptXVarBroadcast = (XVarString *const)(exl::util::GetMainModuleInfo().m_Total.m_Start + 0x1159808);
             // PRINT_EXPR("%lx", *reinterpret_cast<u64 *>(&g_ptXVarBroadcast))
-            namespace exl_ptr = exl::util::pointer_path;
             // D3::Account::ConsoleData::legacy_license_bits_
             for (int i = 0; i < 9; i++) {
                 // PRINT_EXPR("X%d: %lx", i, ctx->X[i])
@@ -295,264 +293,6 @@ namespace d3 {
             PRINT("~[0x%lx]X0_TEXT: %s", ctx->X[30], (char *)(ctx->X[0]))
         }
     };
-
-    using GFXNX64NVNHandle                   = uintptr_t;
-    using GfxViewportSetFn                   = void (*)(GFXNX64NVNHandle *self, IRect2D *rectViewport);
-    inline GfxViewportSetFn g_gfxViewportSet = reinterpret_cast<GfxViewportSetFn>(GameOffset(0x0F0280));
-
-    HOOK_DEFINE_TRAMPOLINE(GfxViewportSetHook) {
-        // @ 0x0F0280: void __fastcall GFXNX64NVN::ViewportSet(GFXNX64NVN*, IRect2D*)
-        static void Callback(GFXNX64NVNHandle *self, IRect2D *rectViewport) {
-            if (rectViewport == nullptr) {
-                Orig(self, rectViewport);
-                return;
-            }
-
-            if (g_ptGfxData != nullptr) {
-                struct RenderTargetView {
-                    SNO   snoRTTex;
-                    int32 eCubeMapFace;
-                };
-
-                RenderTargetView rt0 {};
-                memcpy(&rt0, &g_ptGfxData->workerData[0].tCurrentRTs[0], sizeof(rt0));
-
-                if (rt0.snoRTTex == 0) {
-                    const uint32 outW = static_cast<uint32>(std::max(g_ptGfxData->tCurrentMode.nWinWidth, 0));
-                    const uint32 outH = static_cast<uint32>(std::max(g_ptGfxData->tCurrentMode.nWinHeight, 0));
-                    const uint32 vpW  = static_cast<uint32>(std::max(rectViewport->right - rectViewport->left, 0));
-                    const uint32 vpH  = static_cast<uint32>(std::max(rectViewport->bottom - rectViewport->top, 0));
-
-                    auto calc_scale = [](uint32 width, uint32 height) -> float {
-                        constexpr uint32 kMaxRenderDim = 2048;
-                        if (width == 0 || height == 0)
-                            return 1.0f;
-                        float scale = 1.0f;
-                        if (width > kMaxRenderDim) {
-                            scale = static_cast<float>(kMaxRenderDim) / static_cast<float>(width);
-                        }
-                        if (height > kMaxRenderDim) {
-                            const float hscale = static_cast<float>(kMaxRenderDim) / static_cast<float>(height);
-                            scale              = std::min(hscale, scale);
-                        }
-                        scale = std::min(scale, 1.0f);
-                        if (scale <= 0.0f)
-                            scale = 1.0f;
-                        return scale;
-                    };
-
-                    auto scale_dim = [](uint32 dim, float scale) -> uint32 {
-                        auto scaled = static_cast<uint32>(dim * scale);
-                        scaled &= ~1u;
-                        scaled = std::max<uint32>(scaled, 2);
-                        return scaled;
-                    };
-
-                    const float  scale        = calc_scale(outW, outH);
-                    const uint32 expectedVpW  = scale_dim(outW, scale);
-                    const uint32 expectedVpH  = scale_dim(outH, scale);
-                    const bool   isScaledVp   = (vpW == expectedVpW && vpH == expectedVpH);
-                    const bool   isSmallerVp  = (outW > vpW || outH > vpH);
-                    const bool   isValidSizes = (outW > 0 && outH > 0);
-
-                    // Only override the swapchain viewport if it looks like our internal clamped render resolution.
-                    // This avoids breaking legitimate partial-screen viewports (e.g. splitscreen/UI sub-views).
-                    if (isValidSizes && isSmallerVp && isScaledVp) {
-                        static uint32 s_last_vp_w  = 0;
-                        static uint32 s_last_vp_h  = 0;
-                        static uint32 s_last_out_w = 0;
-                        static uint32 s_last_out_h = 0;
-                        if (vpW != s_last_vp_w || vpH != s_last_vp_h || outW != s_last_out_w || outH != s_last_out_h) {
-                            PRINT("ViewportSet swapchain override: %ux%u -> %ux%u", vpW, vpH, outW, outH)
-                            s_last_vp_w  = vpW;
-                            s_last_vp_h  = vpH;
-                            s_last_out_w = outW;
-                            s_last_out_h = outH;
-                        }
-                        rectViewport->left   = 0;
-                        rectViewport->top    = 0;
-                        rectViewport->right  = static_cast<int32>(outW);
-                        rectViewport->bottom = static_cast<int32>(outH);
-                    }
-                }
-                // Instrumentation: log first time we see a clamped viewport, and what RT we're on.
-                if (rectViewport->left == 0 && rectViewport->top == 0 && rectViewport->right == 2048 && rectViewport->bottom == 1152) {
-                    static bool s_logged_2048_swap = false;
-                    static bool s_logged_2048_rt   = false;
-                    const bool  isSwap             = (rt0.snoRTTex == 0);
-                    if ((isSwap && !s_logged_2048_swap) || (!isSwap && !s_logged_2048_rt)) {
-                        const auto outW = static_cast<uint32>(std::max(g_ptGfxData->tCurrentMode.nWinWidth, 0));
-                        const auto outH = static_cast<uint32>(std::max(g_ptGfxData->tCurrentMode.nWinHeight, 0));
-                        PRINT("ViewportSet saw 2048x1152 (rt0.sno=%d out=%ux%u)", rt0.snoRTTex, outW, outH)
-                        if (isSwap)
-                            s_logged_2048_swap = true;
-                        else
-                            s_logged_2048_rt = true;
-                    }
-                }
-                if (rectViewport->left == 0 && rectViewport->top == 0 && rectViewport->right == 2560 && rectViewport->bottom == 1440) {
-                    static bool s_logged_2560 = false;
-                    if (!s_logged_2560) {
-                        PRINT("ViewportSet saw 2560x1440 (rt0.sno=%d)", rt0.snoRTTex)
-                        s_logged_2560 = true;
-                    }
-                }
-            }
-
-            Orig(self, rectViewport);
-        }
-    };
-
-    namespace {
-        constexpr uint32 kStencilMaxDim = 2048;
-
-        inline auto CalcStencilScale(uint32 width, uint32 height) -> float {
-            if (width == 0 || height == 0)
-                return 1.0f;
-            float scale = 1.0f;
-            if (width > kStencilMaxDim)
-                scale = static_cast<float>(kStencilMaxDim) / static_cast<float>(width);
-            if (height > kStencilMaxDim) {
-                const float hscale = static_cast<float>(kStencilMaxDim) / static_cast<float>(height);
-                scale              = std::min(hscale, scale);
-            }
-            scale = std::min(scale, 1.0f);
-            if (scale <= 0.0f)
-                scale = 1.0f;
-            return scale;
-        }
-
-        inline auto ScaleStencilDim(uint32 dim, float scale) -> uint32 {
-            auto scaled = static_cast<uint32>(dim * scale);
-            scaled &= ~1u;
-            scaled = std::max<uint32>(scaled, 2);
-            return scaled;
-        }
-
-        struct RenderTargetView {
-            SNO   snoRTTex;
-            int32 eCubeMapFace;
-        };
-
-        inline auto GetRT0(RenderTargetView &out) -> bool {
-            if (g_ptGfxData == nullptr)
-                return false;
-            memcpy(&out, &g_ptGfxData->workerData[0].tCurrentRTs[0], sizeof(out));
-            return true;
-        }
-    }  // namespace
-
-    HOOK_DEFINE_INLINE(GfxStencilBufferEnableHook) {
-        // @ 0x0EFCD0: void __fastcall GFXNX64NVN::StencilBufferEnable(GFXNX64NVN*, int)
-        static void Callback(exl::hook::InlineCtx *ctx) {
-            if (ctx == nullptr)
-                return;
-
-            const uint32 mode          = static_cast<uint32>(ctx->W[1]);
-            const bool   autoDisable   = global_config.resolution_hack.active;
-            const bool   shouldDisable = autoDisable;
-
-            if (!global_config.debug.active && !shouldDisable)
-                return;
-
-            RenderTargetView rt0 {};
-            const bool       haveRt0 = GetRT0(rt0);
-            const bool       isSwap  = haveRt0 && (rt0.snoRTTex == 0);
-            const uint32     outW    = (g_ptGfxData != nullptr) ? static_cast<uint32>(std::max(g_ptGfxData->tCurrentMode.nWinWidth, 0)) : 0u;
-            const uint32     outH    = (g_ptGfxData != nullptr) ? static_cast<uint32>(std::max(g_ptGfxData->tCurrentMode.nWinHeight, 0)) : 0u;
-            const float      scale   = CalcStencilScale(outW, outH);
-            const uint32     intW    = ScaleStencilDim((outW != 0u) ? outW : 1u, scale);
-            const uint32     intH    = ScaleStencilDim((outH != 0u) ? outH : 1u, scale);
-            const bool       scaled  = (scale < 1.0f);
-
-            const uintptr_t lr       = static_cast<uintptr_t>(ctx->X[30]);
-            const uintptr_t lrOffset = (lr != 0u) ? (lr - exl::util::modules::GetTargetStart()) : 0u;
-
-            if (shouldDisable && isSwap && scaled && mode != 0) {
-                ctx->W[1] = 0;
-                PRINT(
-                    "StencilEnable swapchain override: %u->0 (rt0=%d out=%ux%u int=%ux%u LR=0x%lx%s)",
-                    mode,
-                    haveRt0 ? rt0.snoRTTex : -1,
-                    outW,
-                    outH,
-                    intW,
-                    intH,
-                    lrOffset,
-                    " auto"
-                );
-                return;
-            }
-
-            if (global_config.debug.active) {
-                static uint32 s_logged = 0;
-                if (s_logged < 64 && scaled && isSwap && mode != 0) {
-                    PRINT(
-                        "StencilEnable: mode=%u rt0=%d out=%ux%u int=%ux%u LR=0x%lx",
-                        mode,
-                        rt0.snoRTTex,
-                        outW,
-                        outH,
-                        intW,
-                        intH,
-                        lrOffset
-                    );
-                    ++s_logged;
-                }
-            }
-        }
-    };
-
-    HOOK_DEFINE_INLINE(GfxStencilBufferSetParamsHook) {
-        // @ 0x0EFE60: void __fastcall GFXNX64NVN::StencilBufferSetParams(GFXNX64NVN*, CompareFunc, ref, ops...)
-        static void Callback(exl::hook::InlineCtx *ctx) {
-            if (ctx == nullptr)
-                return;
-            if (!global_config.debug.active)
-                return;
-
-            RenderTargetView rt0 {};
-            if (!GetRT0(rt0))
-                return;
-
-            const uint32 outW   = static_cast<uint32>(std::max(g_ptGfxData->tCurrentMode.nWinWidth, 0));
-            const uint32 outH   = static_cast<uint32>(std::max(g_ptGfxData->tCurrentMode.nWinHeight, 0));
-            const float  scale  = CalcStencilScale(outW, outH);
-            const bool   scaled = (scale < 1.0f);
-            const bool   isSwap = (rt0.snoRTTex == 0);
-            if (!scaled || !isSwap)
-                return;
-
-            const uint32 intW = ScaleStencilDim((outW != 0u) ? outW : 1u, scale);
-            const uint32 intH = ScaleStencilDim((outH != 0u) ? outH : 1u, scale);
-
-            const uintptr_t lr       = static_cast<uintptr_t>(ctx->X[30]);
-            const uintptr_t lrOffset = (lr != 0u) ? (lr - exl::util::modules::GetTargetStart()) : 0u;
-
-            static uint32 s_logged = 0;
-            if (s_logged < 128) {
-                PRINT(
-                    "StencilParams: W1=%u W2=%u W3=%u W4=%u W5=%u W6=%u W7=%u (rt0=%d out=%ux%u int=%ux%u LR=0x%lx)",
-                    static_cast<uint32>(ctx->W[1]),
-                    static_cast<uint32>(ctx->W[2]),
-                    static_cast<uint32>(ctx->W[3]),
-                    static_cast<uint32>(ctx->W[4]),
-                    static_cast<uint32>(ctx->W[5]),
-                    static_cast<uint32>(ctx->W[6]),
-                    static_cast<uint32>(ctx->W[7]),
-                    rt0.snoRTTex,
-                    outW,
-                    outH,
-                    intW,
-                    intH,
-                    lrOffset
-                );
-                ++s_logged;
-            }
-        }
-    };
-
-    // NVN texture hooks live in nvn.hpp.
 
     HOOK_DEFINE_REPLACE(RejectInvalidModes) {
         // @ 0x298A20: uint32 __fastcall sRejectInvalidModes(DisplayMode *ptDisplayModes, uint32 dwDisplayModeCount)
@@ -635,15 +375,6 @@ namespace d3 {
             // auto length_1 = fileData->m_fileSize;
             // auto bytes_1  = (char *)fileData->m_fileData;
             // PRINT_EXPR("getPub_1 size: %d | first bytes: %2x %2x %2x %2x", length_1, bytes_1[0], bytes_1[1], bytes_1[2], bytes_1[3])
-        }
-    };
-
-    HOOK_DEFINE_INLINE(CurlData) {
-        static void Callback(exl::hook::InlineCtx *ctx) {
-            PRINT("CURL %s", "ENTER")
-            if (((char *)(ctx->X[21])) == nullptr)
-                return;
-            PRINT("_curl: %s", (char *)(ctx->X[21]))
         }
     };
 
@@ -828,7 +559,7 @@ namespace d3 {
         }
     };
 
-    void SetupDebuggingHooks() {
+    inline void SetupDebuggingHooks() {
         if (global_config.challenge_rifts.active) {
             // StorageGetPubFile::
             //     InstallAtFuncPtr(StorageGetPublisherFile);
@@ -862,8 +593,6 @@ namespace d3 {
         //     InstallAtOffset(0x4B104C);
         // ParseFile::
         //     InstallAtOffset(0xBFD8A0);
-        // CurlData::
-        //     InstallAtOffset(0xC592D4);
         // FontSnoop::
         //     InstallAtOffset(0x3A73A8);
         // Store_AttribDefs::

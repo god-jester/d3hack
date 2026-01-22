@@ -13,9 +13,9 @@
 #include "d3/types/namespaces.hpp"
 #include "d3/types/onlinebd.hpp"
 
-typedef int32 (*DOMVersionFunc)(const int32, const struct CXMLNode *, void *);
-typedef int32 (*TranslateStringToIntFunc)(LPCSTR);
-typedef CRefString (*TranslateIntToStringFunc)(int32);
+using DOMVersionFunc           = int32 (*)(const int32, const struct CXMLNode *, void *);
+using TranslateStringToIntFunc = int32 (*)(LPCSTR);
+using TranslateIntToStringFunc = CRefString (*)(int32);
 
 struct FastAttribGroup : std::array<_BYTE, 0x12E8> {};
 struct PlayerSavedData : std::array<_BYTE, 0x12B0> {};
@@ -963,10 +963,10 @@ using SnoStoredStates        = _BYTE[0x128];
 using TargetLock             = _BYTE[0x2C];
 using MoveValidationLog      = _BYTE[0x20];
 
-typedef int32 SWorldID;
-typedef int32 DyeType;
-typedef int32 ItemEffectType;
-typedef int32 ActorLocationType;
+using SWorldID          = int32;
+using DyeType           = int32;
+using ItemEffectType    = int32;
+using ActorLocationType = int32;
 
 struct VisualItem {
     GBID           gbidItem;
@@ -1029,9 +1029,9 @@ struct ActorLocation {
     InventoryLocation tInvLocation;
 };
 
-typedef int32                         GizmoType;
-typedef int32                         ActorType;
-typedef XPooledList<int, const int &> GBIDPooledList;
+using GizmoType      = int32;
+using ActorType      = int32;
+using GBIDPooledList = XPooledList<int, const int &>;
 
 struct ActorCommonData {
     ACDID                 id;
@@ -1353,22 +1353,22 @@ struct ALIGNED(8) Player {
     uint8                     bNewX1Player : 1;
 };
 
-const RGBAColor crgbaWhite {0xFF, 0xFF, 0xFF, 0xFF};
-const RGBAColor crgbaGray {0x88, 0x88, 0x88, 0xFF};
-const RGBAColor crgbaRed {0xFF, 0, 0, 0xFF};
-const RGBAColor crgbaGreen {0, 0xFF, 0, 0xFF};
-const RGBAColor crgbaBlue {0, 0, 0xFF, 0xFF};
-const RGBAColor crgbaYellow {0xFF, 0xFF, 0, 0xFF};
-const RGBAColor crgbaOrange {0xFF, 0x7F, 0, 0xFF};
-const RGBAColor crgbaPurple {0xFF, 0, 0xFF, 0xFF};
-const RGBAColor crgbaGold {0xC7, 0xB3, 0x77, 0xFF};
-const RGBAColor crgbaUIGold {0xCD, 0x9D, 0x51, 0xFF};
-const RGBAColor crgbaBlack {0, 0, 0, 0xFF};
-const RGBAColor crgbaTan {0xC8, 0xB4, 0x7C, 0xFF};
-const RGBAColor crgbaUIOrange {0xFF, 0x69, 0x1E, 0xFF};
-const RGBAColor crgbaDisabled {0x66, 0x66, 0x66, 0x88};
-const RGBAColor crgbaWatermark {0xC0, 0xFF, 0xFF, 0x50};
-const RGBAColor crgbaWatermarkShadow {0x00, 0x00, 0x00, 0x28};
+const RGBAColor crgbaWhite {.r = 0xFF, .g = 0xFF, .b = 0xFF, .a = 0xFF};
+const RGBAColor crgbaGray {.r = 0x88, .g = 0x88, .b = 0x88, .a = 0xFF};
+const RGBAColor crgbaRed {.r = 0xFF, .g = 0, .b = 0, .a = 0xFF};
+const RGBAColor crgbaGreen {.r = 0, .g = 0xFF, .b = 0, .a = 0xFF};
+const RGBAColor crgbaBlue {.r = 0, .g = 0, .b = 0xFF, .a = 0xFF};
+const RGBAColor crgbaYellow {.r = 0xFF, .g = 0xFF, .b = 0, .a = 0xFF};
+const RGBAColor crgbaOrange {.r = 0xFF, .g = 0x7F, .b = 0, .a = 0xFF};
+const RGBAColor crgbaPurple {.r = 0xFF, .g = 0, .b = 0xFF, .a = 0xFF};
+const RGBAColor crgbaGold {.r = 0xC7, .g = 0xB3, .b = 0x77, .a = 0xFF};
+const RGBAColor crgbaUIGold {.r = 0xCD, .g = 0x9D, .b = 0x51, .a = 0xFF};
+const RGBAColor crgbaBlack {.r = 0, .g = 0, .b = 0, .a = 0xFF};
+const RGBAColor crgbaTan {.r = 0xC8, .g = 0xB4, .b = 0x7C, .a = 0xFF};
+const RGBAColor crgbaUIOrange {.r = 0xFF, .g = 0x69, .b = 0x1E, .a = 0xFF};
+const RGBAColor crgbaDisabled {.r = 0x66, .g = 0x66, .b = 0x66, .a = 0x88};
+const RGBAColor crgbaWatermark {.r = 0xC0, .g = 0xFF, .b = 0xFF, .a = 0x50};
+const RGBAColor crgbaWatermarkShadow {.r = 0x00, .g = 0x00, .b = 0x00, .a = 0x28};
 
 using ResizeToFitValue    = int32;
 using UIJustifyHorizontal = int32;
@@ -1413,7 +1413,7 @@ struct RWindow {
 };
 
 /* 34 */
-typedef int32 SNOGroup;
+using SNOGroup = int32;
 
 /* 4410 */
 struct SNOVersions {
@@ -1926,7 +1926,7 @@ struct LootSpecifier {
     BOOL               bTryStack;
 };
 
-typedef int32 ItemLabel;
+using ItemLabel = int32;
 
 struct ItemSpecifierData {
     GBID  gbidItem;
@@ -2021,14 +2021,14 @@ struct EntranceLocation {
     SNO      snoMarker;
     uint32   tName;
 };
-typedef XGrowableMap<unsigned int, unsigned int, EntranceLocation, EntranceLocation &> EntranceLocationMap;
+using EntranceLocationMap = XGrowableMap<unsigned int, unsigned int, EntranceLocation, EntranceLocation &>;
 
 struct SavePointLocation {
     WorldPlace placeSavePoint;
     SNO        snoMarker;
     uint32     tName;
 };
-typedef XGrowableMap<unsigned int, unsigned int, SavePointLocation, SavePointLocation &> SavePointLocationMap;
+using SavePointLocationMap = XGrowableMap<unsigned int, unsigned int, SavePointLocation, SavePointLocation &>;
 
 struct SpawnGroupLocation {
     int32 nDRLGIndex;
@@ -2041,9 +2041,9 @@ struct SpawnGroupExactInstance {
     int32              nPopIndex;
     int32              nGroupIndex;
 };
-typedef XPooledList<SpawnGroupExactInstance, const SpawnGroupExactInstance &> TPooledSpawnGroupExactInstanceList;
+using TPooledSpawnGroupExactInstanceList = XPooledList<SpawnGroupExactInstance, const SpawnGroupExactInstance &>;
 
-typedef void (*WorldCreatedCallback)(SWorldID, ACDID, ACDID, uint32, PlayerWarpReason);
+using WorldCreatedCallback = void (*)(SWorldID, ACDID, ACDID, uint32, PlayerWarpReason);
 
 struct SWorld {
     using WorldCommonData          = _BYTE[0x70];

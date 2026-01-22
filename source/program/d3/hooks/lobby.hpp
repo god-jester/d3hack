@@ -259,7 +259,7 @@ namespace d3 {
             if (auto *ptP = reinterpret_cast<Player *>(ctx->X[20]); ptP != nullptr) {
                 auto szN = ptP->tAccount.usName;
                 PRINT_EXPR("NEW PLAYER! %s %p->%lx ACD: %x", szN, ptP, ptP->uHeroId, ptP->idPlayerACD)
-                if (GameConnectionID idGameConnection = ptP->idGameConnection) {  //ServerGetOnlyGameConnection()) {
+                if (GameConnectionID const idGameConnection = ptP->idGameConnection) {  //ServerGetOnlyGameConnection()) {
                     PRINT_EXPR("NEW PLAYER! %s %x : %x (%x)", szN, ptP->idGameConnection, idGameConnection, AppServerGetOnlyGame())
                     // PRINT_EXPR("NEW PLAYER! %s %p : %p", szN, ptP, GetPrimaryPlayerForGameConnection(idGameConnection))
                 }

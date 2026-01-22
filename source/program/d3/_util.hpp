@@ -16,32 +16,6 @@
 
 #define HASHMAP(m, id) (((m) & (16777619 * ((16777619 * ((16777619 * ((16777619 * _BYTE((id) ^ 0x811C9DC5)) ^ BYTE1(id))) ^ BYTE2(id))) ^ HIBYTE(id)))))
 
-// namespace blz {
-
-//     template<class CharT, class TraitsT, class AllocatorT>
-//     blz::basic_string<CharT, TraitsT, AllocatorT>::basic_string() {
-//         AllocatorT alloc;
-//         blz_basic_string(this, "\0", alloc);
-//         // return string;
-//     }
-
-//     template<class CharT, class TraitsT, class AllocatorT>
-//     blz::basic_string<CharT, TraitsT, AllocatorT>::basic_string(char *str, u32 dwSize) {
-//         PRINT_EXPR("entering ctor for %p", this)
-//         AllocatorT alloc;
-//         auto      *lpBuf = static_cast<char *>(alloca(dwSize));
-//         memset(lpBuf, 0x6A, dwSize);
-//         blz_basic_string(this, lpBuf, alloc);  // *this = blz_string_ctor(lpBuf, alloc);
-//         PRINT("3 %p", this)
-//         PRINT("4 %s", this->m_elements)
-//         PRINT("4.1 %ld", this->m_size)
-//         m_elements = str;
-//         PRINT("7 %s", this->m_elements)
-//         PRINT("7.1 %ld", this->m_size)
-//     }
-
-// }  // namespace blz
-
 namespace GFXNX64NVN {
     struct Globals;
 }
@@ -130,7 +104,7 @@ namespace d3 {
     }
 
     inline auto GetItemPtr(GBID gbidItem) -> const Item * {
-        if (ItemAppGlobals *ptItemAppGlobals = g_tAppGlobals.ptItemAppGlobals; ptItemAppGlobals) {
+        if (ItemAppGlobals const *ptItemAppGlobals = g_tAppGlobals.ptItemAppGlobals; ptItemAppGlobals) {
             auto  g_mapItems = ptItemAppGlobals->mapItems;
             auto  nHashMask  = g_mapItems.m_map.m_nHashMask;
             auto  pDebugPtr  = g_mapItems.m_map.m_arHashTable.m_array.m_pData._anon_0.m_pDebugPtr;
@@ -149,13 +123,13 @@ namespace d3 {
 
     inline void AllGBIDsOfType(GameBalanceType eType, std::vector<GBID> &ids) {
         GBHandleList listResults = {};
-        memset((void *)&listResults, 0, 20);
+        memset(static_cast<void *>(&listResults), 0, 20);
         listResults.m_list.m_ptNodeAllocator = reinterpret_cast<XListMemoryPool<GBHandle> *>(GBGetHandlePool());
         listResults.m_ConstructorCalled      = 1;
         GBEnumerate(eType, &listResults);
         ids.clear();
         if (size_t nCount = listResults.m_list.m_nCount; nCount > 0) {
-            PRINT_EXPR("%d", nCount)
+            PRINT_EXPR("%zu", nCount)
             // ids.reserve(nCount);
             auto p_gbH = listResults.m_list.m_pHead;
             while (p_gbH && p_gbH->m_tData.eType == eType) {
@@ -167,7 +141,7 @@ namespace d3 {
                 // PRINT_EXPR("Trying to unlock %i = %s", eItem, gbString)
                 // _SERVERCODE_OFF
             }
-            PRINT_EXPR("DONE: %d", nCount)
+            PRINT_EXPR("DONE: %zu", nCount)
             PRINT_EXPR("%d (%ld, %ld) %i | %i", eType, ids.size(), ids.capacity(), ids.front(), ids.back())
         }
         ids.shrink_to_fit();
@@ -224,7 +198,7 @@ namespace d3 {
     }
 
     inline auto PlayerHeroMatchesLocal(Player *ptPlayer) -> bool {
-        if (Player *ptLocal = LocalPlayerGet(); (ptLocal != nullptr) && (ptPlayer != nullptr))
+        if (Player const *ptLocal = LocalPlayerGet(); (ptLocal != nullptr) && (ptPlayer != nullptr))
             return ptLocal->uHeroId == ptPlayer->uHeroId;
         return false;
     }
@@ -232,7 +206,7 @@ namespace d3 {
     inline auto IsACDIDHost(ACDID idPlayerACD) -> bool {  // need ANNtoACD() to check LocalPlayer
         if (Player *ptPlayer = PlayerGetByACD(idPlayerACD); ptPlayer)
             return PlayerHeroMatchesLocal(ptPlayer) || (SPlayerIsLocal(ptPlayer) != 0);
-        if (Player *ptHost = SPlayerGetHost(); ptHost)
+        if (Player const *ptHost = SPlayerGetHost(); ptHost)
             return idPlayerACD != ACDID_INVALID && ptHost->idPlayerACD == idPlayerACD;
         return false;
     }
@@ -329,8 +303,8 @@ namespace d3 {
                 continue;
             const auto *fetch = StringListFetchLPCSTR(idx, szLabel);
             if (fetch != nullptr) {
-                char *pch = strstr(fetch, "!!Missing!!");
-                if (pch == NULL) {
+                char const *pch = strstr(fetch, "!!Missing!!");
+                if (pch == nullptr) {
                     PRINT("\n%i\t| snoindex[%i]\t(%s)\t=\t%s", gid, idx, szLabel, fetch)
                     // PRINT_EXPR("[0x%x | %s] %i = %s", i, g_tGBTables[i].name, tGBID, gbidString)
                     // PRINT_EXPR("%s\t=\tsnoindex[%i] = %s", gbidString, idx, fetch)
@@ -346,7 +320,7 @@ namespace d3 {
         return 'A' + (b - 0xA);
     };
 
-    inline auto WriteTestFile(std::string szPath, void *ptBuf, size_type dwSize, bool bSuccess = false) -> bool {
+    inline auto WriteTestFile(const std::string &szPath, void *ptBuf, size_type dwSize, bool bSuccess = false) -> bool {
         FileReference tFileRef;
         FileReferenceInit(&tFileRef, szPath.c_str());
         FileCreate(&tFileRef);
@@ -358,7 +332,7 @@ namespace d3 {
         return bSuccess;
     }
 
-    inline auto ReadFileToBuffer(std::string szPath, u32 *dwSize, FileReference tFileRef = {}) -> char * {
+    inline auto ReadFileToBuffer(const std::string &szPath, u32 *dwSize, FileReference tFileRef = {}) -> char * {
         if (FileReferenceInit(&tFileRef, szPath.c_str()); FileExists(&tFileRef) != 0)
             if (char *lpBuf = reinterpret_cast<char *>(FileReadIntoMemory(&tFileRef, dwSize, ERROR_FILE_READ)); lpBuf)
                 return lpBuf;
@@ -390,11 +364,11 @@ namespace d3 {
         dst.m_capacity_is_embedded = 0;
     }
 
-    inline blz::string BlizzStringFromFile(LPCSTR szFilenameSD, u32 dwSize = 0) {
+    inline auto BlizzStringFromFile(LPCSTR szFilenameSD, u32 dwSize = 0) -> blz::string {
         if (char *pFileBuffer = ReadFileToBuffer(szFilenameSD, &dwSize); pFileBuffer) {
             blz::string sReturnString;
             ReplaceBlzString(sReturnString, pFileBuffer, dwSize);
-            SigmaMemoryFree(&pFileBuffer, 0LL);
+            SigmaMemoryFree(&pFileBuffer, nullptr);
             return sReturnString;
         }
         return blz::string {};
@@ -407,7 +381,7 @@ namespace d3 {
                 blz::string sFileData;
                 ReplaceBlzString(sFileData, pFileBuffer, dwSize);
                 ParsePartialFromString(dest, &sFileData);
-                SigmaMemoryFree(&pFileBuffer, 0LL);
+                SigmaMemoryFree(&pFileBuffer, nullptr);
                 return true;
             }
             PRINT("Missing challenge rift file: %s", szPath.c_str());

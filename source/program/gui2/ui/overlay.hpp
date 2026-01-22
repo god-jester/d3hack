@@ -52,7 +52,7 @@ namespace d3::gui2::ui {
         const FrameDebugInfo &frame_debug() const { return frame_debug_; }
 
         // Translation helper: returns a localized string when available, otherwise returns fallback.
-        const char *tr(const char *key, const char *fallback);
+        const char        *tr(const char *key, const char *fallback);
         const std::string &translations_lang() const { return translations_lang_; }
 
         PatchConfig       &ui_config() { return ui_config_; }
