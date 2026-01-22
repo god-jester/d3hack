@@ -1,16 +1,18 @@
 ---
 CompileFlags:
-  Compiler: /opt/devkitpro/devkitA64/bin/aarch64-none-elf-*
   CompilationDatabase: build
   Add:
-    - --target=aarch64-none-elf
-    - -ferror-limit=0
-    - -fgnuc-version=15.2.0
-    - -stdlib=libstdc++
-    - -std=gnu++23
+    - -Wno-unknown-pragmas # ignore GCC-specific pragmas
+    - -ferror-limit=0 # debug clangd failures without it stopping
     - -include
     - clangd_compat.hpp
+    # - -fgnuc-version=15.2.0
+    # - -stdlib=libstdc++
+    # - -std=gnu++23
   Remove:
+    - -Werror
+    # - -include
+    - -mword-relocations
     - -Ofast
     - -mtp=soft
 
@@ -21,7 +23,15 @@ Diagnostics:
   UnusedIncludes: None
   ClangTidy:
     FastCheckFilter: Loose
-    Remove: [readability*, modernize-avoid-c-arrays, bugprone-dynamic-static-initializers]
+    Remove: [readability*, bugprone-dynamic-static-initializers]
+---
+If:
+  PathMatch:
+    - .*/source/program/symbols/(game|hooks|items|player_actor)\\.inc
+CompileFlags:
+  Add:
+    - -include
+    - source/program/symbols/base.hpp
 ---
 If:
   PathMatch: [.*\.h(pp)?, .*\.c(pp)?]

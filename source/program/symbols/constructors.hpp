@@ -1,5 +1,7 @@
 #pragma once
 
+#include "symbols/common.hpp"
+
 using StorageResult       = ::Console::Online::StorageResult;
 using ChallengeData       = ::D3::ChallengeRifts::ChallengeData;
 using WeeklyChallengeData = ::D3::Leaderboard::WeeklyChallengeData;

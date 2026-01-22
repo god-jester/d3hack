@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <string>
 
+#include "program/d3/setting.hpp"
 #include "program/gui2/ui/overlay.hpp"
 #include "program/gui2/ui/windows/notifications_window.hpp"
 #include "program/runtime_apply.hpp"

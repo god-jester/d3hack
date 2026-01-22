@@ -22,7 +22,7 @@ FUNC_PTR(font_string_draw_03ff50,       void (*)() /* Inline hook site */);
 FUNC_PTR(font_string_draw_0010c8,       void (*)() /* Inline hook site */);
 FUNC_PTR(font_string_draw_03e5b0,       void (*)() /* Inline hook site */);
 
-/* Season/event hooks - see symbols/game.hpp for OnConfigFileRetrieved, OnSeasonsFileRetrieved, OnBlacklistFileRetrieved */
+/* Season/event hooks - see symbols/game.inc for OnConfigFileRetrieved, OnSeasonsFileRetrieved, OnBlacklistFileRetrieved */
 
 /* Lobby hooks (main module). */
 FUNC_PTR(lobby_service_create,          void (*)(uint32));

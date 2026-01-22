@@ -6,7 +6,6 @@
 #include <vector>
 
 #include "program/config.hpp"
-#include "program/d3/setting.hpp"
 #include "program/gui2/ui/window.hpp"
 
 namespace d3::gui2::ui {

@@ -44,6 +44,9 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/config.cmake")
     include("${CMAKE_SOURCE_DIR}/config.cmake")
 endif()
 
+include(${CMAKE_SOURCE_DIR}/cmake/Iwyu.cmake)
+exl_configure_iwyu()
+
 if(NOT DEFINED EXL_TARGET_NAME OR EXL_TARGET_NAME STREQUAL "")
     get_filename_component(EXL_TARGET_NAME "${CMAKE_SOURCE_DIR}" NAME)
 endif()
@@ -116,6 +119,8 @@ list(APPEND EXL_SOURCES_CXX "${PROJECT_SOURCE_DIR}/source/third_party/imgui_back
 list(REMOVE_DUPLICATES EXL_SOURCES_CXX)
 
 add_executable(${EXL_TARGET_NAME} ${EXL_SOURCES_ASM} ${EXL_SOURCES_C} ${EXL_SOURCES_CXX})
+exl_apply_iwyu(${EXL_TARGET_NAME})
+exl_add_find_all_symbols_target(iwyu-symbols)
 
 set(EXL_INCLUDE_DIRS
     "${PROJECT_SOURCE_DIR}/include"

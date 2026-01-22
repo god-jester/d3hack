@@ -23,3 +23,23 @@
 # set(RYU_WIN_PATH "/home/jester/AppData/Roaming/Ryujinx/")
 # set(RYU_MAC_PATH "/Users/dev/Library/Application Support/Ryujinx/")
 # set(YUZU_PATH "/home/jester/AppData/Roaming/yuzu/load/")
+
+# IWYU (include-what-you-use) integration.
+# set(EXL_ENABLE_IWYU ON)
+# set(EXL_IWYU_BINARY "/usr/local/bin/include-what-you-use")
+# set(EXL_IWYU_MAPPING_FILE "/path/to/iwyu/mapping.imp")
+# set(EXL_IWYU_ARGS
+#     "-Xiwyu" "--verbose=3"
+# )
+# set(EXL_IWYU_PYTHON "python3")
+# set(EXL_FIND_ALL_SYMBOLS_BINARY "/path/to/find-all-symbols")
+# set(EXL_IWYU_SYMBOLS_OUTPUT "/path/to/find_all_symbols_db.yaml")
+# set(EXL_IWYU_SYMBOLS_ONLY_UNDER "/path/to/source")
+# set(EXL_IWYU_SYMBOLS_EXCLUDE
+#     "/path/to/source/third_party/*"
+# )
+# set(EXL_IWYU_TARGET "aarch64-none-elf")
+# set(EXL_IWYU_SYMBOLS_EXTRA_ARGS
+#     "--extra-arg-before=-Wno-unknown-warning-option"
+# )
+# set(EXL_IWYU_SYMBOLS_JOBS "0")

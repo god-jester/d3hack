@@ -6,10 +6,10 @@
 #define _SERVERCODE_OFF (GameServerCodeLeave_Tracked(sg_bServerCode));
 
 #include "symbols/base.hpp"
-#include "symbols/player_actor.hpp"
-#include "symbols/hooks.hpp"
-#include "symbols/game.hpp"
-#include "symbols/items.hpp"
+#include "symbols/player_actor.inc"
+#include "symbols/hooks.inc"
+#include "symbols/game.inc"
+#include "symbols/items.inc"
 #include "symbols/constructors.hpp"
 
 #undef FUNC_PTR

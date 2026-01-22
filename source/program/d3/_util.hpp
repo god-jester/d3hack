@@ -1,10 +1,6 @@
 #pragma once
 
 #include "d3/types/sno.hpp"
-#include "d3/types/attributes.hpp"
-#include "d3/types/maps.hpp"
-#include "d3/types/namespaces.hpp"
-#include "d3/gamebalance.hpp"
 #include "d3/setting.hpp"
 #include "../symbols/common.hpp"
 #include "../config.hpp"

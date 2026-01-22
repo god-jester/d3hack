@@ -1,7 +1,7 @@
 #include "symbols/base.hpp"
 
 // hooks.hpp - Hook sites
-#include "symbols/hooks.hpp"
+#include "symbols/hooks.inc"
 SETUP_FUNC_PTR(main_init);
 SETUP_FUNC_PTR(gfx_init);
 SETUP_FUNC_PTR(scheck_gfx_ready);
@@ -32,7 +32,7 @@ SETUP_FUNC_PTR(print_error_display);
 SETUP_FUNC_PTR(print_error_string_final);
 
 // game.hpp
-#include "symbols/game.hpp"
+#include "symbols/game.inc"
 SETUP_FUNC_PTR(GameActiveGameCommonDataIsServer);
 SETUP_FUNC_PTR(GameServerCodeLeave_Tracked);
 SETUP_FUNC_PTR(_GameServerCodeEnter);
@@ -97,7 +97,7 @@ SETUP_FUNC_PTR(blz_make_stringfb);
 SETUP_FUNC_PTR(blz_make_stringf);
 SETUP_FUNC_PTR(XLocaleToString);
 // items.hpp
-#include "symbols/items.hpp"
+#include "symbols/items.inc"
 SETUP_FUNC_PTR(sGetItemTypeString);                     // void  sGetItemTypeString(GBID a1@<W0>, CRefString *a2@<X8>)
 SETUP_FUNC_PTR(GBIDToStringAll);                        // void GBIDToString(unsigned int *a1@<X0>, CRefString *a2@<X8>)
 SETUP_FUNC_PTR(GBIDToString);                           // CRefString *GBIDToString(CRefString *retstr, GBID gbid, GameBalanceType eGBType, const BOOL fUsedForXMLFields)
@@ -143,7 +143,7 @@ SETUP_FUNC_PTR(FlippyDropCreateOnActor);
 SETUP_FUNC_PTR(SItemGenerate);
 
 // player_actor.hpp
-#include "symbols/player_actor.hpp"
+#include "symbols/player_actor.inc"
 SETUP_FUNC_PTR(PlayerGetHeroDisplayName);
 
 SETUP_FUNC_PTR(PlayerListGetElementPool);

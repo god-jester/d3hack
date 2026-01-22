@@ -1,6 +1,7 @@
 #include "../../config.hpp"
 #include "../patches.hpp"
 #include "d3/types/common.hpp"
+#include "d3/types/attributes.hpp"
 #include "lib/hook/inline.hpp"
 #include "lib/hook/replace.hpp"
 #include "lib/hook/trampoline.hpp"
@@ -118,7 +119,7 @@ namespace d3 {
         }
     };
 
-    void AugmentSpecifier(LootSpecifier *tSpecifier) {
+    inline void AugmentSpecifier(LootSpecifier *tSpecifier) {
         if (global_config.loot_modifiers.ForcedILevel > 0) {
             tSpecifier->tLooteeParams.nForcedILevel = global_config.loot_modifiers.ForcedILevel;
         }

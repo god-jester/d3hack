@@ -1,10 +1,11 @@
 #pragma once
 
 #include "lib/hook/trampoline.hpp"
-#include "../../config.hpp"
+#include "config.hpp"
 #include "d3/types/common.hpp"
+#include "symbols/common.hpp"
 #include <string>
-#include <string_view>
+// #include <string_view>
 
 namespace d3 {
     namespace {

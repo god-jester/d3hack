@@ -213,6 +213,40 @@ Outputs land in `deploy/`:
 - `exefs/subsdk9` and `exefs/main.npdm`
 - `romfs/d3gui/` assets (`imgui.bin`, fonts, translations)
 
+### Include What You Use (IWYU)
+
+The CMake build can run IWYU via the standard variables:
+`CMAKE_C_INCLUDE_WHAT_YOU_USE` and `CMAKE_CXX_INCLUDE_WHAT_YOU_USE`.
+If you set `EXL_ENABLE_IWYU=ON`, the project will auto-populate those
+variables (unless you already set them) and propagate them to the target
+properties `C_INCLUDE_WHAT_YOU_USE` and `CXX_INCLUDE_WHAT_YOU_USE`.
+
+Example (config.cmake):
+```cmake
+set(EXL_ENABLE_IWYU ON)
+set(EXL_IWYU_BINARY "/usr/local/bin/include-what-you-use")
+set(EXL_IWYU_MAPPING_FILE "/path/to/iwyu/mapping.imp")
+set(EXL_IWYU_ARGS
+    "-Xiwyu" "--verbose=3"
+)
+```
+
+To generate the symbol database used by clang-include-fixer:
+```bash
+cmake --build --preset switch --target iwyu-symbols
+```
+
+The symbol scan runs clang tooling against the Switch target triple
+(`aarch64-none-elf`) and adds `-Wno-error` by default so warnings do not
+abort the scan. Override with `EXL_IWYU_TARGET` or `EXL_IWYU_SYMBOLS_EXTRA_ARGS`
+in `config.cmake` if needed.
+
+There is also a CMake preset that turns IWYU on:
+```bash
+cmake --preset switch-iwyu
+cmake --build --preset switch-iwyu
+```
+
 ---
 
 ## Validation (Dev)

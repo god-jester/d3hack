@@ -9,6 +9,7 @@
 #include "nvn.hpp"
 #include "d3/types/common.hpp"
 #include "d3/types/namespaces.hpp"
+#include "d3/types/attributes.hpp"
 
 namespace d3 {
 
