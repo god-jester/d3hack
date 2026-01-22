@@ -1,12 +1,10 @@
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <cstring>
 #include <vector>
 #include "imgui_backend/imgui_impl_nvn.hpp"
 #include "imgui_backend/imgui_hid_mappings.h"
-#include "imgui_backend/MemoryPoolMaker.h"
-
-
 #include "lib/diag/assert.hpp"
 // #include "program/d3/setting.hpp"
 #include "program/romfs_assets.hpp"
@@ -203,8 +201,8 @@ namespace ImguiNvnBackend {
 
         float scale = 3.0f;
 
-        float imageX = 1 * scale; // bd->fontTexture.GetWidth();
-        float imageY = 1 * scale; // bd->fontTexture.GetHeight();
+        float imageX = 1 * scale;
+        float imageY = 1 * scale;
 
         createQuad(verts, 0, (io.DisplaySize.x / 2) - (imageX), (io.DisplaySize.y / 2) - (imageY), imageX, imageY,
                    IM_COL32_WHITE);
@@ -264,149 +262,6 @@ namespace ImguiNvnBackend {
 
         bd->imguiShaderBinary.size = static_cast<ulong>(s_romfs_imgui_bin.size());
         bd->imguiShaderBinary.ptr = reinterpret_cast<u8*>(s_romfs_imgui_bin.data());
-
-        return true;
-    }
-
-    bool setupFont() {
-
-        PRINT_LINE("[imgui_backend] Setting up ImGui Font.");
-
-        auto bd = getBackendData();
-
-        ImGuiIO &io = ImGui::GetIO();
-
-        PRINT_LINE("[imgui_backend] setupFont: begin");
-
-        // init sampler and texture pools
-
-        int sampDescSize = 0;
-        PRINT_LINE("[imgui_backend] setupFont: GetInteger(SAMPLER_DESCRIPTOR_SIZE) before");
-        bd->device->GetInteger(nvn::DeviceInfo::SAMPLER_DESCRIPTOR_SIZE, &sampDescSize);
-        PRINT("[imgui_backend] setupFont: GetInteger(SAMPLER_DESCRIPTOR_SIZE) after => %d", sampDescSize);
-        int texDescSize = 0;
-        PRINT_LINE("[imgui_backend] setupFont: GetInteger(TEXTURE_DESCRIPTOR_SIZE) before");
-        bd->device->GetInteger(nvn::DeviceInfo::TEXTURE_DESCRIPTOR_SIZE, &texDescSize);
-        PRINT("[imgui_backend] setupFont: GetInteger(TEXTURE_DESCRIPTOR_SIZE) after => %d", texDescSize);
-
-        int sampMemPoolSize = sampDescSize * MaxSampDescriptors;
-        int texMemPoolSize = texDescSize * MaxTexDescriptors;
-        int totalPoolSize = ALIGN_UP(sampMemPoolSize + texMemPoolSize, 0x1000);
-
-        PRINT("[imgui_backend] setupFont: descriptor sizes samp=%d tex=%d; pool sizes samp=0x%x tex=0x%x total=0x%x",
-              sampDescSize, texDescSize, sampMemPoolSize, texMemPoolSize, totalPoolSize);
-
-        PRINT_LINE("[imgui_backend] setupFont: createPool(sampTexMemPool) before");
-        if (!MemoryPoolMaker::createPool(&bd->sampTexMemPool, totalPoolSize)) {
-            PRINT_LINE("[imgui_backend] Failed to Create Texture/Sampler Memory Pool!");
-            return false;
-        }
-        PRINT_LINE("[imgui_backend] setupFont: createPool(sampTexMemPool) after");
-
-        PRINT_LINE("[imgui_backend] setupFont: samplerPool.Initialize before");
-        if (!bd->samplerPool.Initialize(&bd->sampTexMemPool, 0, MaxSampDescriptors)) {
-            PRINT_LINE("[imgui_backend] Failed to Create Sampler Pool!");
-            return false;
-        }
-        PRINT_LINE("[imgui_backend] setupFont: samplerPool.Initialize after");
-
-        PRINT_LINE("[imgui_backend] setupFont: texPool.Initialize before");
-        if (!bd->texPool.Initialize(&bd->sampTexMemPool, sampMemPoolSize, MaxTexDescriptors)) {
-            PRINT_LINE("[imgui_backend] Failed to Create Texture Pool!");
-            return false;
-        }
-        PRINT_LINE("[imgui_backend] setupFont: texPool.Initialize after");
-
-        // convert imgui font texels
-
-        unsigned char *pixels;
-        int width, height, pixelByteSize;
-        PRINT_LINE("[imgui_backend] setupFont: GetTexDataAsRGBA32 before");
-        io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height, &pixelByteSize);
-        PRINT("[imgui_backend] setupFont: GetTexDataAsRGBA32 after => pixels=%p %dx%d bpp=%d",
-              pixels, width, height, pixelByteSize);
-        int texPoolSize = pixelByteSize * width * height;
-
-        PRINT("[imgui_backend] setupFont: font mempool size=0x%x (aligned=0x%lx)",
-              texPoolSize, static_cast<unsigned long>(ALIGN_UP(texPoolSize, 0x1000)));
-
-        PRINT_LINE("[imgui_backend] setupFont: createPool(fontMemPool) before");
-        if (!MemoryPoolMaker::createPool(&bd->fontMemPool, ALIGN_UP(texPoolSize, 0x1000),
-                                         nvn::MemoryPoolFlags::CPU_UNCACHED | nvn::MemoryPoolFlags::GPU_CACHED)) {
-            PRINT_LINE("[imgui_backend] Failed to Create Font Memory Pool!");
-            return false;
-        }
-        PRINT_LINE("[imgui_backend] setupFont: createPool(fontMemPool) after");
-
-        PRINT_LINE("[imgui_backend] setupFont: texBuilder.Set* before");
-        bd->texBuilder.SetDefaults()
-                .SetDevice(bd->device)
-                .SetTarget(nvn::TextureTarget::TARGET_2D)
-                .SetFormat(nvn::Format::RGBA8)
-                .SetSize2D(width, height)
-                .SetStorage(&bd->fontMemPool, 0);
-
-        PRINT("[imgui_backend] setupFont: texBuilder.Set* after storageSize=0x%zx storageAlign=0x%zx",
-              static_cast<size_t>(bd->texBuilder.GetStorageSize()),
-              static_cast<size_t>(bd->texBuilder.GetStorageAlignment()));
-
-        PRINT_LINE("[imgui_backend] setupFont: fontTexture.Initialize before");
-        if (!bd->fontTexture.Initialize(&bd->texBuilder)) {
-            PRINT_LINE("[imgui_backend] Failed to Create Font Texture!");
-            return false;
-        }
-        PRINT_LINE("[imgui_backend] setupFont: fontTexture.Initialize after");
-
-        // setup font texture
-
-        nvn::CopyRegion region = {
-                .xoffset = 0,
-                .yoffset = 0,
-                .zoffset = 0,
-                .width = bd->fontTexture.GetWidth(),
-                .height = bd->fontTexture.GetHeight(),
-                .depth = 1
-        };
-
-        PRINT("[imgui_backend] setupFont: WriteTexels before (%dx%d)", region.width, region.height);
-        bd->fontTexture.WriteTexels(nullptr, &region, pixels);
-        PRINT_LINE("[imgui_backend] setupFont: WriteTexels after");
-        PRINT_LINE("[imgui_backend] setupFont: FlushTexels before");
-        bd->fontTexture.FlushTexels(nullptr, &region);
-        PRINT_LINE("[imgui_backend] setupFont: FlushTexels after");
-
-        PRINT_LINE("[imgui_backend] setupFont: samplerBuilder.Set* before");
-        bd->samplerBuilder.SetDefaults()
-                .SetDevice(bd->device)
-                .SetMinMagFilter(nvn::MinFilter::LINEAR, nvn::MagFilter::LINEAR)
-                .SetWrapMode(nvn::WrapMode::CLAMP, nvn::WrapMode::CLAMP, nvn::WrapMode::CLAMP);
-        PRINT_LINE("[imgui_backend] setupFont: samplerBuilder.Set* after");
-
-        PRINT_LINE("[imgui_backend] setupFont: fontSampler.Initialize before");
-        if (!bd->fontSampler.Initialize(&bd->samplerBuilder)) {
-            PRINT_LINE("[imgui_backend] Failed to Init Font Sampler!");
-            return false;
-        }
-        PRINT_LINE("[imgui_backend] setupFont: fontSampler.Initialize after");
-
-        bd->textureId = 257;
-        bd->samplerId = 257;
-
-        PRINT_LINE("[imgui_backend] setupFont: RegisterTexture/RegisterSampler before");
-        bd->texPool.RegisterTexture(bd->textureId, &bd->fontTexture, nullptr);
-        bd->samplerPool.RegisterSampler(bd->samplerId, &bd->fontSampler);
-        PRINT_LINE("[imgui_backend] setupFont: RegisterTexture/RegisterSampler after");
-
-        PRINT("[imgui_backend] setupFont: GetTextureHandle before (tex=%d samp=%d)", bd->textureId, bd->samplerId);
-        bd->fontTexHandle = bd->device->GetTextureHandle(bd->textureId, bd->samplerId);
-        PRINT_LINE("[imgui_backend] setupFont: GetTextureHandle after");
-        PRINT_LINE("[imgui_backend] setupFont: io.Fonts->SetTexID before");
-        io.Fonts->SetTexID(&bd->fontTexHandle);
-        PRINT_LINE("[imgui_backend] setupFont: io.Fonts->SetTexID after");
-
-        PRINT_LINE("[imgui_backend] Finished.");
-
-        PRINT_LINE("[imgui_backend] setupFont: end");
 
         return true;
     }
@@ -481,6 +336,7 @@ namespace ImguiNvnBackend {
         io.MouseDrawCursor = true;
         io.ConfigFlags |= ImGuiConfigFlags_IsTouchScreen;
         io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
+        io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
         io.DisplaySize = ImVec2(1280, 720); // default size
 
         auto *bd = IM_NEW(NvnBackendData)();
@@ -494,7 +350,7 @@ namespace ImguiNvnBackend {
         bd->viewportSize = io.DisplaySize;
         bd->isInitialized = false;
 
-        // Fonts are optional for proof-of-life; do not build/decompress them in the present hook.
+        // Fonts are uploaded via ImGui's texture API (see TextureSupport::ProcessTextures).
 
         if (!createShaders()) {
             PRINT_LINE("[imgui_backend] ERROR: createShaders failed");
@@ -514,7 +370,10 @@ namespace ImguiNvnBackend {
     }
 
     void ShutdownBackend() {
-
+        TextureSupport::ShutdownTextures();
+        TextureSupport::ShutdownDescriptorPools();
+        ImGuiIO &io = ImGui::GetIO();
+        io.BackendFlags &= ~ImGuiBackendFlags_RendererHasTextures;
     }
 
     void updateInput() {
@@ -578,6 +437,11 @@ namespace ImguiNvnBackend {
 //            nn::vi::GetDisplayResolution(&width, &height, displayPtr);
 //            Logger::log("Display Resolution: %d x %d\n", width, height);
 //        }
+
+        TextureSupport::ProcessTextures(drawData);
+        if (!TextureSupport::AreDescriptorPoolsReady()) {
+            return;
+        }
 
         // we dont need to process any data if it isnt valid
         if (!drawData->Valid) {
@@ -666,6 +530,7 @@ namespace ImguiNvnBackend {
 
         size_t vtxOffset = 0, idxOffset = 0;
         nvn::TextureHandle boundTextureHandle = 0;
+        bool has_bound_texture = false;
 
         const ImVec2 clip_off = drawData->DisplayPos;
         const ImVec2 clip_scale = drawData->FramebufferScale;
@@ -720,15 +585,17 @@ namespace ImguiNvnBackend {
                 }
                 bd->cmdBuf->SetScissor(scissor_x, scissor_y, scissor_w_px, scissor_h_px);
 
-                // get texture ID from the command
-                nvn::TextureHandle TexID = bd->fontTexHandle;
-                if (cmd.GetTexID() != 0) {
-                    TexID = *(nvn::TextureHandle *) cmd.GetTexID();
+                ImTextureID tex_id = cmd.GetTexID();
+                if (tex_id == ImTextureID_Invalid) {
+                    continue;
                 }
-                // if our previous handle is different from the current, bind the texture
-                if (boundTextureHandle != TexID) {
-                    boundTextureHandle = TexID;
-                    bd->cmdBuf->BindTexture(nvn::ShaderStage::FRAGMENT, 0, TexID);
+                auto *handle = reinterpret_cast<nvn::TextureHandle *>(static_cast<uintptr_t>(tex_id));
+                const nvn::TextureHandle tex_handle = *handle;
+
+                if (!has_bound_texture || boundTextureHandle != tex_handle) {
+                    boundTextureHandle = tex_handle;
+                    has_bound_texture = true;
+                    bd->cmdBuf->BindTexture(nvn::ShaderStage::FRAGMENT, 0, tex_handle);
                 }
                 // draw our vertices using the indices stored in the buffer, offset by the current command index offset,
                 // as well as the current offset into our buffer.

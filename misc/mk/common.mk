@@ -98,8 +98,8 @@ CPPFILES	:=	$(filter-out imgui_demo.cpp imgui_freetype.cpp imgui_stdlib.cpp bina
 CPPFILES	:=	$(filter-out imgui_impl_%.cpp,$(CPPFILES))
 
 # Re-add our custom NVN backend after filtering.
-CPPFILES	:=	$(filter-out imgui_impl_nvn.cpp,$(CPPFILES))
-CPPFILES	+=	imgui_impl_nvn.cpp
+CPPFILES	:=	$(filter-out imgui_impl_nvn.cpp imgui_impl_nvn_textures.cpp,$(CPPFILES))
+CPPFILES	+=	imgui_impl_nvn.cpp imgui_impl_nvn_textures.cpp
 
 # Exclude Dear ImGui example programs.
 CPPFILES	:=	$(filter-out example_%.cpp,$(CPPFILES))

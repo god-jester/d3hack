@@ -36,9 +36,6 @@ namespace ImguiNvnBackend {
 
         nvn::BufferBuilder bufferBuilder;
         nvn::MemoryPoolBuilder memPoolBuilder;
-        nvn::TextureBuilder texBuilder;
-        nvn::SamplerBuilder samplerBuilder;
-
         // shader data
 
         nvn::Program shaderProgram;
@@ -51,21 +48,12 @@ namespace ImguiNvnBackend {
         nvn::VertexStreamState streamState;
         nvn::VertexAttribState attribStates[3];
 
-        // font data
+        // texture data
 
         nvn::TexturePool texPool;
         nvn::SamplerPool samplerPool;
 
         nvn::MemoryPool sampTexMemPool;
-
-        nvn::MemoryPool fontMemPool;
-
-        int samplerId;
-        nvn::Sampler fontSampler;
-        int textureId;
-        nvn::Texture fontTexture;
-
-        nvn::TextureHandle fontTexHandle;
 
         // render data
 
@@ -95,8 +83,6 @@ namespace ImguiNvnBackend {
 
     bool setupShaders(u8 *shaderBinary, ulong binarySize);
 
-    bool setupFont();
-
     void InitBackend(const NvnBackendInitInfo &initInfo);
 
     void ShutdownBackend();
@@ -117,6 +103,16 @@ namespace ImguiNvnBackend {
     void SetRenderTarget(const nvn::Texture *colorTarget);
 
     NvnBackendData *getBackendData();
+
+    namespace TextureSupport {
+        void ProcessTextures(ImDrawData *draw_data);
+        void ShutdownTextures();
+        void ShutdownDescriptorPools();
+        bool AreDescriptorPoolsReady();
+        bool EnsureDescriptorPools(NvnBackendData *bd);
+        bool AllocateDescriptorIds(int *out_texture_id, int *out_sampler_id);
+        void AdoptDescriptorPools(int next_texture_id, int next_sampler_id);
+    }  // namespace TextureSupport
 }; // namespace ImguiNvnBackend
 
 #endif

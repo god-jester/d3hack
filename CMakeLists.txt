@@ -112,6 +112,7 @@ list(FILTER EXL_SOURCES_C EXCLUDE REGEX "/source/third_party/imgui/misc/")
 list(FILTER EXL_SOURCES_C EXCLUDE REGEX "/uSynergy\\.c$")
 
 list(APPEND EXL_SOURCES_CXX "${PROJECT_SOURCE_DIR}/source/third_party/imgui_backend/imgui_impl_nvn.cpp")
+list(APPEND EXL_SOURCES_CXX "${PROJECT_SOURCE_DIR}/source/third_party/imgui_backend/imgui_impl_nvn_textures.cpp")
 list(REMOVE_DUPLICATES EXL_SOURCES_CXX)
 
 add_executable(${EXL_TARGET_NAME} ${EXL_SOURCES_ASM} ${EXL_SOURCES_C} ${EXL_SOURCES_CXX})

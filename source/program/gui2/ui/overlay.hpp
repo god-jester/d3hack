@@ -29,6 +29,7 @@ namespace d3::gui2::ui {
 
         void EnsureConfigLoaded();
         void EnsureWindowsCreated();
+        void EnsureTranslationsLoaded();
 
         struct FrameDebugInfo {
             int    crop_w                  = 0;
@@ -52,6 +53,7 @@ namespace d3::gui2::ui {
 
         // Translation helper: returns a localized string when available, otherwise returns fallback.
         const char *tr(const char *key, const char *fallback);
+        const std::string &translations_lang() const { return translations_lang_; }
 
         PatchConfig       &ui_config() { return ui_config_; }
         const PatchConfig &ui_config() const { return ui_config_; }
@@ -82,8 +84,6 @@ namespace d3::gui2::ui {
 
        protected:
        private:
-        void EnsureTranslationsLoaded();
-
         FrameDebugInfo frame_debug_ {};
 
         GuiFocusState focus_ {};

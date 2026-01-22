@@ -11,12 +11,12 @@
 #include "lib/hook/trampoline.hpp"
 #include "lib/reloc/reloc.hpp"
 #include "lib/util/sys/mem_layout.hpp"
-#include "nn/fs.hpp"   // IWYU pragma: keep
 #include "nn/hid.hpp"  // IWYU pragma: keep
 #include "nn/os.hpp"   // IWYU pragma: keep
 #include "program/romfs_assets.hpp"
 #include "program/gui2/ui/overlay.hpp"
 #include "program/gui2/ui/windows/notifications_window.hpp"
+#include "program/gui2/imgui_glyph_ranges.hpp"
 #include "program/d3/setting.hpp"
 #include "symbols/common.hpp"
 
@@ -35,6 +35,28 @@ struct RWindow;
 namespace d3 {
     extern ::RWindow *g_ptMainRWindow;
 }
+
+namespace nn::pl {
+    enum SharedFontType {
+        SharedFontType_Standard,
+        SharedFontType_ChineseSimple,
+        SharedFontType_ChineseSimpleExtension,
+        SharedFontType_ChineseTraditional,
+        SharedFontType_Korean,
+        SharedFontType_NintendoExtension,
+        SharedFontType_Max,
+    };
+
+    enum SharedFontLoadState {
+        SharedFontLoadState_Loading,
+        SharedFontLoadState_Loaded,
+    };
+
+    void RequestSharedFontLoad(SharedFontType sharedFontType) noexcept;
+    SharedFontLoadState GetSharedFontLoadState(SharedFontType sharedFontType) noexcept;
+    const void *GetSharedFontAddress(SharedFontType sharedFontType) noexcept;
+    size_t GetSharedFontSize(SharedFontType sharedFontType) noexcept;
+}  // namespace nn::pl
 
 namespace d3::imgui_overlay {
     namespace {
@@ -112,54 +134,6 @@ namespace d3::imgui_overlay {
             }
 
             std::free(ptr);
-        }
-
-        auto ReadFileToImGuiBuffer(const char *path, unsigned char **out_data, size_t *out_size, size_t max_size) -> bool {
-            if (out_data == nullptr || out_size == nullptr) {
-                return false;
-            }
-            *out_data = nullptr;
-            *out_size = 0;
-
-            if (path == nullptr || path[0] == '\0') {
-                return false;
-            }
-
-            nn::fs::FileHandle fh {};
-            auto               rc = nn::fs::OpenFile(&fh, path, nn::fs::OpenMode_Read);
-            if (R_FAILED(rc)) {
-                return false;
-            }
-
-            long size = 0;
-            rc        = nn::fs::GetFileSize(&size, fh);
-            if (R_FAILED(rc) || size <= 0) {
-                nn::fs::CloseFile(fh);
-                return false;
-            }
-
-            const auto size_st = static_cast<size_t>(size);
-            if (size_st > max_size) {
-                nn::fs::CloseFile(fh);
-                return false;
-            }
-
-            auto *buffer = static_cast<unsigned char *>(IM_ALLOC(size_st));
-            if (buffer == nullptr) {
-                nn::fs::CloseFile(fh);
-                return false;
-            }
-
-            rc = nn::fs::ReadFile(fh, 0, buffer, static_cast<ulong>(size_st));
-            nn::fs::CloseFile(fh);
-            if (R_FAILED(rc)) {
-                IM_FREE(buffer);
-                return false;
-            }
-
-            *out_data = buffer;
-            *out_size = size_st;
-            return true;
         }
 
         bool g_imgui_ctx_initialized = false;
@@ -420,9 +394,9 @@ namespace d3::imgui_overlay {
 
             colors[ImGuiCol_Tab]                = ImVec4(0.13f, 0.13f, 0.14f, 1.00f);
             colors[ImGuiCol_TabHovered]         = ImVec4(kAccent.x, kAccent.y, kAccent.z, 0.55f);
-            colors[ImGuiCol_TabActive]          = ImVec4(0.20f, 0.20f, 0.22f, 1.00f);
-            colors[ImGuiCol_TabUnfocused]       = ImVec4(0.10f, 0.10f, 0.11f, 1.00f);
-            colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.16f, 0.16f, 0.18f, 1.00f);
+            colors[ImGuiCol_TabSelected]       = ImVec4(0.20f, 0.20f, 0.22f, 1.00f);
+            colors[ImGuiCol_TabDimmed]         = ImVec4(0.10f, 0.10f, 0.11f, 1.00f);
+            colors[ImGuiCol_TabDimmedSelected] = ImVec4(0.16f, 0.16f, 0.18f, 1.00f);
 
             colors[ImGuiCol_TextSelectedBg]        = ImVec4(kAccent.x, kAccent.y, kAccent.z, 0.35f);
             colors[ImGuiCol_NavCursor]             = ImVec4(kAccentHi.x, kAccentHi.y, kAccentHi.z, 0.80f);
@@ -447,7 +421,7 @@ namespace d3::imgui_overlay {
             style             = g_imgui_base_style;
             style.ScaleAllSizes(scale);
 
-            ImGui::GetIO().FontGlobalScale = scale;
+            style.FontScaleMain = scale;
             g_last_gui_scale               = scale;
         }
 
@@ -906,6 +880,7 @@ namespace d3::imgui_overlay {
                 io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
                 io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
                 io.ConfigFlags |= ImGuiConfigFlags_IsTouchScreen;
+                io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
                 io.BackendFlags |= ImGuiBackendFlags_HasGamepad;
                 io.BackendPlatformName = "d3hack";
             }
@@ -931,15 +906,6 @@ namespace d3::imgui_overlay {
                 // boot path (MainInit) and prevents any surprise default-font work during NewFrame().
                 if (kImGuiBringup_DrawText && g_imgui_ctx_initialized && !g_font_atlas_built) {
                     PrepareFonts();
-                }
-
-                if (kImGuiBringup_DrawText && !g_font_uploaded && g_font_atlas_built) {
-                    if (ImguiNvnBackend::setupFont()) {
-                        g_font_uploaded = true;
-                        PRINT_LINE("[imgui_overlay] ImGui font uploaded");
-                    } else {
-                        PRINT_LINE("[imgui_overlay] ERROR: ImGui font upload failed");
-                    }
                 }
 
                 // Dynamic viewport: prefer crop (if available), otherwise swapchain texture size.
@@ -974,7 +940,7 @@ namespace d3::imgui_overlay {
 
                 g_block_gamepad_input_to_game.store(g_overlay.imgui_render_enabled() && g_overlay.overlay_visible(), std::memory_order_relaxed);
 
-                if (kImGuiBringup_DrawText && g_imgui_ctx_initialized && g_font_uploaded && g_overlay.imgui_render_enabled()) {
+                if (kImGuiBringup_DrawText && g_imgui_ctx_initialized && g_font_atlas_built && g_overlay.imgui_render_enabled()) {
                     ImguiNvnBackend::newFrame();
 
                     const ImVec2 viewport_size = ImguiNvnBackend::getBackendData()->viewportSize;
@@ -1002,9 +968,10 @@ namespace d3::imgui_overlay {
                     );
 
                     ImGui::Render();
-                    if (g_overlay.focus_state().visible) {
-                        ImguiNvnBackend::renderDrawData(ImGui::GetDrawData());
-                    }
+                    ImguiNvnBackend::renderDrawData(ImGui::GetDrawData());
+                    ImFontAtlas *fonts = ImGui::GetIO().Fonts;
+                    ImTextureData *font_tex = fonts ? fonts->TexData : nullptr;
+                    g_font_uploaded = (font_tex != nullptr && font_tex->Status == ImTextureStatus_OK);
                 }
             }
 
@@ -1107,6 +1074,27 @@ namespace d3::imgui_overlay {
             return;
         }
 
+        g_overlay.EnsureConfigLoaded();
+        g_overlay.EnsureTranslationsLoaded();
+
+        std::string desired_lang = g_overlay.translations_lang();
+        if (desired_lang.empty()) {
+            desired_lang = "en";
+        }
+
+        static std::string s_font_lang;
+        static std::string s_ranges_lang;
+        if (g_font_atlas_built && s_font_lang != desired_lang) {
+            PRINT("[imgui_overlay] Font lang changed (%s -> %s); rebuilding atlas",
+                  s_font_lang.c_str(), desired_lang.c_str());
+            ImGuiIO &io = ImGui::GetIO();
+            io.Fonts->Clear();
+            g_font_atlas_built = false;
+            g_font_uploaded = false;
+            g_font_build_attempted = false;
+            s_ranges_lang.clear();
+        }
+
         if (g_font_atlas_built) {
             return;
         }
@@ -1144,7 +1132,8 @@ namespace d3::imgui_overlay {
             return;
         }
 
-        PRINT_LINE("[imgui_overlay] Building ImGui font atlas...");
+        PRINT_LINE("[imgui_overlay] Preparing ImGui font atlas...");
+        io.Fonts->Flags |= ImFontAtlasFlags_NoPowerOfTwoHeight;
         ImFontConfig font_cfg {};
         font_cfg.Name[0] = 'd';
         font_cfg.Name[1] = '3';
@@ -1155,43 +1144,102 @@ namespace d3::imgui_overlay {
         font_cfg.OversampleV = 2;
         static ImVector<ImWchar> s_font_ranges;
         static bool              s_font_ranges_built = false;
-        if (!s_font_ranges_built) {
+        if (!s_font_ranges_built || s_ranges_lang != desired_lang) {
             ImFontGlyphRangesBuilder builder;
-            builder.AddRanges(io.Fonts->GetGlyphRangesDefault());
-            builder.AddRanges(io.Fonts->GetGlyphRangesKorean());
-            builder.AddRanges(io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
-            builder.AddRanges(io.Fonts->GetGlyphRangesJapanese());
-            builder.AddRanges(io.Fonts->GetGlyphRangesCyrillic());
+            builder.AddRanges(glyph_ranges::GetDefault());
+            builder.AddRanges(glyph_ranges::GetKorean());
+            if (desired_lang == "zh") {
+                builder.AddRanges(glyph_ranges::GetChineseFull());
+            } else {
+                builder.AddRanges(glyph_ranges::GetChineseSimplifiedCommon());
+            }
+            builder.AddRanges(glyph_ranges::GetJapanese());
+            builder.AddRanges(glyph_ranges::GetCyrillic());
             builder.BuildRanges(&s_font_ranges);
             s_font_ranges_built = true;
+            s_ranges_lang = desired_lang;
         }
         font_cfg.GlyphRanges = s_font_ranges.Data;
 
         ImFont const *font = nullptr;
+        bool          used_shared_font = false;
 
-        static unsigned char *s_romfs_ttf_data = nullptr;
-        static size_t         s_romfs_ttf_size = 0;
-        static std::string    s_romfs_ttf_path;
-        static bool           s_romfs_ttf_tried = false;
+        const ImWchar nvn_ext_ranges[] = {0xE000, 0xE152, 0};
 
-        if (!s_romfs_ttf_tried) {
-            s_romfs_ttf_tried = true;
+        const bool is_chinese = (desired_lang == "zh");
 
-            std::string path;
-            if (d3::romfs::FindFirstFileWithSuffix("romfs:/d3gui", ".ttf", path) &&
-                ReadFileToImGuiBuffer(path.c_str(), &s_romfs_ttf_data, &s_romfs_ttf_size, 5 * 1024 * 1024)) {
-                s_romfs_ttf_path = path;
-                PRINT("[imgui_overlay] Loaded romfs font: %s (%lu bytes)", s_romfs_ttf_path.c_str(), static_cast<unsigned long>(s_romfs_ttf_size));
+        const nn::pl::SharedFontType shared_base =
+            is_chinese ? nn::pl::SharedFontType_ChineseSimple : nn::pl::SharedFontType_Standard;
+        const nn::pl::SharedFontType shared_ext =
+            is_chinese ? nn::pl::SharedFontType_ChineseSimpleExtension : nn::pl::SharedFontType_NintendoExtension;
+
+        nn::pl::RequestSharedFontLoad(shared_base);
+        nn::pl::RequestSharedFontLoad(shared_ext);
+        nn::pl::RequestSharedFontLoad(nn::pl::SharedFontType_NintendoExtension);
+
+        const bool shared_base_ready =
+            nn::pl::GetSharedFontLoadState(shared_base) == nn::pl::SharedFontLoadState_Loaded;
+        const bool shared_ext_ready =
+            nn::pl::GetSharedFontLoadState(shared_ext) == nn::pl::SharedFontLoadState_Loaded;
+        const bool shared_nvn_ext_ready =
+            nn::pl::GetSharedFontLoadState(nn::pl::SharedFontType_NintendoExtension) == nn::pl::SharedFontLoadState_Loaded;
+
+        if (shared_base_ready) {
+            const void *shared_font = nn::pl::GetSharedFontAddress(shared_base);
+            const size_t shared_size = nn::pl::GetSharedFontSize(shared_base);
+            if (shared_font != nullptr && shared_size > 0) {
+                font_cfg.FontDataOwnedByAtlas = false;
+                font = io.Fonts->AddFontFromMemoryTTF(const_cast<void *>(shared_font),
+                                                      static_cast<int>(shared_size),
+                                                      font_cfg.SizePixels, &font_cfg);
+                used_shared_font = (font != nullptr);
+                if (used_shared_font) {
+                    PRINT("[imgui_overlay] Loaded Nintendo shared system font (base=%d)", static_cast<int>(shared_base));
+                } else {
+                    PRINT_LINE("[imgui_overlay] ERROR: AddFontFromMemoryTTF failed for shared base font");
+                }
             } else {
-                PRINT_LINE("[imgui_overlay] romfs font not found; falling back to ImGui default font");
+                PRINT_LINE("[imgui_overlay] Shared base font unavailable; address/size invalid");
+            }
+        } else {
+            PRINT_LINE("[imgui_overlay] Shared base font not yet loaded; falling back");
+        }
+
+        if (used_shared_font && shared_ext_ready) {
+            const void *shared_ext_font = nn::pl::GetSharedFontAddress(shared_ext);
+            const size_t shared_ext_size = nn::pl::GetSharedFontSize(shared_ext);
+            if (shared_ext_font != nullptr && shared_ext_size > 0) {
+                ImFontConfig ext_cfg = font_cfg;
+                ext_cfg.MergeMode = true;
+                ext_cfg.FontDataOwnedByAtlas = false;
+                ext_cfg.GlyphRanges = is_chinese ? s_font_ranges.Data : nvn_ext_ranges;
+                if (io.Fonts->AddFontFromMemoryTTF(const_cast<void *>(shared_ext_font),
+                                                   static_cast<int>(shared_ext_size),
+                                                   ext_cfg.SizePixels, &ext_cfg) == nullptr) {
+                    PRINT_LINE("[imgui_overlay] ERROR: AddFontFromMemoryTTF failed for shared extension font");
+                } else {
+                    PRINT("[imgui_overlay] Loaded Nintendo shared system font (ext=%d)", static_cast<int>(shared_ext));
+                }
+            } else {
+                PRINT_LINE("[imgui_overlay] Shared extension font unavailable; address/size invalid");
             }
         }
 
-        if (s_romfs_ttf_data != nullptr && s_romfs_ttf_size > 0) {
-            font_cfg.FontDataOwnedByAtlas = false;
-            font                          = io.Fonts->AddFontFromMemoryTTF(s_romfs_ttf_data, static_cast<int>(s_romfs_ttf_size), font_cfg.SizePixels, &font_cfg);
-            if (font == nullptr) {
-                PRINT_LINE("[imgui_overlay] ERROR: AddFontFromMemoryTTF failed; falling back to ImGui default font");
+        if (used_shared_font && shared_nvn_ext_ready) {
+            const void *nvn_ext_font = nn::pl::GetSharedFontAddress(nn::pl::SharedFontType_NintendoExtension);
+            const size_t nvn_ext_size = nn::pl::GetSharedFontSize(nn::pl::SharedFontType_NintendoExtension);
+            if (nvn_ext_font != nullptr && nvn_ext_size > 0) {
+                ImFontConfig ext_cfg = font_cfg;
+                ext_cfg.MergeMode = true;
+                ext_cfg.FontDataOwnedByAtlas = false;
+                ext_cfg.GlyphRanges = nvn_ext_ranges;
+                if (io.Fonts->AddFontFromMemoryTTF(const_cast<void *>(nvn_ext_font),
+                                                   static_cast<int>(nvn_ext_size),
+                                                   ext_cfg.SizePixels, &ext_cfg) == nullptr) {
+                    PRINT_LINE("[imgui_overlay] ERROR: AddFontFromMemoryTTF failed for shared Nintendo extension");
+                } else {
+                    PRINT_LINE("[imgui_overlay] Loaded Nintendo shared system font (NintendoExtension)");
+                }
             }
         }
 
@@ -1199,17 +1247,9 @@ namespace d3::imgui_overlay {
             (void)io.Fonts->AddFontDefault();
         }
 
-        g_font_atlas_built = io.Fonts->Build();
-        if (!g_font_atlas_built) {
-            PRINT_LINE("[imgui_overlay] ERROR: ImFontAtlas::Build failed");
-            return;
-        }
-        if (s_romfs_ttf_data != nullptr) {
-            IM_FREE(s_romfs_ttf_data);
-            s_romfs_ttf_data = nullptr;
-            s_romfs_ttf_size = 0;
-        }
-        PRINT_LINE("[imgui_overlay] ImGui font atlas built");
+        g_font_atlas_built = true;
+        s_font_lang = desired_lang;
+        PRINT_LINE("[imgui_overlay] ImGui font atlas prepared");
     }
 
 }  // namespace d3::imgui_overlay

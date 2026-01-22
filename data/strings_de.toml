@@ -1,0 +1,301 @@
+[gui]
+# Language
+language = "Sprache"
+# Auto (game)
+lang_auto = "Automatisch (Spiel)"
+# English
+lang_en = "Englisch"
+# Deutsch
+lang_de = "Deutsch"
+# Francais
+lang_fr = "Franzoesisch"
+# Espanol
+lang_es = "Spanisch"
+# Italiano
+lang_it = "Italienisch"
+# Japanese
+lang_ja = "Japanisch"
+# Korean
+lang_ko = "Koreanisch"
+# Chinese
+lang_zh = "Chinesisch"
+# Enabled (persist)
+enabled_persist = "Aktiviert (speichern)"
+# Visible (persist)
+visible_persist = "Sichtbar (speichern)"
+# Hold + and - (0.5s) to toggle overlay visibility.
+hotkey_toggle = "Hotkey: + und - (0.5s) gedrueckt halten, um die Anzeige zu wechseln."
+# Config not loaded yet.
+config_not_loaded = "Konfiguration noch nicht geladen."
+# UI state: UNSAVED changes
+ui_state_dirty = "UI-Status: NICHT GESPEICHERTE Aenderungen"
+# UI state: clean
+ui_state_clean = "UI-Status: sauber"
+# Reset UI to current config
+reset_ui = "UI auf aktuelle Konfiguration zuruecksetzen"
+# GUI enabled
+gui_enabled = "GUI aktiviert"
+# Apply
+apply = "Anwenden"
+# Save
+save = "Speichern"
+# Reload
+reload = "Neu laden"
+# Restart required for some changes.
+restart_required_banner = "Neustart fuer einige Aenderungen erforderlich."
+# GUI is disabled (proof-of-life stays on). Enable GUI to edit config.
+disabled_help = "GUI ist deaktiviert (Lebenszeichen bleibt sichtbar). Aktivieren, um Konfiguration zu bearbeiten."
+# Config source: %s
+config_source = "Konfigurationsquelle: %s"
+# built-in defaults
+config_source_defaults = "eingebaute Standardwerte"
+# Viewport: %.0fx%.0f | Crop: %dx%d | Swapchain: %d
+viewport_info = "Viewport: %.0fx%.0f | Zuschnitt: %dx%d | Swapchain: %d"
+# runtime
+note_runtime = "Laufzeit"
+# unknown
+error_unknown = "unbekannt"
+# not found
+error_not_found = "nicht gefunden"
+# Applied. Restart required.
+notify_applied_restart = "Angewendet. Neustart erforderlich."
+# Applied (%s).
+notify_applied_note = "Angewendet (%s)."
+# Applied.
+notify_applied = "Angewendet."
+# Saved config.toml
+notify_saved = "config.toml gespeichert"
+# Save failed: %s
+notify_save_failed = "Speichern fehlgeschlagen: %s"
+# Reloaded config.toml
+notify_reloaded = "config.toml neu geladen"
+# Reload failed: %s
+notify_reload_failed = "Neuladen fehlgeschlagen: %s"
+# Overlays
+tab_overlays = "Overlays"
+# GUI
+tab_gui = "GUI"
+# Resolution
+tab_resolution = "Aufloesung"
+# Seasons
+tab_seasons = "Saisons"
+# Events
+tab_events = "Events"
+# Rare cheats
+tab_rare_cheats = "Seltene Cheats"
+# Challenge rifts
+tab_challenge_rifts = "Herausforderungsportale"
+# Loot
+tab_loot = "Beute"
+# Debug
+tab_debug = "Debug"
+
+# Enabled##overlays
+overlays_enabled = "Aktiviert##overlays"
+# Build locker watermark
+overlays_buildlocker = "Build-Locker-Wasserzeichen"
+# DDM labels
+overlays_ddm = "DDM-Labels"
+# FPS label
+overlays_fps = "FPS-Label"
+# Variable resolution label
+overlays_var_res = "Label fuer variable Aufloesung"
+
+# Enabled##res
+resolution_enabled = "Aktiviert##res"
+# Output target (vertical)
+resolution_output_target = "Ausgabeziel (vertikal)"
+# Spoof docked
+resolution_spoof_docked = "Docked vortaeuschen"
+# Handheld output scale auto
+resolution_output_handheld_auto = "Handheld-Ausgabeskalierung: automatisch (Standard)"
+# Handheld output scale
+resolution_output_handheld_scale = "Handheld-Ausgabeskalierung (%)"
+# Handheld output target (vertical)
+resolution_output_target_handheld = "Handheld-Ausgabeziel (vertikal)"
+# Minimum resolution scale
+resolution_min_scale = "Minimale Aufloesungsskalierung"
+# Maximum resolution scale
+resolution_max_scale = "Maximale Aufloesungsskalierung"
+# Clamp texture height (0=off, 100-9999)
+resolution_clamp_texture = "Texturhoehe begrenzen (0=aus, 100-9999)"
+# Experimental scheduler
+resolution_exp_scheduler = "Experimenteller Scheduler"
+# Output size: %ux%u
+resolution_output_size = "Ausgabegroesse: %ux%u"
+# Display mode overrides
+resolution_extra_header = "Anzeigemodus-Ueberschreibungen"
+# Set to -1 to keep the game's value.
+resolution_extra_hint = "Auf -1 setzen, um den Spielwert zu behalten."
+# MSAA level (-1=default)
+resolution_extra_msaa = "MSAA-Stufe (-1=Standard)"
+# Bit depth (-1=default)
+resolution_extra_bit_depth = "Farbtiefe (-1=Standard)"
+# Refresh rate (-1=default)
+resolution_extra_refresh = "Bildwiederholrate (-1=Standard)"
+# Window left (-1=default)
+resolution_extra_win_left = "Fenster links (-1=Standard)"
+# Window top (-1=default)
+resolution_extra_win_top = "Fenster oben (-1=Standard)"
+# Window width (-1=default)
+resolution_extra_win_width = "Fensterbreite (-1=Standard)"
+# Window height (-1=default)
+resolution_extra_win_height = "Fensterhoehe (-1=Standard)"
+# UI width (-1=default)
+resolution_extra_ui_width = "UI-Breite (-1=Standard)"
+# UI height (-1=default)
+resolution_extra_ui_height = "UI-Hoehe (-1=Standard)"
+# Render width (-1=default)
+resolution_extra_render_width = "Renderbreite (-1=Standard)"
+# Render height (-1=default)
+resolution_extra_render_height = "Renderhoehe (-1=Standard)"
+
+# Enabled##seasons
+seasons_enabled = "Aktiviert##seasons"
+# Allow online play
+seasons_allow_online = "Online-Spiel erlauben"
+# Current season
+seasons_current = "Aktuelle Saison"
+# Spoof PTR flag
+seasons_spoof_ptr = "PTR-Flag vortaeuschen"
+
+# Enabled##events
+events_enabled = "Aktiviert##events"
+# Season map mode
+events_season_map_mode = "Saison-Kartenmodus"
+# Map only
+events_mode_map_only = "Nur Karte"
+# Overlay config
+events_mode_overlay = "Overlay-Konfiguration"
+# Disabled
+events_mode_disabled = "Deaktiviert"
+# IGR enabled
+events_igr = "IGR aktiviert"
+# Anniversary enabled
+events_anniversary = "Jubilaeum aktiviert"
+# Easter egg world enabled
+events_easter_egg_world = "Osterei-Welt aktiviert"
+# Double rift keystones
+events_double_keystones = "Doppelte Portalsteine"
+# Double blood shards
+events_double_blood_shards = "Doppelte Blutsplitter"
+# Double treasure goblins
+events_double_goblins = "Doppelte Schatzgoblins"
+# Double bounty bags
+events_double_bounty_bags = "Doppelte Kopfgeldtaschen"
+# Royal Grandeur
+events_royal_grandeur = "Royal Grandeur"
+# Legacy of Nightmares
+events_legacy_of_nightmares = "Legacy of Nightmares"
+# Triune's Will
+events_triunes_will = "Triunes Will"
+# Pandemonium
+events_pandemonium = "Pandemonium"
+# Kanai powers
+events_kanai_powers = "Kanai-Kraefte"
+# Trials of Tempests
+events_trials_of_tempests = "Trials of Tempests"
+# Shadow clones
+events_shadow_clones = "Schattenklone"
+# Fourth Kanai's Cube slot
+events_fourth_kanais = "Vierter Kanai-Wuerfel-Slot"
+# Ethereal items
+events_ethereal_items = "Aetherische Gegenstaende"
+# Soul shards
+events_soul_shards = "Seelensplitter"
+# Swarm rifts
+events_swarm_rifts = "Schwarmportale"
+# Sanctified items
+events_sanctified_items = "Geheiligte Gegenstaende"
+# Dark Alchemy
+events_dark_alchemy = "Dunkle Alchemie"
+# Nesting portals
+events_nesting_portals = "Verschachtelte Portale"
+
+# Enabled##rare_cheats
+rare_cheats_enabled = "Aktiviert##rare_cheats"
+# Move speed multiplier
+rare_cheats_move_speed = "Bewegungsgeschwindigkeits-Multiplikator"
+# Attack speed multiplier
+rare_cheats_attack_speed = "Angriffsgeschwindigkeits-Multiplikator"
+# Floating damage color
+rare_cheats_floating_damage = "Schwebende Schadensfarbe"
+# Guaranteed legendaries
+rare_cheats_guaranteed_legendaries = "Garantierte Legendaere"
+# Drop anything
+rare_cheats_drop_anything = "Alles fallen lassen"
+# Instant portal
+rare_cheats_instant_portal = "Sofortiges Portal"
+# No cooldowns
+rare_cheats_no_cooldowns = "Keine Abklingzeiten"
+# Instant craft actions
+rare_cheats_instant_craft = "Sofortige Handwerksaktionen"
+# Any gem any slot
+rare_cheats_any_gem_any_slot = "Beliebiger Edelstein in jedem Slot"
+# Auto pickup
+rare_cheats_auto_pickup = "Automatisches Aufheben"
+# Equip any slot
+rare_cheats_equip_any_slot = "In jedem Slot ausruesten"
+# Unlock all difficulties
+rare_cheats_unlock_all_difficulties = "Alle Schwierigkeitsgrade freischalten"
+# Easy kill damage
+rare_cheats_easy_kill = "Leichter-Kill-Schaden"
+# Cube no consume
+rare_cheats_cube_no_consume = "Wuerfel verbraucht nichts"
+# Gem upgrade always
+rare_cheats_gem_upgrade_always = "Edelstein-Upgrade immer"
+# Gem upgrade speed
+rare_cheats_gem_upgrade_speed = "Edelstein-Upgrade-Geschwindigkeit"
+# Gem upgrade lvl150
+rare_cheats_gem_upgrade_lvl150 = "Edelstein-Upgrade Stufe 150"
+# Equip multi legendary
+rare_cheats_equip_multi_legendary = "Mehrere Legendaere ausruesten"
+
+# Enabled##cr
+challenge_rifts_enabled = "Aktiviert##cr"
+# Randomize within range
+challenge_rifts_random = "Zufall innerhalb des Bereichs"
+# Range start
+challenge_rifts_range_start = "Bereichsbeginn"
+# Range end
+challenge_rifts_range_end = "Bereichsende"
+
+# Enabled##loot
+loot_enabled = "Aktiviert##loot"
+# Disable ancient drops
+loot_disable_ancient = "Uralte Drops deaktivieren"
+# Disable primal ancient drops
+loot_disable_primal = "Urtuemliche Uralte-Drops deaktivieren"
+# Disable torment drops
+loot_disable_torment = "Qual-Drops deaktivieren"
+# Disable torment check
+loot_disable_torment_check = "Qual-Pruefung deaktivieren"
+# Suppress gift generation
+loot_suppress_gift = "Geschenk-Erzeugung unterdruecken"
+# Forced iLevel
+loot_forced_ilevel = "Erzwungenes iLevel"
+# Tiered loot run level
+loot_tiered_run_level = "Stufen-Level fuer Beute-Run"
+# Ancient rank
+loot_ancient_rank = "Uralten-Rang"
+# Normal
+loot_rank_normal = "Normal"
+# Ancient
+loot_rank_ancient = "Uralte"
+# Primal
+loot_rank_primal = "Urtuemlich"
+
+# Enabled##debug
+debug_enabled = "Aktiviert##debug"
+# Enable crashes (danger)
+debug_enable_crashes = "Abstuerze aktivieren (gefaehrlich)"
+# Enable pubfile dump
+debug_pubfile_dump = "pub-Datei-Dump aktivieren"
+# Enable error traces
+debug_error_traces = "Fehlertraces aktivieren"
+# Enable debug flags
+debug_debug_flags = "Debug-Flags aktivieren"
+# Show ImGui demo window (not linked)
+debug_show_demo = "ImGui-Demofenster anzeigen (nicht verlinkt)"
+# Show ImGui metrics
+debug_show_metrics = "ImGui-Metriken anzeigen"

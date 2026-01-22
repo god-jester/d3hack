@@ -1,0 +1,301 @@
+[gui]
+# Language
+language = "언어"
+# Auto (game)
+lang_auto = "자동(게임)"
+# English
+lang_en = "영어"
+# Deutsch
+lang_de = "독일어"
+# Francais
+lang_fr = "프랑스어"
+# Espanol
+lang_es = "스페인어"
+# Italiano
+lang_it = "이탈리아어"
+# Japanese
+lang_ja = "일본어"
+# Korean
+lang_ko = "한국어"
+# Chinese
+lang_zh = "중국어"
+# Enabled (persist)
+enabled_persist = "활성화(저장)"
+# Visible (persist)
+visible_persist = "표시(저장)"
+# Hold + and - (0.5s) to toggle overlay visibility.
+hotkey_toggle = "단축키: + 와 - 를 0.5초 동안 눌러 표시 전환."
+# Config not loaded yet.
+config_not_loaded = "설정이 아직 로드되지 않았습니다."
+# UI state: UNSAVED changes
+ui_state_dirty = "UI 상태: 저장되지 않은 변경"
+# UI state: clean
+ui_state_clean = "UI 상태: 깨끗함"
+# Reset UI to current config
+reset_ui = "UI를 현재 설정으로 재설정"
+# GUI enabled
+gui_enabled = "GUI 활성화"
+# Apply
+apply = "적용"
+# Save
+save = "저장"
+# Reload
+reload = "다시 불러오기"
+# Restart required for some changes.
+restart_required_banner = "일부 변경은 재시작이 필요합니다."
+# GUI is disabled (proof-of-life stays on). Enable GUI to edit config.
+disabled_help = "GUI가 비활성화되어 있습니다(표시등은 유지됨). GUI를 활성화해 설정을 편집하세요."
+# Config source: %s
+config_source = "설정 소스: %s"
+# built-in defaults
+config_source_defaults = "내장 기본값"
+# Viewport: %.0fx%.0f | Crop: %dx%d | Swapchain: %d
+viewport_info = "뷰포트: %.0fx%.0f | 크롭: %dx%d | 스왑체인: %d"
+# runtime
+note_runtime = "런타임"
+# unknown
+error_unknown = "알 수 없음"
+# not found
+error_not_found = "찾을 수 없음"
+# Applied. Restart required.
+notify_applied_restart = "적용됨. 재시작 필요."
+# Applied (%s).
+notify_applied_note = "적용됨(%s)."
+# Applied.
+notify_applied = "적용됨."
+# Saved config.toml
+notify_saved = "config.toml 저장됨"
+# Save failed: %s
+notify_save_failed = "저장 실패: %s"
+# Reloaded config.toml
+notify_reloaded = "config.toml 다시 불러옴"
+# Reload failed: %s
+notify_reload_failed = "다시 불러오기 실패: %s"
+# Overlays
+tab_overlays = "오버레이"
+# GUI
+tab_gui = "GUI"
+# Resolution
+tab_resolution = "해상도"
+# Seasons
+tab_seasons = "시즌"
+# Events
+tab_events = "이벤트"
+# Rare cheats
+tab_rare_cheats = "희귀 치트"
+# Challenge rifts
+tab_challenge_rifts = "도전 균열"
+# Loot
+tab_loot = "전리품"
+# Debug
+tab_debug = "디버그"
+
+# Enabled##overlays
+overlays_enabled = "활성화##overlays"
+# Build locker watermark
+overlays_buildlocker = "빌드 로커 워터마크"
+# DDM labels
+overlays_ddm = "DDM 라벨"
+# FPS label
+overlays_fps = "FPS 라벨"
+# Variable resolution label
+overlays_var_res = "가변 해상도 라벨"
+
+# Enabled##res
+resolution_enabled = "활성화##res"
+# Output target (vertical)
+resolution_output_target = "출력 대상(세로)"
+# Spoof docked
+resolution_spoof_docked = "도킹 상태 위장"
+# Handheld output scale auto
+resolution_output_handheld_auto = "휴대 모드 출력 스케일: 자동(기본)"
+# Handheld output scale
+resolution_output_handheld_scale = "휴대 모드 출력 스케일(%)"
+# Handheld output target (vertical)
+resolution_output_target_handheld = "휴대 모드 출력 대상(세로)"
+# Minimum resolution scale
+resolution_min_scale = "최소 해상도 스케일"
+# Maximum resolution scale
+resolution_max_scale = "최대 해상도 스케일"
+# Clamp texture height (0=off, 100-9999)
+resolution_clamp_texture = "텍스처 높이 제한(0=끄기, 100-9999)"
+# Experimental scheduler
+resolution_exp_scheduler = "실험적 스케줄러"
+# Output size: %ux%u
+resolution_output_size = "출력 크기: %ux%u"
+# Display mode overrides
+resolution_extra_header = "디스플레이 모드 오버라이드"
+# Set to -1 to keep the game's value.
+resolution_extra_hint = "-1로 설정하면 게임 값을 유지합니다."
+# MSAA level (-1=default)
+resolution_extra_msaa = "MSAA 레벨(-1=기본)"
+# Bit depth (-1=default)
+resolution_extra_bit_depth = "비트 깊이(-1=기본)"
+# Refresh rate (-1=default)
+resolution_extra_refresh = "재생률(-1=기본)"
+# Window left (-1=default)
+resolution_extra_win_left = "창 왼쪽(-1=기본)"
+# Window top (-1=default)
+resolution_extra_win_top = "창 위쪽(-1=기본)"
+# Window width (-1=default)
+resolution_extra_win_width = "창 너비(-1=기본)"
+# Window height (-1=default)
+resolution_extra_win_height = "창 높이(-1=기본)"
+# UI width (-1=default)
+resolution_extra_ui_width = "UI 너비(-1=기본)"
+# UI height (-1=default)
+resolution_extra_ui_height = "UI 높이(-1=기본)"
+# Render width (-1=default)
+resolution_extra_render_width = "렌더 너비(-1=기본)"
+# Render height (-1=default)
+resolution_extra_render_height = "렌더 높이(-1=기본)"
+
+# Enabled##seasons
+seasons_enabled = "활성화##seasons"
+# Allow online play
+seasons_allow_online = "온라인 플레이 허용"
+# Current season
+seasons_current = "현재 시즌"
+# Spoof PTR flag
+seasons_spoof_ptr = "PTR 플래그 위장"
+
+# Enabled##events
+events_enabled = "활성화##events"
+# Season map mode
+events_season_map_mode = "시즌 맵 모드"
+# Map only
+events_mode_map_only = "맵만"
+# Overlay config
+events_mode_overlay = "오버레이 설정"
+# Disabled
+events_mode_disabled = "비활성화"
+# IGR enabled
+events_igr = "IGR 활성화"
+# Anniversary enabled
+events_anniversary = "기념일 활성화"
+# Easter egg world enabled
+events_easter_egg_world = "이스터에그 월드 활성화"
+# Double rift keystones
+events_double_keystones = "균열 열쇠 2배"
+# Double blood shards
+events_double_blood_shards = "핏빛 파편 2배"
+# Double treasure goblins
+events_double_goblins = "보물 고블린 2배"
+# Double bounty bags
+events_double_bounty_bags = "현상금 가방 2배"
+# Royal Grandeur
+events_royal_grandeur = "왕실 위엄"
+# Legacy of Nightmares
+events_legacy_of_nightmares = "악몽의 유산"
+# Triune's Will
+events_triunes_will = "트리운의 의지"
+# Pandemonium
+events_pandemonium = "팬데모니엄"
+# Kanai powers
+events_kanai_powers = "카나이의 힘"
+# Trials of Tempests
+events_trials_of_tempests = "폭풍의 시련"
+# Shadow clones
+events_shadow_clones = "그림자 분신"
+# Fourth Kanai's Cube slot
+events_fourth_kanais = "카나이의 큐브 4번째 슬롯"
+# Ethereal items
+events_ethereal_items = "에테리얼 아이템"
+# Soul shards
+events_soul_shards = "영혼 파편"
+# Swarm rifts
+events_swarm_rifts = "스웜 균열"
+# Sanctified items
+events_sanctified_items = "성화된 아이템"
+# Dark Alchemy
+events_dark_alchemy = "어둠의 연금술"
+# Nesting portals
+events_nesting_portals = "중첩 포털"
+
+# Enabled##rare_cheats
+rare_cheats_enabled = "활성화##rare_cheats"
+# Move speed multiplier
+rare_cheats_move_speed = "이동 속도 배수"
+# Attack speed multiplier
+rare_cheats_attack_speed = "공격 속도 배수"
+# Floating damage color
+rare_cheats_floating_damage = "떠다니는 피해 색상"
+# Guaranteed legendaries
+rare_cheats_guaranteed_legendaries = "전설 확정"
+# Drop anything
+rare_cheats_drop_anything = "모든 아이템 드롭"
+# Instant portal
+rare_cheats_instant_portal = "즉시 포털"
+# No cooldowns
+rare_cheats_no_cooldowns = "쿨다운 없음"
+# Instant craft actions
+rare_cheats_instant_craft = "즉시 제작/합성"
+# Any gem any slot
+rare_cheats_any_gem_any_slot = "어떤 보석이든 모든 슬롯"
+# Auto pickup
+rare_cheats_auto_pickup = "자동 줍기"
+# Equip any slot
+rare_cheats_equip_any_slot = "모든 슬롯 장착"
+# Unlock all difficulties
+rare_cheats_unlock_all_difficulties = "모든 난이도 해제"
+# Easy kill damage
+rare_cheats_easy_kill = "쉬운 처치 피해"
+# Cube no consume
+rare_cheats_cube_no_consume = "큐브 재료 소비 없음"
+# Gem upgrade always
+rare_cheats_gem_upgrade_always = "보석 강화 항상 성공"
+# Gem upgrade speed
+rare_cheats_gem_upgrade_speed = "보석 강화 속도"
+# Gem upgrade lvl150
+rare_cheats_gem_upgrade_lvl150 = "보석 강화 150레벨"
+# Equip multi legendary
+rare_cheats_equip_multi_legendary = "전설 여러 개 장착"
+
+# Enabled##cr
+challenge_rifts_enabled = "활성화##cr"
+# Randomize within range
+challenge_rifts_random = "범위 내 무작위"
+# Range start
+challenge_rifts_range_start = "범위 시작"
+# Range end
+challenge_rifts_range_end = "범위 끝"
+
+# Enabled##loot
+loot_enabled = "활성화##loot"
+# Disable ancient drops
+loot_disable_ancient = "고대 드롭 비활성화"
+# Disable primal ancient drops
+loot_disable_primal = "태고 고대 드롭 비활성화"
+# Disable torment drops
+loot_disable_torment = "고행 드롭 비활성화"
+# Disable torment check
+loot_disable_torment_check = "고행 체크 비활성화"
+# Suppress gift generation
+loot_suppress_gift = "선물 생성 억제"
+# Forced iLevel
+loot_forced_ilevel = "강제 iLevel"
+# Tiered loot run level
+loot_tiered_run_level = "단계별 전리품 런 레벨"
+# Ancient rank
+loot_ancient_rank = "고대 등급"
+# Normal
+loot_rank_normal = "일반"
+# Ancient
+loot_rank_ancient = "고대"
+# Primal
+loot_rank_primal = "태고"
+
+# Enabled##debug
+debug_enabled = "활성화##debug"
+# Enable crashes (danger)
+debug_enable_crashes = "크래시 활성화(위험)"
+# Enable pubfile dump
+debug_pubfile_dump = "pub 파일 덤프 활성화"
+# Enable error traces
+debug_error_traces = "오류 추적 활성화"
+# Enable debug flags
+debug_debug_flags = "디버그 플래그 활성화"
+# Show ImGui demo window (not linked)
+debug_show_demo = "ImGui 데모 창 표시(미연결)"
+# Show ImGui metrics
+debug_show_metrics = "ImGui 메트릭 표시"

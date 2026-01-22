@@ -1,0 +1,301 @@
+[gui]
+# Language
+language = "言語"
+# Auto (game)
+lang_auto = "自動(ゲーム)"
+# English
+lang_en = "英語"
+# Deutsch
+lang_de = "ドイツ語"
+# Francais
+lang_fr = "フランス語"
+# Espanol
+lang_es = "スペイン語"
+# Italiano
+lang_it = "イタリア語"
+# Japanese
+lang_ja = "日本語"
+# Korean
+lang_ko = "韓国語"
+# Chinese
+lang_zh = "中国語"
+# Enabled (persist)
+enabled_persist = "有効(保存)"
+# Visible (persist)
+visible_persist = "表示(保存)"
+# Hold + and - (0.5s) to toggle overlay visibility.
+hotkey_toggle = "ショートカット: + と - を同時に0.5秒押して表示を切り替え。"
+# Config not loaded yet.
+config_not_loaded = "設定はまだ読み込まれていません。"
+# UI state: UNSAVED changes
+ui_state_dirty = "UI状態: 未保存の変更"
+# UI state: clean
+ui_state_clean = "UI状態: クリーン"
+# Reset UI to current config
+reset_ui = "UIを現在の設定にリセット"
+# GUI enabled
+gui_enabled = "GUI有効"
+# Apply
+apply = "適用"
+# Save
+save = "保存"
+# Reload
+reload = "再読み込み"
+# Restart required for some changes.
+restart_required_banner = "一部の変更は再起動が必要です。"
+# GUI is disabled (proof-of-life stays on). Enable GUI to edit config.
+disabled_help = "GUIは無効です(生存表示は残ります)。GUIを有効にして設定を編集してください。"
+# Config source: %s
+config_source = "設定元: %s"
+# built-in defaults
+config_source_defaults = "内蔵デフォルト"
+# Viewport: %.0fx%.0f | Crop: %dx%d | Swapchain: %d
+viewport_info = "ビューポート: %.0fx%.0f | 切り抜き: %dx%d | スワップチェーン: %d"
+# runtime
+note_runtime = "ランタイム"
+# unknown
+error_unknown = "不明"
+# not found
+error_not_found = "見つかりません"
+# Applied. Restart required.
+notify_applied_restart = "適用しました。再起動が必要です。"
+# Applied (%s).
+notify_applied_note = "適用しました(%s)。"
+# Applied.
+notify_applied = "適用しました。"
+# Saved config.toml
+notify_saved = "config.toml を保存しました"
+# Save failed: %s
+notify_save_failed = "保存に失敗: %s"
+# Reloaded config.toml
+notify_reloaded = "config.toml を再読み込みしました"
+# Reload failed: %s
+notify_reload_failed = "再読み込みに失敗: %s"
+# Overlays
+tab_overlays = "オーバーレイ"
+# GUI
+tab_gui = "GUI"
+# Resolution
+tab_resolution = "解像度"
+# Seasons
+tab_seasons = "シーズン"
+# Events
+tab_events = "イベント"
+# Rare cheats
+tab_rare_cheats = "レアチート"
+# Challenge rifts
+tab_challenge_rifts = "チャレンジリフト"
+# Loot
+tab_loot = "戦利品"
+# Debug
+tab_debug = "デバッグ"
+
+# Enabled##overlays
+overlays_enabled = "有効##overlays"
+# Build locker watermark
+overlays_buildlocker = "ビルドロッカー透かし"
+# DDM labels
+overlays_ddm = "DDMラベル"
+# FPS label
+overlays_fps = "FPSラベル"
+# Variable resolution label
+overlays_var_res = "可変解像度ラベル"
+
+# Enabled##res
+resolution_enabled = "有効##res"
+# Output target (vertical)
+resolution_output_target = "出力ターゲット(縦)"
+# Spoof docked
+resolution_spoof_docked = "ドック状態を偽装"
+# Handheld output scale auto
+resolution_output_handheld_auto = "携帯出力スケール: 自動(標準)"
+# Handheld output scale
+resolution_output_handheld_scale = "携帯出力スケール(%)"
+# Handheld output target (vertical)
+resolution_output_target_handheld = "携帯出力ターゲット(縦)"
+# Minimum resolution scale
+resolution_min_scale = "最小解像度スケール"
+# Maximum resolution scale
+resolution_max_scale = "最大解像度スケール"
+# Clamp texture height (0=off, 100-9999)
+resolution_clamp_texture = "テクスチャ高さ制限(0=オフ, 100-9999)"
+# Experimental scheduler
+resolution_exp_scheduler = "実験的スケジューラ"
+# Output size: %ux%u
+resolution_output_size = "出力サイズ: %ux%u"
+# Display mode overrides
+resolution_extra_header = "表示モード上書き"
+# Set to -1 to keep the game's value.
+resolution_extra_hint = "-1でゲームの値を保持します。"
+# MSAA level (-1=default)
+resolution_extra_msaa = "MSAAレベル(-1=デフォルト)"
+# Bit depth (-1=default)
+resolution_extra_bit_depth = "ビット深度(-1=デフォルト)"
+# Refresh rate (-1=default)
+resolution_extra_refresh = "リフレッシュレート(-1=デフォルト)"
+# Window left (-1=default)
+resolution_extra_win_left = "ウィンドウ左(-1=デフォルト)"
+# Window top (-1=default)
+resolution_extra_win_top = "ウィンドウ上(-1=デフォルト)"
+# Window width (-1=default)
+resolution_extra_win_width = "ウィンドウ幅(-1=デフォルト)"
+# Window height (-1=default)
+resolution_extra_win_height = "ウィンドウ高さ(-1=デフォルト)"
+# UI width (-1=default)
+resolution_extra_ui_width = "UI幅(-1=デフォルト)"
+# UI height (-1=default)
+resolution_extra_ui_height = "UI高さ(-1=デフォルト)"
+# Render width (-1=default)
+resolution_extra_render_width = "レンダー幅(-1=デフォルト)"
+# Render height (-1=default)
+resolution_extra_render_height = "レンダー高さ(-1=デフォルト)"
+
+# Enabled##seasons
+seasons_enabled = "有効##seasons"
+# Allow online play
+seasons_allow_online = "オンラインプレイを許可"
+# Current season
+seasons_current = "現在のシーズン"
+# Spoof PTR flag
+seasons_spoof_ptr = "PTRフラグを偽装"
+
+# Enabled##events
+events_enabled = "有効##events"
+# Season map mode
+events_season_map_mode = "シーズンマップモード"
+# Map only
+events_mode_map_only = "マップのみ"
+# Overlay config
+events_mode_overlay = "オーバーレイ設定"
+# Disabled
+events_mode_disabled = "無効"
+# IGR enabled
+events_igr = "IGR有効"
+# Anniversary enabled
+events_anniversary = "アニバーサリー有効"
+# Easter egg world enabled
+events_easter_egg_world = "イースターエッグ世界有効"
+# Double rift keystones
+events_double_keystones = "リフトキー倍増"
+# Double blood shards
+events_double_blood_shards = "血のかけら倍増"
+# Double treasure goblins
+events_double_goblins = "宝箱ゴブリン倍増"
+# Double bounty bags
+events_double_bounty_bags = "報酬バッグ倍増"
+# Royal Grandeur
+events_royal_grandeur = "ロイヤル・グランダー"
+# Legacy of Nightmares
+events_legacy_of_nightmares = "ナイトメアの遺産"
+# Triune's Will
+events_triunes_will = "トリウネの意志"
+# Pandemonium
+events_pandemonium = "パンデモニウム"
+# Kanai powers
+events_kanai_powers = "カナイの力"
+# Trials of Tempests
+events_trials_of_tempests = "テンペストの試練"
+# Shadow clones
+events_shadow_clones = "影のクローン"
+# Fourth Kanai's Cube slot
+events_fourth_kanais = "カナイのキューブ第4スロット"
+# Ethereal items
+events_ethereal_items = "エセリアルアイテム"
+# Soul shards
+events_soul_shards = "ソウルシャード"
+# Swarm rifts
+events_swarm_rifts = "スワームリフト"
+# Sanctified items
+events_sanctified_items = "聖別されたアイテム"
+# Dark Alchemy
+events_dark_alchemy = "ダーク・アルケミー"
+# Nesting portals
+events_nesting_portals = "入れ子ポータル"
+
+# Enabled##rare_cheats
+rare_cheats_enabled = "有効##rare_cheats"
+# Move speed multiplier
+rare_cheats_move_speed = "移動速度倍率"
+# Attack speed multiplier
+rare_cheats_attack_speed = "攻撃速度倍率"
+# Floating damage color
+rare_cheats_floating_damage = "フローティングダメージ色"
+# Guaranteed legendaries
+rare_cheats_guaranteed_legendaries = "レジェンダリー確定"
+# Drop anything
+rare_cheats_drop_anything = "何でもドロップ"
+# Instant portal
+rare_cheats_instant_portal = "即時ポータル"
+# No cooldowns
+rare_cheats_no_cooldowns = "クールダウンなし"
+# Instant craft actions
+rare_cheats_instant_craft = "即時クラフトアクション"
+# Any gem any slot
+rare_cheats_any_gem_any_slot = "任意の宝石を任意のスロットへ"
+# Auto pickup
+rare_cheats_auto_pickup = "自動拾取"
+# Equip any slot
+rare_cheats_equip_any_slot = "任意スロット装備"
+# Unlock all difficulties
+rare_cheats_unlock_all_difficulties = "全難易度解放"
+# Easy kill damage
+rare_cheats_easy_kill = "簡単キルダメージ"
+# Cube no consume
+rare_cheats_cube_no_consume = "キューブ消費なし"
+# Gem upgrade always
+rare_cheats_gem_upgrade_always = "宝石強化常に成功"
+# Gem upgrade speed
+rare_cheats_gem_upgrade_speed = "宝石強化速度"
+# Gem upgrade lvl150
+rare_cheats_gem_upgrade_lvl150 = "宝石強化レベル150"
+# Equip multi legendary
+rare_cheats_equip_multi_legendary = "複数レジェンダリー装備"
+
+# Enabled##cr
+challenge_rifts_enabled = "有効##cr"
+# Randomize within range
+challenge_rifts_random = "範囲内でランダム"
+# Range start
+challenge_rifts_range_start = "範囲開始"
+# Range end
+challenge_rifts_range_end = "範囲終了"
+
+# Enabled##loot
+loot_enabled = "有効##loot"
+# Disable ancient drops
+loot_disable_ancient = "古代ドロップ無効"
+# Disable primal ancient drops
+loot_disable_primal = "プライマル古代ドロップ無効"
+# Disable torment drops
+loot_disable_torment = "トーメントドロップ無効"
+# Disable torment check
+loot_disable_torment_check = "トーメント判定を無効"
+# Suppress gift generation
+loot_suppress_gift = "ギフト生成を抑制"
+# Forced iLevel
+loot_forced_ilevel = "強制iLevel"
+# Tiered loot run level
+loot_tiered_run_level = "段階的戦利品ランレベル"
+# Ancient rank
+loot_ancient_rank = "古代ランク"
+# Normal
+loot_rank_normal = "通常"
+# Ancient
+loot_rank_ancient = "古代"
+# Primal
+loot_rank_primal = "プライマル"
+
+# Enabled##debug
+debug_enabled = "有効##debug"
+# Enable crashes (danger)
+debug_enable_crashes = "クラッシュ有効(危険)"
+# Enable pubfile dump
+debug_pubfile_dump = "pubファイルダンプ有効"
+# Enable error traces
+debug_error_traces = "エラートレース有効"
+# Enable debug flags
+debug_debug_flags = "デバッグフラグ有効"
+# Show ImGui demo window (not linked)
+debug_show_demo = "ImGuiデモウィンドウ表示(未リンク)"
+# Show ImGui metrics
+debug_show_metrics = "ImGuiメトリクス表示"

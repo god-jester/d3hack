@@ -105,10 +105,14 @@ overlays_var_res = "可变分辨率标签"
 resolution_enabled = "启用##res"
 # Output target (vertical)
 resolution_output_target = "输出目标(垂直)"
+# Spoof docked
+resolution_spoof_docked = "伪装底座模式"
 # Handheld output scale auto
 resolution_output_handheld_auto = "掌机输出缩放: 自动(原始)"
 # Handheld output scale
 resolution_output_handheld_scale = "掌机输出缩放(%)"
+# Handheld output target (vertical)
+resolution_output_target_handheld = "掌机输出目标(垂直)"
 # Minimum resolution scale
 resolution_min_scale = "最小分辨率缩放"
 # Maximum resolution scale
@@ -119,6 +123,32 @@ resolution_clamp_texture = "纹理限制高度(0=关闭)"
 resolution_exp_scheduler = "实验性调度器"
 # Output size: %ux%u
 resolution_output_size = "输出尺寸: %ux%u"
+# Display mode overrides
+resolution_extra_header = "显示模式覆盖"
+# Set to -1 to keep the game's value.
+resolution_extra_hint = "设为 -1 以保留游戏原值."
+# MSAA level (-1=default)
+resolution_extra_msaa = "MSAA 等级(-1=默认)"
+# Bit depth (-1=default)
+resolution_extra_bit_depth = "位深(-1=默认)"
+# Refresh rate (-1=default)
+resolution_extra_refresh = "刷新率(-1=默认)"
+# Window left (-1=default)
+resolution_extra_win_left = "窗口左侧(-1=默认)"
+# Window top (-1=default)
+resolution_extra_win_top = "窗口顶部(-1=默认)"
+# Window width (-1=default)
+resolution_extra_win_width = "窗口宽度(-1=默认)"
+# Window height (-1=default)
+resolution_extra_win_height = "窗口高度(-1=默认)"
+# UI width (-1=default)
+resolution_extra_ui_width = "UI 宽度(-1=默认)"
+# UI height (-1=default)
+resolution_extra_ui_height = "UI 高度(-1=默认)"
+# Render width (-1=default)
+resolution_extra_render_width = "渲染宽度(-1=默认)"
+# Render height (-1=default)
+resolution_extra_render_height = "渲染高度(-1=默认)"
 
 # Enabled##seasons
 seasons_enabled = "启用##seasons"
