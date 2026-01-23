@@ -3,6 +3,19 @@
 #include <common.hpp>
 
 namespace exl::util::stack_trace {
+    #if defined(__has_builtin)
+    #if __has_builtin(__builtin_stack_address)
+    #define EXL_HAS_BUILTIN_STACK_ADDRESS 1
+    #endif
+    #endif
+    #ifndef EXL_HAS_BUILTIN_STACK_ADDRESS
+    #if defined(__GNUC__)
+    #define EXL_HAS_BUILTIN_STACK_ADDRESS 1
+    #else
+    #define EXL_HAS_BUILTIN_STACK_ADDRESS 0
+    #endif
+    #endif
+
     struct Frame {
         NON_COPYABLE(Frame);
         NON_MOVEABLE(Frame);
@@ -12,7 +25,11 @@ namespace exl::util::stack_trace {
     };
 
     ALWAYS_INLINE uintptr_t GetSp() {
+        #if EXL_HAS_BUILTIN_STACK_ADDRESS
         return reinterpret_cast<uintptr_t>(__builtin_stack_address());
+        #else
+        return reinterpret_cast<uintptr_t>(__builtin_frame_address(0));
+        #endif
     }
     ALWAYS_INLINE uintptr_t GetFp() {
         return reinterpret_cast<uintptr_t>(__builtin_frame_address(0));

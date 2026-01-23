@@ -251,24 +251,6 @@ namespace d3::imgui_overlay {
 
             ScopedHidPassthroughForOverlay const passthrough_guard;
 
-            nn::hid::NpadFullKeyState  full {};
-            nn::hid::NpadHandheldState handheld {};
-            nn::hid::NpadJoyDualState  joy_dual {};
-            nn::hid::NpadJoyLeftState  joy_left {};
-            nn::hid::NpadJoyRightState joy_right {};
-
-            nn::hid::GetNpadState(&full, port);
-            nn::hid::GetNpadState(&handheld, port);
-            nn::hid::GetNpadState(&joy_dual, port);
-            nn::hid::GetNpadState(&joy_left, port);
-            nn::hid::GetNpadState(&joy_right, port);
-
-            out.buttons |= full.mButtons.field[0];
-            out.buttons |= handheld.mButtons.field[0];
-            out.buttons |= joy_dual.mButtons.field[0];
-            out.buttons |= joy_left.mButtons.field[0];
-            out.buttons |= joy_right.mButtons.field[0];
-
             auto consider_stick = [](bool &have, nn::hid::AnalogStickState &dst, const nn::hid::AnalogStickState &src) -> void {
                 const auto mag     = static_cast<u64>(std::abs(src.X)) + static_cast<u64>(std::abs(src.Y));
                 const auto dst_mag = static_cast<u64>(std::abs(dst.X)) + static_cast<u64>(std::abs(dst.Y));
@@ -278,17 +260,47 @@ namespace d3::imgui_overlay {
                 }
             };
 
-            consider_stick(out.have_stick_l, out.stick_l, full.mAnalogStickL);
-            consider_stick(out.have_stick_l, out.stick_l, handheld.mAnalogStickL);
-            consider_stick(out.have_stick_l, out.stick_l, joy_dual.mAnalogStickL);
-            consider_stick(out.have_stick_l, out.stick_l, joy_left.mAnalogStickL);
-            consider_stick(out.have_stick_l, out.stick_l, joy_right.mAnalogStickL);
+            auto accumulate = [&](const nn::hid::NpadBaseState &state) -> void {
+                out.buttons |= state.mButtons.field[0];
+                consider_stick(out.have_stick_l, out.stick_l, state.mAnalogStickL);
+                consider_stick(out.have_stick_r, out.stick_r, state.mAnalogStickR);
+            };
 
-            consider_stick(out.have_stick_r, out.stick_r, full.mAnalogStickR);
-            consider_stick(out.have_stick_r, out.stick_r, handheld.mAnalogStickR);
-            consider_stick(out.have_stick_r, out.stick_r, joy_dual.mAnalogStickR);
-            consider_stick(out.have_stick_r, out.stick_r, joy_left.mAnalogStickR);
-            consider_stick(out.have_stick_r, out.stick_r, joy_right.mAnalogStickR);
+            constexpr uint kHandheldPort = 0x20;
+            const nn::hid::NpadStyleSet style = nn::hid::GetNpadStyleSet(port);
+            bool                        read_any = false;
+
+            if (style.isBitSet(nn::hid::NpadStyleTag::NpadStyleFullKey)) {
+                nn::hid::NpadFullKeyState full {};
+                nn::hid::GetNpadState(&full, port);
+                accumulate(full);
+                read_any = true;
+            }
+            if (style.isBitSet(nn::hid::NpadStyleTag::NpadStyleJoyDual)) {
+                nn::hid::NpadJoyDualState joy_dual {};
+                nn::hid::GetNpadState(&joy_dual, port);
+                accumulate(joy_dual);
+                read_any = true;
+            }
+            if (style.isBitSet(nn::hid::NpadStyleTag::NpadStyleJoyLeft)) {
+                nn::hid::NpadJoyLeftState joy_left {};
+                nn::hid::GetNpadState(&joy_left, port);
+                accumulate(joy_left);
+                read_any = true;
+            }
+            if (style.isBitSet(nn::hid::NpadStyleTag::NpadStyleJoyRight)) {
+                nn::hid::NpadJoyRightState joy_right {};
+                nn::hid::GetNpadState(&joy_right, port);
+                accumulate(joy_right);
+                read_any = true;
+            }
+
+            if (style.isBitSet(nn::hid::NpadStyleTag::NpadStyleHandheld) || !read_any) {
+                nn::hid::NpadHandheldState handheld {};
+                nn::hid::GetNpadState(&handheld, kHandheldPort);
+                accumulate(handheld);
+                read_any = true;
+            }
 
             return out.buttons != 0 || out.have_stick_l || out.have_stick_r;
         }
@@ -881,11 +893,17 @@ namespace d3::imgui_overlay {
                 ImGuiIO &io    = ImGui::GetIO();
                 io.IniFilename = nullptr;
                 io.LogFilename = nullptr;
+                io.ConfigNavCursorVisibleAuto = true;
+                io.MouseDrawCursor            = true;
                 io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
-                io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+                // io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
                 io.ConfigFlags |= ImGuiConfigFlags_IsTouchScreen;
                 io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+                // io.ConfigFlags |= ImGuiConfigFlags_NoMouse;
+                // io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
                 io.BackendFlags |= ImGuiBackendFlags_HasGamepad;
+                io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
+                io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
                 io.BackendPlatformName = "d3hack";
             }
 

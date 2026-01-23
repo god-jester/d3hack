@@ -248,7 +248,7 @@ namespace d3 {
             *rt_scale = s_default_scale;
             return;
         }
-        PRINT_EXPR("%f : %f", *rt_scale, scale);
+        // PRINT_EXPR("%f : %f", *rt_scale, scale);
         *rt_scale = scale;
     }
 

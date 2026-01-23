@@ -25,8 +25,17 @@
 
 #include <stdfloat>
 
+#if defined(__STDCPP_FLOAT16_T__)
 using f16 = std::float16_t;
+#else
+using f16 = _Float16;
+#endif
+
+#if defined(__STDCPP_FLOAT128_T__)
 using f128 = std::float128_t;
+#else
+using f128 = long double;
+#endif
 
 #define APPEND_IMPL(x, y) x ## y
 #define APPEND(x, y) APPEND_IMPL(x, y)

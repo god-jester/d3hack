@@ -34,7 +34,7 @@ MOUNT_PATH := /mnt/k
 #------------------------
 
 # Settings for deploying over FTP. Used by the deploy-ftp.py script.
-FTP_IP := 192.168.1.101
+FTP_IP := 10.0.30.77
 FTP_PORT := 5000
 FTP_USERNAME := anonymous
 FTP_PASSWORD :=
