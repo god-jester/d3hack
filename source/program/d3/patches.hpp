@@ -263,12 +263,17 @@ namespace d3 {
             jest.Patch<ins::Movz>(PatchTable("patch_dynamic_seasonal_04_movz"), reg::W0, 1);  // always true for Console::Online::IsSeasonsInitialized()
 
             // Update season_created uses at runtime (UIOnlineActions::SetGameParamsForHero).
-            // jest.Patch<ins::Movz>(PatchTable("patch_dynamic_seasonal_05_movz"), reg::W21, global_config.seasons.current_season);  // season_created = ...
+            jest.Patch<ins::Movz>(PatchTable("patch_dynamic_seasonal_05_movz"), reg::W21, global_config.seasons.current_season);  // season_created = ...
             // Ignore mismatched hero season in UIHeroSelect (skip Rebirth/season prompt for old seasons).
             // jest.Patch<ins::Nop>(PatchTable("patch_dynamic_seasonal_06_nop"));  // B.ne loc_358C74
             // Hide "Create Seasonal Hero" main menu option (item 9) when forcing season current_season.
             // ItemShouldBeVisible(case 9) calls IsSeasonsInitialized; forcing reg::W0=0 makes it return false.
             // jest.Patch<ins::Movz>(PatchTable("patch_dynamic_seasonal_07_movz"), reg::W0, 0);
+            /* Always return error_none for Console::UIOnlineActions::ValidateHeroForPartyMember (skip function body). */
+            // 0x1BF5F0: SUB SP, SP, #0x100
+            jest.Patch<ins::Movz>(PatchTable("patch_dynamic_seasonal_08_movz"), reg::W0, 0);  // error_none
+            // 0x1BF5F4: STR X23, [SP,#0xF0+var_30]
+            jest.Patch<ins::Ret>(PatchTable("patch_dynamic_seasonal_09_ret"));
         }
     }
 
@@ -482,7 +487,8 @@ namespace d3 {
         PortCheatCodes();
 
         XVarBool_Set(&g_varLocalLoggingEnable, true, 3u);
-        // XVarBool_Set(&g_varChallengeRiftEnabled, global_config.challenge_rifts.active, 3u);
+        XVarBool_Set(&g_varChallengeRiftEnabled, global_config.challenge_rifts.active, 3u);
+        XVarBool_Set(&g_varSeasonsOverrideEnabled, global_config.seasons.active, 3u);
         XVarBool_Set(&g_varOnlineServicePTR, global_config.seasons.spoof_ptr, 3u);
         XVarBool_Set(&g_varExperimentalScheduling, global_config.resolution_hack.exp_scheduler, 3u);
         jest.Patch<ins::Movz>(PatchTable("patch_signin_01_movz"), reg::W0, 1);  // always Console::GamerProfile::IsSignedInOnline

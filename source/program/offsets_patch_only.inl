@@ -112,9 +112,11 @@
     {util::ModuleIndex::Main, 0x72EDD0, "patch_dynamic_seasonal_02_movz"},  // MOVZ | W3 | Season.State
     {util::ModuleIndex::Main, 0x351CBC, "patch_dynamic_seasonal_03_movz"},  // MOVZ | W1 | always true for UIHeroCreate::Console::bSeasonConfirmedAvailable() (skip B.ne and always confirm)
     {util::ModuleIndex::Main, 0x5FF0C, "patch_dynamic_seasonal_04_movz"},   // MOVZ | W0 | always true for Console::Online::IsSeasonsInitialized()
-    {util::ModuleIndex::Main, 0x1BD140, "patch_dynamic_seasonal_05_movz"},  // unused | MOVZ | W21 | season_created = ...
+    {util::ModuleIndex::Main, 0x1BD140, "patch_dynamic_seasonal_05_movz"},  // MOVZ | W21 | season_created = ...
     {util::ModuleIndex::Main, 0x358A7C, "patch_dynamic_seasonal_06_nop"},   // unused | NOP | B.ne loc_358C74
     {util::ModuleIndex::Main, 0x35C0C4, "patch_dynamic_seasonal_07_movz"},  // unused | MOVZ | W0
+    {util::ModuleIndex::Main, 0x1BF5F0, "patch_dynamic_seasonal_08_movz"},  // MOVZ | W0 | error_none for UIOnlineActions::ValidateHeroForPartyMember
+    {util::ModuleIndex::Main, 0x1BF5F4, "patch_dynamic_seasonal_09_ret"},   // RET | skip UIOnlineActions::ValidateHeroForPartyMember body
     /* Patch_dynamic_events */
     {util::ModuleIndex::Main, 0x4A7BD8, "patch_dynamic_events_01_movz"},  // unused | MOVZ | W3
     {util::ModuleIndex::Main, 0x4A7C04, "patch_dynamic_events_02_movz"},  // unused | MOVZ | W3
