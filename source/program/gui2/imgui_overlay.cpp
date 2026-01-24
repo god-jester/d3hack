@@ -3,6 +3,7 @@
 #include <array>
 #include <algorithm>
 #include <atomic>
+#include <cfloat>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -13,6 +14,7 @@
 #include "lib/reloc/reloc.hpp"
 #include "lib/util/sys/mem_layout.hpp"
 #include "nn/hid.hpp"  // IWYU pragma: keep
+#include "nn/oe.hpp"   // IWYU pragma: keep
 #include "nn/os.hpp"   // IWYU pragma: keep
 #include "program/romfs_assets.hpp"
 #include "program/gui2/ui/overlay.hpp"
@@ -266,9 +268,9 @@ namespace d3::imgui_overlay {
                 consider_stick(out.have_stick_r, out.stick_r, state.mAnalogStickR);
             };
 
-            constexpr uint kHandheldPort = 0x20;
-            const nn::hid::NpadStyleSet style = nn::hid::GetNpadStyleSet(port);
-            bool                        read_any = false;
+            constexpr uint              kHandheldPort = 0x20;
+            const nn::hid::NpadStyleSet style         = nn::hid::GetNpadStyleSet(port);
+            bool                        read_any      = false;
 
             if (style.isBitSet(nn::hid::NpadStyleTag::NpadStyleFullKey)) {
                 nn::hid::NpadFullKeyState full {};
@@ -319,7 +321,8 @@ namespace d3::imgui_overlay {
         static bool                  g_last_npad_valid = false;
 
         static void PushImGuiGamepadInputs(float dt_s);
-        static void PushImGuiMouseInputs(const ImVec2 &viewport_size);
+        static auto PushImGuiTouchInputs(const ImVec2 &viewport_size) -> bool;
+        static auto PushImGuiMouseInputs(const ImVec2 &viewport_size) -> bool;
         static void PushImGuiKeyboardInputs();
         static void UpdateImGuiStyleAndScale(ImVec2 viewport_size);
 
@@ -509,14 +512,91 @@ namespace d3::imgui_overlay {
             }
         }
 
-        static void PushImGuiMouseInputs(const ImVec2 &viewport_size) {
+        static auto PushImGuiTouchInputs(const ImVec2 &viewport_size) -> bool {
             if (!g_imgui_ctx_initialized) {
-                return;
+                return false;
             }
 
             // Avoid calling into hid early; wait until the game has completed shell initialization.
             if (d3::g_ptMainRWindow == nullptr) {
-                return;
+                return false;
+            }
+
+            static bool s_touch_init_tried = false;
+            static s32  s_prev_touch_count = 0;
+            static s32  s_last_touch_x     = 0;
+            static s32  s_last_touch_y     = 0;
+            static bool s_clear_hover_next = false;
+
+            ImGuiIO &io = ImGui::GetIO();
+
+            // Keep touch reads scoped so our own HID hooks don't block us while the overlay is visible.
+            ScopedHidPassthroughForOverlay const passthrough_guard;
+
+            if (!s_touch_init_tried) {
+                s_touch_init_tried = true;
+                nn::hid::InitializeTouchScreen();
+            }
+
+            nn::hid::TouchScreenState<nn::hid::TouchStateCountMax> st {};
+            nn::hid::GetTouchScreenState(&st);
+
+            const bool down        = st.count > 0;
+            const bool released    = !down && s_prev_touch_count > 0;
+            const bool active      = down || released;
+            const bool clear_hover = s_clear_hover_next && !down;
+
+            const auto op_mode = nn::oe::GetOperationMode();
+            if (op_mode != nn::oe::OperationMode_Handheld && !active) {
+                if (clear_hover) {
+                    io.AddMousePosEvent(-FLT_MAX, -FLT_MAX);
+                    s_clear_hover_next = false;
+                }
+                return false;
+            }
+
+            if (down) {
+                s_last_touch_x     = st.touches[0].x;
+                s_last_touch_y     = st.touches[0].y;
+                s_clear_hover_next = false;
+            }
+
+            if (active) {
+                io.AddMouseSourceEvent(ImGuiMouseSource_TouchScreen);
+
+                // Touch coordinates are typically reported in 1280x720 space; rescale to the active viewport.
+                float x = (static_cast<float>(s_last_touch_x) / 1280.0f) * viewport_size.x;
+                float y = (static_cast<float>(s_last_touch_y) / 720.0f) * viewport_size.y;
+                x       = std::clamp(x, 0.0f, viewport_size.x);
+                y       = std::clamp(y, 0.0f, viewport_size.y);
+
+                io.AddMousePosEvent(x, y);
+                io.AddMouseButtonEvent(ImGuiMouseButton_Left, down);
+                io.MouseDrawCursor = (x >= 1.0f && y >= 1.0f);
+
+                if (released) {
+                    s_clear_hover_next = true;
+                }
+            }
+
+            if (clear_hover) {
+                io.AddMousePosEvent(-FLT_MAX, -FLT_MAX);
+                s_clear_hover_next = false;
+            }
+
+            s_prev_touch_count = st.count;
+
+            return active;
+        }
+
+        static auto PushImGuiMouseInputs(const ImVec2 &viewport_size) -> bool {
+            if (!g_imgui_ctx_initialized) {
+                return false;
+            }
+
+            // Avoid calling into hid early; wait until the game has completed shell initialization.
+            if (d3::g_ptMainRWindow == nullptr) {
+                return false;
             }
 
             // Keep KBM init and reads scoped so our own HID hooks don't block us while the overlay is visible.
@@ -530,20 +610,18 @@ namespace d3::imgui_overlay {
 
             nn::hid::MouseState st {};
             nn::hid::GetMouseState(&st);
+            const bool mouse_connected = st.attributes.isBitSet(nn::hid::MouseAttribute::IsConnected);
 
             ImGuiIO &io = ImGui::GetIO();
+            if (!mouse_connected) {
+                io.AddMousePosEvent(-FLT_MAX, -FLT_MAX);
+                return false;
+            }
+            io.AddMouseSourceEvent(ImGuiMouseSource_Mouse);
 
             // Mouse/touch coordinates are typically reported in 1280x720 space; rescale to the active viewport.
-            float x = (static_cast<float>(st.x) / 1280.0f) * viewport_size.x;
-            float y = (static_cast<float>(st.y) / 720.0f) * viewport_size.y;
-            if (x < 0.0f)
-                x = 0.0f;
-            if (y < 0.0f)
-                y = 0.0f;
-            if (x > viewport_size.x)
-                x = viewport_size.x;
-            if (y > viewport_size.y)
-                y = viewport_size.y;
+            float x = std::clamp((static_cast<float>(st.x) / 1280.0f) * viewport_size.x, 0.0f, viewport_size.x);
+            float y = std::clamp((static_cast<float>(st.y) / 720.0f) * viewport_size.y, 0.0f, viewport_size.y);
 
             io.AddMousePosEvent(x, y);
 
@@ -561,6 +639,8 @@ namespace d3::imgui_overlay {
             if (st.wheelDeltaY != 0) {
                 io.AddMouseWheelEvent(0.0f, st.wheelDeltaY > 0 ? 0.5f : -0.5f);
             }
+
+            return mouse_connected;
         }
 
         static void PushImGuiKeyboardInputs() {
@@ -893,18 +973,14 @@ namespace d3::imgui_overlay {
                 ImGuiIO &io    = ImGui::GetIO();
                 io.IniFilename = nullptr;
                 io.LogFilename = nullptr;
-                io.ConfigNavCursorVisibleAuto = true;
-                io.MouseDrawCursor            = true;
                 io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
-                // io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+                io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
                 io.ConfigFlags |= ImGuiConfigFlags_IsTouchScreen;
                 io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-                // io.ConfigFlags |= ImGuiConfigFlags_NoMouse;
-                // io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
                 io.BackendFlags |= ImGuiBackendFlags_HasGamepad;
                 io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
                 io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
-                io.BackendPlatformName = "d3hack";
+                io.BackendPlatformName = "Nintendo Switch";
             }
 
             if (!g_backend_initialized && g_device && g_queue) {
@@ -967,10 +1043,25 @@ namespace d3::imgui_overlay {
 
                     const ImVec2 viewport_size = ImguiNvnBackend::getBackendData()->viewportSize;
                     UpdateImGuiStyleAndScale(viewport_size);
-                    PushImGuiGamepadInputs(ImGui::GetIO().DeltaTime);
-                    if (g_overlay.overlay_visible()) {
-                        PushImGuiMouseInputs(viewport_size);
+                    ImGuiIO   &io              = ImGui::GetIO();
+                    const bool overlay_visible = g_overlay.overlay_visible();
+
+                    if (!overlay_visible) {
+                        // Prevent stale hover state when the overlay is hidden.
+                        io.AddMousePosEvent(-FLT_MAX, -FLT_MAX);
+                        io.MouseDrawCursor = false;
+                    }
+
+                    PushImGuiGamepadInputs(io.DeltaTime);
+
+                    if (overlay_visible) {
+                        bool       mouse_connected = false;
+                        const bool touch_active    = PushImGuiTouchInputs(viewport_size);
+                        if (!touch_active) {
+                            mouse_connected = PushImGuiMouseInputs(viewport_size);
+                        }
                         PushImGuiKeyboardInputs();
+                        io.MouseDrawCursor = touch_active || mouse_connected;
                     }
 
                     ImGui::NewFrame();

@@ -1,7 +1,8 @@
 #pragma once
 
-#include "types.h"
+#include "nn/time.hpp"
 #include "nn/util/bit_flag_set.hpp"
+#include "types.h"
 
 namespace nn::hid {
 
@@ -238,6 +239,46 @@ namespace nn::hid {
         KeyboardModifierSet modifiers;
         KeyboardKeySet keys;
     };
+
+    constexpr int TouchStateCountMax = 16;
+    constexpr int TouchScreenStateCountMax = 16;
+
+    enum class TouchAttribute : u32 {
+      Start = 0,
+      End = 1,
+    };
+
+    using TouchAttributeSet = nn::util::BitFlagSet<32, TouchAttribute>;
+
+    struct TouchState {
+      TimeSpanType deltaTime;
+      TouchAttributeSet attributes;
+      s32 fingerId;
+      s32 x;
+      s32 y;
+      s32 diameterX;
+      s32 diameterY;
+      s32 rotationAngle;
+      u8 _reserved[4];
+    };
+
+    template <size_t N>
+    struct TouchScreenState {
+      static_assert(0 < N);
+      static_assert(N <= TouchStateCountMax);
+      u64 samplingNumber = 0;
+      s32 count = 0;
+      u8 _reserved[4];
+      TouchState touches[N] = {};
+    };
+
+    void InitializeTouchScreen();
+
+    template <size_t N>
+    void GetTouchScreenState(nn::hid::TouchScreenState<N>*);
+
+    template <size_t N>
+    int GetTouchScreenStates(nn::hid::TouchScreenState<N>*, int count);
 
     void InitializeMouse();
     void InitializeKeyboard();
