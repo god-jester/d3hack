@@ -76,15 +76,15 @@ tab_overlays = "叠加层"
 # GUI
 tab_gui = "GUI"
 # Resolution
-tab_resolution = "分辨率"
+tab_resolution = "ResHack"
 # Seasons
 tab_seasons = "赛季"
 # Events
 tab_events = "活动"
 # Rare cheats
-tab_rare_cheats = "稀有作弊"
+tab_rare_cheats = "作弊"
 # Challenge rifts
-tab_challenge_rifts = "挑战秘境"
+tab_challenge_rifts = "秘境"
 # Loot
 tab_loot = "战利品"
 # Debug

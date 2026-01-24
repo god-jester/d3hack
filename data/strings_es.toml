@@ -76,15 +76,15 @@ tab_overlays = "Superposiciones"
 # GUI
 tab_gui = "GUI"
 # Resolution
-tab_resolution = "Resolucion"
+tab_resolution = "ResHack"
 # Seasons
 tab_seasons = "Temporadas"
 # Events
 tab_events = "Eventos"
 # Rare cheats
-tab_rare_cheats = "Trucos raros"
+tab_rare_cheats = "Trucos"
 # Challenge rifts
-tab_challenge_rifts = "Fisuras de desafio"
+tab_challenge_rifts = "Fisuras"
 # Loot
 tab_loot = "Botin"
 # Debug

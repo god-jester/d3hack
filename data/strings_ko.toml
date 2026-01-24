@@ -76,15 +76,15 @@ tab_overlays = "오버레이"
 # GUI
 tab_gui = "GUI"
 # Resolution
-tab_resolution = "해상도"
+tab_resolution = "ResHack"
 # Seasons
 tab_seasons = "시즌"
 # Events
 tab_events = "이벤트"
 # Rare cheats
-tab_rare_cheats = "희귀 치트"
+tab_rare_cheats = "치트"
 # Challenge rifts
-tab_challenge_rifts = "도전 균열"
+tab_challenge_rifts = "균열"
 # Loot
 tab_loot = "전리품"
 # Debug

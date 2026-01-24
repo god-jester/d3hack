@@ -141,11 +141,13 @@ namespace d3::imgui_overlay {
             std::free(ptr);
         }
 
-        bool g_imgui_ctx_initialized = false;
-        bool g_imgui_allocators_set  = false;
-        bool g_backend_initialized   = false;
-        bool g_font_atlas_built      = false;
-        bool g_font_uploaded         = false;
+        bool    g_imgui_ctx_initialized = false;
+        bool    g_imgui_allocators_set  = false;
+        bool    g_backend_initialized   = false;
+        bool    g_font_atlas_built      = false;
+        bool    g_font_uploaded         = false;
+        ImFont *g_font_body             = nullptr;
+        ImFont *g_font_title            = nullptr;
 
         // NOTE: The backend expects NVN C++ wrapper types (nvn::Device/Queue/CommandBuffer).
         // We will wire those up once we hook stable NVN init entrypoints.
@@ -348,14 +350,15 @@ namespace d3::imgui_overlay {
         static void InitializeImGuiStyle() {
             ImGui::StyleColorsDark();
 
-            ImGuiStyle &style      = ImGui::GetStyle();
-            style.WindowPadding    = ImVec2(14.0f, 12.0f);
-            style.FramePadding     = ImVec2(10.0f, 6.0f);
-            style.ItemSpacing      = ImVec2(10.0f, 8.0f);
-            style.ItemInnerSpacing = ImVec2(8.0f, 6.0f);
-            style.IndentSpacing    = 18.0f;
-            style.ScrollbarSize    = 18.0f;
-            style.GrabMinSize      = 12.0f;
+            ImGuiStyle &style       = ImGui::GetStyle();
+            style.WindowPadding     = ImVec2(14.0f, 12.0f);
+            style.FramePadding      = ImVec2(10.0f, 8.0f);
+            style.ItemSpacing       = ImVec2(10.0f, 8.0f);
+            style.ItemInnerSpacing  = ImVec2(6.0f, 4.0f);
+            style.IndentSpacing     = 18.0f;
+            style.ScrollbarSize     = 18.0f;
+            style.GrabMinSize       = 12.0f;
+            style.TouchExtraPadding = ImVec2(6.0f, 6.0f);
 
             style.WindowRounding    = 6.0f;
             style.ChildRounding     = 4.0f;
@@ -430,17 +433,22 @@ namespace d3::imgui_overlay {
                 g_last_gui_scale = -1.0f;
             }
 
-            const float scale = ComputeGuiScale(viewport_size);
-            if (g_last_gui_scale > 0.0f && std::fabs(scale - g_last_gui_scale) < 0.01f) {
+            constexpr float kTouchFontScale   = 1.00f;
+            constexpr float kTouchButtonScale = 1.35f;
+
+            const float base_scale = ComputeGuiScale(viewport_size);
+            const float font_scale = base_scale * kTouchFontScale;
+            if (g_last_gui_scale > 0.0f && std::fabs(font_scale - g_last_gui_scale) < 0.01f) {
                 return;
             }
 
             ImGuiStyle &style = ImGui::GetStyle();
             style             = g_imgui_base_style;
-            style.ScaleAllSizes(scale);
+            style.ScaleAllSizes(font_scale * 0.8f);
+            style.FramePadding = ImVec2(style.FramePadding.x * kTouchButtonScale, style.FramePadding.y * kTouchButtonScale);
 
-            style.FontScaleMain = scale;
-            g_last_gui_scale    = scale;
+            style.FontScaleMain = font_scale;
+            g_last_gui_scale    = font_scale;
         }
 
         static void PushImGuiGamepadInputs(float dt_s) {
@@ -1205,6 +1213,8 @@ namespace d3::imgui_overlay {
             g_font_atlas_built     = false;
             g_font_uploaded        = false;
             g_font_build_attempted = false;
+            g_font_body            = nullptr;
+            g_font_title           = nullptr;
             s_ranges_lang.clear();
         }
 
@@ -1248,11 +1258,13 @@ namespace d3::imgui_overlay {
         PRINT_LINE("[imgui_overlay] Preparing ImGui font atlas...");
         io.Fonts->Flags |= ImFontAtlasFlags_NoPowerOfTwoHeight;
         ImFontConfig font_cfg {};
-        font_cfg.Name[0] = 'd';
-        font_cfg.Name[1] = '3';
-        font_cfg.Name[2] = '\0';
+        font_cfg.Name[0]               = 'd';
+        font_cfg.Name[1]               = '3';
+        font_cfg.Name[2]               = '\0';
+        constexpr float kFontSizeBody  = 16.0f;
+        constexpr float kFontSizeTitle = 18.0f;
         // Build for docked readability (we apply a runtime scale for 720p).
-        font_cfg.SizePixels  = 16.0f;
+        font_cfg.SizePixels  = kFontSizeBody;
         font_cfg.OversampleH = 2;
         font_cfg.OversampleV = 2;
         static ImVector<ImWchar> s_font_ranges;
@@ -1274,7 +1286,8 @@ namespace d3::imgui_overlay {
         }
         font_cfg.GlyphRanges = s_font_ranges.Data;
 
-        ImFont const *font             = nullptr;
+        ImFont const *font_body        = nullptr;
+        ImFont const *font_title       = nullptr;
         bool          used_shared_font = false;
 
         const std::array<ImWchar, 3> nvn_ext_ranges = {0xE000, 0xE152, 0};
@@ -1302,8 +1315,8 @@ namespace d3::imgui_overlay {
             const size_t shared_size = nn::pl::GetSharedFontSize(shared_base);
             if (shared_font != nullptr && shared_size > 0) {
                 font_cfg.FontDataOwnedByAtlas = false;
-                font                          = io.Fonts->AddFontFromMemoryTTF(const_cast<void *>(shared_font), static_cast<int>(shared_size), font_cfg.SizePixels, &font_cfg);
-                used_shared_font              = (font != nullptr);
+                font_body                     = io.Fonts->AddFontFromMemoryTTF(const_cast<void *>(shared_font), static_cast<int>(shared_size), font_cfg.SizePixels, &font_cfg);
+                used_shared_font              = (font_body != nullptr);
                 if (used_shared_font) {
                     PRINT("[imgui_overlay] Loaded Nintendo shared system font (base=%d)", static_cast<int>(shared_base));
                 } else {
@@ -1350,13 +1363,63 @@ namespace d3::imgui_overlay {
             }
         }
 
-        if (font == nullptr) {
-            (void)io.Fonts->AddFontDefault();
+        if (used_shared_font) {
+            ImFontConfig title_cfg         = font_cfg;
+            title_cfg.SizePixels           = kFontSizeTitle;
+            title_cfg.FontDataOwnedByAtlas = false;
+            font_title                     = io.Fonts->AddFontFromMemoryTTF(const_cast<void *>(nn::pl::GetSharedFontAddress(shared_base)), static_cast<int>(nn::pl::GetSharedFontSize(shared_base)), title_cfg.SizePixels, &title_cfg);
+            if (font_title == nullptr) {
+                PRINT_LINE("[imgui_overlay] ERROR: AddFontFromMemoryTTF failed for shared title font");
+            }
+
+            if (font_title != nullptr && shared_ext_ready) {
+                const void  *shared_ext_font = nn::pl::GetSharedFontAddress(shared_ext);
+                const size_t shared_ext_size = nn::pl::GetSharedFontSize(shared_ext);
+                if (shared_ext_font != nullptr && shared_ext_size > 0) {
+                    ImFontConfig ext_cfg         = title_cfg;
+                    ext_cfg.MergeMode            = true;
+                    ext_cfg.FontDataOwnedByAtlas = false;
+                    ext_cfg.GlyphRanges          = is_chinese ? s_font_ranges.Data : nvn_ext_ranges.data();
+                    (void)io.Fonts->AddFontFromMemoryTTF(const_cast<void *>(shared_ext_font), static_cast<int>(shared_ext_size), ext_cfg.SizePixels, &ext_cfg);
+                }
+            }
+
+            if (font_title != nullptr && shared_nvn_ext_ready) {
+                const void  *nvn_ext_font = nn::pl::GetSharedFontAddress(nn::pl::SharedFontType_NintendoExtension);
+                const size_t nvn_ext_size = nn::pl::GetSharedFontSize(nn::pl::SharedFontType_NintendoExtension);
+                if (nvn_ext_font != nullptr && nvn_ext_size > 0) {
+                    ImFontConfig ext_cfg         = title_cfg;
+                    ext_cfg.MergeMode            = true;
+                    ext_cfg.FontDataOwnedByAtlas = false;
+                    ext_cfg.GlyphRanges          = nvn_ext_ranges.data();
+                    (void)io.Fonts->AddFontFromMemoryTTF(const_cast<void *>(nvn_ext_font), static_cast<int>(nvn_ext_size), ext_cfg.SizePixels, &ext_cfg);
+                }
+            }
         }
+
+        if (!used_shared_font) {
+            ImFontConfig body_cfg  = font_cfg;
+            body_cfg.SizePixels    = kFontSizeBody;
+            font_body              = io.Fonts->AddFontDefault(&body_cfg);
+            ImFontConfig title_cfg = font_cfg;
+            title_cfg.SizePixels   = kFontSizeTitle;
+            font_title             = io.Fonts->AddFontDefault(&title_cfg);
+        }
+
+        g_font_body  = const_cast<ImFont *>(font_body);
+        g_font_title = const_cast<ImFont *>(font_title != nullptr ? font_title : font_body);
 
         g_font_atlas_built = true;
         s_font_lang        = desired_lang;
         PRINT_LINE("[imgui_overlay] ImGui font atlas prepared");
+    }
+
+    auto GetTitleFont() -> ImFont * {
+        return g_font_title;
+    }
+
+    auto GetBodyFont() -> ImFont * {
+        return g_font_body;
     }
 
 }  // namespace d3::imgui_overlay

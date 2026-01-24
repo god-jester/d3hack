@@ -110,34 +110,44 @@ d3hack-nx is an exlaunch-based module that hooks D3 at runtime. It modifies game
 
 ## Quick Start
 
-### 1) Install
+### 1) Choose the right release asset
 
-- Grab the latest release archive.
-- From the archive, copy `exefs/subsdk9` and `exefs/main.npdm`, plus the entire `romfs/` folder (contains `d3gui/imgui.bin`, fonts, and translations).
-- Title ID: `01001B300B9BE000`.
-- Atmosphere exefs: `atmosphere/contents/01001b300b9be000/exefs/`
-- Atmosphere romfs: `atmosphere/contents/01001b300b9be000/romfs/`
-- Ryujinx (Windows) exefs: `%AppData%\Ryujinx\mods\contents\01001B300B9BE000\d3hack\exefs\`
-- Ryujinx (Windows) romfs: `%AppData%\Ryujinx\mods\contents\01001B300B9BE000\d3hack\romfs\`
-- Ryujinx (macOS) exefs: `~/Library/Application Support/Ryujinx/mods/contents/01001b300b9be000/d3hack/exefs`
-- Ryujinx (macOS) romfs: `~/Library/Application Support/Ryujinx/mods/contents/01001b300b9be000/d3hack/romfs`
-- Yuzu (Windows) exefs: `%AppData%\yuzu\load\01001B300B9BE000\d3hack\exefs\`
-- Yuzu (Windows) romfs: `%AppData%\yuzu\load\01001B300B9BE000\d3hack\romfs\`
-- Yuzu (macOS) exefs: `~/Library/Application Support/yuzu/load/01001b300b9be000/d3hack/exefs`
-- Yuzu (macOS) romfs: `~/Library/Application Support/yuzu/load/01001b300b9be000/d3hack/romfs`
+There are two release zips:
+- **Atmosphere LayeredFS (Switch hardware)**: contains `sdcard/` with Atmosphere + config paths.
+- **Emulators / mod managers**: contains `01001B300B9BE000/` (mod folder) and `sdcard/` (config).
 
-### 2) Configure
+Title ID: `01001B300B9BE000`.
 
-Copy the example config to your target path, then edit:
-- Source: `examples/config/d3hack-nx/config.toml`
+### 2) Install
 
-Place the edited `config.toml` at:
+**Atmosphere LayeredFS (Switch hardware)**
+- Copy the `sdcard/` folder contents to the root of your SD card.
+- Exefs path: `sd:/atmosphere/contents/01001B300B9BE000/exefs/`
+- Romfs path: `sd:/atmosphere/contents/01001B300B9BE000/romfs/`
+- If you use Alchemist, install the exefs and romfs folders under:
+  `/switch/.packages/Alchemist/contents/Diablo III - D3Hack/01001B300B9BE000/`
+
+**Emulators / mod managers**
+- Copy the `01001B300B9BE000/` folder into your mod manager or emulator mod root.
+- Example paths:
+  - Ryujinx (Windows): `%AppData%\Ryujinx\mods\contents\01001B300B9BE000\d3hack\`
+  - Ryujinx (macOS): `~/Library/Application Support/Ryujinx/mods/contents/01001B300B9BE000/d3hack/`
+  - Yuzu (Windows): `%AppData%\yuzu\load\01001B300B9BE000\d3hack\`
+  - Yuzu (macOS): `~/Library/Application Support/yuzu/load/01001B300B9BE000/d3hack/`
+
+### 3) Configure
+
+The release zip includes `sdcard/config/d3hack-nx/config.toml`
+and `sdcard/config/d3hack-nx/rift_data/`. Copy the `sdcard/config/`
+folder to your target SD root.
 
 - `sd:/config/d3hack-nx/config.toml` (hardware)
 - Ryujinx (Windows): `%AppData%\Ryujinx\sdcard\config\d3hack-nx\config.toml`
 - Ryujinx (macOS): `~/Library/Application Support/Ryujinx/sdcard/config/d3hack-nx/config.toml`
 - Yuzu (Windows): `%AppData%\yuzu\sdmc\config\d3hack-nx\config.toml`
 - Yuzu (macOS): `~/Library/Application Support/yuzu/sdmc/config/d3hack-nx/config.toml`
+
+Edit `config.toml` after copying.
 
 Key sections:
 
@@ -149,7 +159,7 @@ Key sections:
 - `[rare_cheats]`, `[overlays]`, `[debug]`.
 - `[gui]`: Enabled, Visible, Language (override).
 
-### 3) (Optional) Challenge Rift data
+### 4) (Optional) Challenge Rift data
 
 Put weekly protobuf dumps under `sd:/config/d3hack-nx/rift_data/` (00-99):
 
@@ -164,11 +174,35 @@ The hook in `source/program/d3/hooks/debug.hpp` intercepts the network callback 
 
 Tip: capture real weekly files once, then iterate offline instantly. There is a helper: `python3 tools/import_challenge_dumps.py --src ~/dumps --dst examples/config/d3hack-nx/rift_data --dry-run` then rerun without `--dry-run`.
 
-### 4) Launch
+### 5) Launch
 
 Start D3 normally. The mod verifies build 2.7.6.90885, loads config, then applies patches/hooks.
 
 ---
+
+## Version Compatibility (2.7.6 Pin)
+
+D3Hack targets game build 2.7.6.90885. If you are on any newer game update, you can make it compatible by downgrading to 2.7.6 via LayeredFS. This is done by adding the 2.7.6 files below into your layeredfs exefs/romfs paths.
+
+Files to layer (2.7.6):
+
+```
+exefs/main
+exefs/main.npdm
+romfs/CPKs/CoreCommon.cpk
+romfs/CPKs/ServerCommon.cpk
+```
+
+Known 2.7.6 file sizes + MD5 (Dec 26 2023):
+
+```
+9.7M  Dec 26 2023  c3d386af84779a9b6b74b3a3988193d2  exefs/main
+1.5K  Dec 26 2023  b02fdd816addff5bb72fcdc2c4f719ef  exefs/main.npdm
+76M   Dec 26 2023  618b6dffc4cf7c4da98ca47529a906c8  romfs/CPKs/CoreCommon.cpk
+5.4M  Dec 26 2023  de80fce3642d9cde15147af544877983  romfs/CPKs/ServerCommon.cpk
+```
+
+These files are shared on Discord and are easy to acquire.
 
 ## Season Theme Mapping (14-22, 24-37)
 

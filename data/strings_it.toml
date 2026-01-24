@@ -76,15 +76,15 @@ tab_overlays = "Overlay"
 # GUI
 tab_gui = "GUI"
 # Resolution
-tab_resolution = "Risoluzione"
+tab_resolution = "ResHack"
 # Seasons
 tab_seasons = "Stagioni"
 # Events
 tab_events = "Eventi"
 # Rare cheats
-tab_rare_cheats = "Cheat rari"
+tab_rare_cheats = "Cheat"
 # Challenge rifts
-tab_challenge_rifts = "Varchi sfida"
+tab_challenge_rifts = "Varchi"
 # Loot
 tab_loot = "Bottino"
 # Debug

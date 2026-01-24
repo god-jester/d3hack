@@ -260,6 +260,8 @@ namespace d3 {
                 AppDrawFlagSet(APP_DRAW_FPS_BIT, 1);
             if (global_config.overlays.ddm_labels)
                 g_tAppGlobals.eDebugDisplayMode = DDM_FPS_SIMPLE;
+            else
+                g_tAppGlobals.eDebugDisplayMode = DDM_DISABLED;
             if (global_config.defaults_only || !global_config.debug.active || !global_config.debug.enable_debug_flags) {
                 return;
             }

@@ -76,15 +76,15 @@ tab_overlays = "オーバーレイ"
 # GUI
 tab_gui = "GUI"
 # Resolution
-tab_resolution = "解像度"
+tab_resolution = "ResHack"
 # Seasons
 tab_seasons = "シーズン"
 # Events
 tab_events = "イベント"
 # Rare cheats
-tab_rare_cheats = "レアチート"
+tab_rare_cheats = "チート"
 # Challenge rifts
-tab_challenge_rifts = "チャレンジリフト"
+tab_challenge_rifts = "リフト"
 # Loot
 tab_loot = "戦利品"
 # Debug

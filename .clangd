@@ -1,4 +1,6 @@
 ---
+If:
+  PathMatch: [(.*d3hack\/)?source\/program\/.*\.(h|c)(pp)?]
 CompileFlags:
   CompilationDatabase: build
   Add:
@@ -15,28 +17,11 @@ CompileFlags:
     - -mword-relocations
     - -Ofast
     - -mtp=soft
-
-InlayHints:
-  ParameterNames: Yes
-  DeducedTypes: No
 Diagnostics:
+  MissingIncludes: None
   UnusedIncludes: None
+  Includes:
+    AnalyzeAngledIncludes: No
   ClangTidy:
     FastCheckFilter: Loose
     Remove: [readability*, bugprone-dynamic-static-initializers]
----
-If:
-  PathMatch:
-    - .*/source/program/symbols/(game|hooks|items|player_actor)\\.inc
-CompileFlags:
-  Add:
-    - -include
-    - source/program/symbols/base.hpp
----
-If:
-  PathMatch: [.*\.h(pp)?, .*\.c(pp)?]
-  PathExclude: source/program/.*
-Diagnostics:
-  Suppress: '*'
-  ClangTidy:
-    Remove: [readability*]

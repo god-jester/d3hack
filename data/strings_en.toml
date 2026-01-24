@@ -75,16 +75,16 @@ notify_reload_failed = "Reload failed: %s"
 tab_overlays = "Overlays"
 # GUI
 tab_gui = "GUI"
-# Resolution
-tab_resolution = "Resolution"
+# ResHack
+tab_resolution = "ResHack"
 # Seasons
 tab_seasons = "Seasons"
 # Events
 tab_events = "Events"
 # Rare cheats
-tab_rare_cheats = "Rare cheats"
+tab_rare_cheats = "Cheats"
 # Challenge rifts
-tab_challenge_rifts = "Challenge rifts"
+tab_challenge_rifts = "Rifts"
 # Loot
 tab_loot = "Loot"
 # Debug

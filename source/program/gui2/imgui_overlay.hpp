@@ -10,4 +10,7 @@ namespace d3::imgui_overlay {
     // Post a formatted notification to the overlay notifications queue.
     // Safe to call from other modules; does nothing if overlay/windows are not yet created.
     void PostOverlayNotification(const ImVec4 &color, float ttl_s, const char *fmt, ...);
+
+    auto GetTitleFont() -> ImFont *;
+    auto GetBodyFont() -> ImFont *;
 }  // namespace d3::imgui_overlay

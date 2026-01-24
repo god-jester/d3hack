@@ -11,7 +11,7 @@ SectionEnabled = true
 # - 2160 -> 3840x2160 (aliases "2160p" | "4K" | "UHD")
 OutputTarget = 1080
 # Handheld output scale for render target resolution calc (percent; 0=auto/stock 80%).
-OutputHandheldScale = 80
+OutputHandheldScale = 75
 # Handheld output target (vertical). Derived from OutputHandheldScale * OutputTarget.
 OutputTargetHandheld = 0
 # Spoof docked mode (forces docked mode when docked/handheld checks occur).
@@ -21,7 +21,7 @@ MinResScale = 85
 # Maximum resolution scale (percentage) to apply. 100% = default target.
 MaxResScale = 100
 # Clamp internal texture height (0=off, 100-9999)
-ClampTextureResolution = 1200
+ClampTextureResolution = 0
 # Use Blizzard's experimental scheduler; can improve performance.
 ExperimentalScheduler = true
 
@@ -113,9 +113,9 @@ NestingPortals = true
 # Master toggle for gameplay-altering cheats/hacks.
 SectionEnabled = true
 # Movement speed multiplier (1.0 = normal).
-MovementSpeedMultiplier = 1.5
+MovementSpeedMultiplier = 1.3
 # Attack speed multiplier (1.0 = normal).
-AttackSpeedMultiplier = 1.0
+AttackSpeedMultiplier = 1.2
 # Enable colored floating damage numbers (debug hook).
 FloatingDamageColor = true
 # 100% legendary probability for Kadala/Kanai.
@@ -158,6 +158,8 @@ BuildLockerWatermark = false
 FPSLabel = false
 # Show variable resolution label.
 VariableResLabel = true
+# Show D3Hack build version label.
+DDMLabels = false
 
 [loot_modifiers]
 # Loot drop overrides.
@@ -171,7 +173,7 @@ DisableTormentDrops = false
 # Skip torment gating checks (treat as max torment).
 DisableTormentCheck = true
 # Suppress Ramaladni's Gift generation.
-SuppressGiftGeneration = true
+SuppressGiftGeneration = false
 # Force item level for drops (1-70).
 ForcedILevel = 0
 # Force run level for tiered loot tables.
@@ -181,7 +183,7 @@ AncientRank = "Primal"
 
 [debug]
 # Debug-only features.
-SectionEnabled = false
+SectionEnabled = true
 # Dump pub files to SD for inspection.
 EnablePubFileDump = false
 # Enable error trace logging.

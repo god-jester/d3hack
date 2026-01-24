@@ -2,6 +2,7 @@
 
 #include <array>
 #include <algorithm>
+#include <cstdlib>
 #include <string>
 
 #include "program/d3/setting.hpp"
@@ -11,6 +12,24 @@
 
 namespace d3::gui2::ui::windows {
     namespace {
+
+        static auto SnapOutputTarget(int value) -> int {
+            constexpr std::array<int, 6> kTargets       = {720, 900, 1080, 1440, 1800, 2160};
+            constexpr int                kSnapThreshold = 10;
+            int                          best           = kTargets.front();
+            int                          best_dist      = std::abs(value - best);
+            for (int target : kTargets) {
+                int dist = std::abs(value - target);
+                if (dist < best_dist) {
+                    best      = target;
+                    best_dist = dist;
+                }
+            }
+            if (best_dist <= kSnapThreshold) {
+                return best;
+            }
+            return value;
+        }
 
         static auto SeasonMapModeToString(PatchConfig::SeasonEventMapMode mode) -> const char * {
             switch (mode) {
@@ -222,11 +241,12 @@ namespace d3::gui2::ui::windows {
                 ImGui::EndTabItem();
             }
 
-            if (ImGui::BeginTabItem(overlay_.tr("gui.tab_resolution", "Resolution"))) {
+            if (ImGui::BeginTabItem(overlay_.tr("gui.tab_resolution", "ResHack"))) {
                 mark_dirty(ImGui::Checkbox(overlay_.tr("gui.resolution_enabled", "Enabled##res"), &cfg.resolution_hack.active));
                 ImGui::BeginDisabled(!cfg.resolution_hack.active);
                 int target = static_cast<int>(cfg.resolution_hack.target_resolution);
-                if (ImGui::SliderInt(overlay_.tr("gui.resolution_output_target", "Output target (vertical)"), &target, 720, 1440, "%dp")) {
+                if (ImGui::SliderInt(overlay_.tr("gui.resolution_output_target", "Output target (vertical)"), &target, 720, 2160, "%dp")) {
+                    target = SnapOutputTarget(target);
                     cfg.resolution_hack.SetTargetRes(static_cast<u32>(target));
                     overlay_.set_ui_dirty(true);
                 }
@@ -450,7 +470,7 @@ namespace d3::gui2::ui::windows {
                 ImGui::EndTabItem();
             }
 
-            if (ImGui::BeginTabItem(overlay_.tr("gui.tab_rare_cheats", "Rare cheats"))) {
+            if (ImGui::BeginTabItem(overlay_.tr("gui.tab_rare_cheats", "Cheats"))) {
                 mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_enabled", "Enabled##rare_cheats"), &cfg.rare_cheats.active));
                 ImGui::BeginDisabled(!cfg.rare_cheats.active);
 
@@ -488,7 +508,7 @@ namespace d3::gui2::ui::windows {
                 ImGui::EndTabItem();
             }
 
-            if (ImGui::BeginTabItem(overlay_.tr("gui.tab_challenge_rifts", "Challenge rifts"))) {
+            if (ImGui::BeginTabItem(overlay_.tr("gui.tab_challenge_rifts", "Rifts"))) {
                 mark_dirty(ImGui::Checkbox(overlay_.tr("gui.challenge_rifts_enabled", "Enabled##cr"), &cfg.challenge_rifts.active));
                 ImGui::BeginDisabled(!cfg.challenge_rifts.active);
                 mark_dirty(ImGui::Checkbox(overlay_.tr("gui.challenge_rifts_random", "Randomize within range"), &cfg.challenge_rifts.random));

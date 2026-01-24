@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common.hpp"
+#include "common.hpp"  // IWYU pragma: keep
 
 #define EXL_MODULE_NAME "D3Hack"
 
@@ -25,6 +25,6 @@ namespace exl::setting {
     constexpr size_t LogBufferSize = 256;
 
     /* Sanity checks. */
-    static_assert(ALIGN_UP(JitSize, PAGE_SIZE) == JitSize, "");
-    static_assert(ALIGN_UP(InlinePoolSize, PAGE_SIZE) == InlinePoolSize, "");
+    static_assert(ALIGN_UP(JitSize, PAGE_SIZE) == JitSize);
+    static_assert(ALIGN_UP(InlinePoolSize, PAGE_SIZE) == InlinePoolSize);
 }  // namespace exl::setting
