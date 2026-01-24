@@ -26,6 +26,11 @@ namespace d3 {
             if (!global_config.resolution_hack.active)
                 return Orig();
 
+            // Runtime adjustments are not viable, keep commented
+            // PatchRenderTargetCurrentResolutionScale(
+            //     global_config.resolution_hack.active ? global_config.resolution_hack.HandheldScaleFraction() : 0.0f
+            // );
+
             // if (g_ptGfxNVNGlobals != nullptr) {
             //     const u32 outW      = global_config.resolution_hack.OutputWidthPx();
             //     const u32 outH      = global_config.resolution_hack.OutputHeightPx();
@@ -61,6 +66,12 @@ namespace d3 {
                 result.dwUIOptWidth = static_cast<u32>(extra.ui_opt_width);
             if (extra.ui_opt_height > 0)
                 result.dwUIOptHeight = static_cast<u32>(extra.ui_opt_height);
+            if (extra.refresh_rate > 0)
+                result.nRefreshRate = extra.refresh_rate;
+            if (extra.bit_depth > 0)
+                result.dwBitDepth = static_cast<u32>(extra.bit_depth);
+            if (extra.msaa_level >= 0)
+                result.dwMSAALevel = static_cast<u32>(extra.msaa_level);
             bool refresh_aspect = false;
             if (extra.render_width > 0) {
                 result.dwWidth = static_cast<u32>(extra.render_width);
@@ -70,18 +81,8 @@ namespace d3 {
                 result.dwHeight = static_cast<u32>(extra.render_height);
                 refresh_aspect  = true;
             }
-            if (extra.refresh_rate > 0)
-                result.nRefreshRate = extra.refresh_rate;
-            if (extra.bit_depth > 0)
-                result.dwBitDepth = static_cast<u32>(extra.bit_depth);
-            if (extra.msaa_level >= 0)
-                result.dwMSAALevel = static_cast<u32>(extra.msaa_level);
             if (refresh_aspect && result.dwHeight != 0u)
                 result.flAspectRatio = static_cast<float>(result.dwWidth) / static_cast<float>(result.dwHeight);
-
-            // PatchRenderTargetCurrentResolutionScale(
-            //     global_config.resolution_hack.active ? global_config.resolution_hack.HandheldScaleFraction() : 0.0f
-            // );
 
             return result;
         }

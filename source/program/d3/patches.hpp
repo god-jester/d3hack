@@ -232,7 +232,7 @@ namespace d3 {
         // GFXNX64NVN::GetRenderTargetCurrentResolution (0x0EBB40).
         // 0x0EBB44: ADRP reg::X8, #:pg_hi21:dword_EB0840
         // 0x0EBB48: LDR  S1, [reg::X8,#:lo12:dword_EB0840]  // 0.8f scale
-        auto *rt_scale = reinterpret_cast<float *>(jest.RoFromAddr(PatchTable("data_render_target_scale_ro")));
+        auto *rt_scale = reinterpret_cast<float *>(jest.RwFromAddr(PatchTable("data_render_target_scale_rw")));
         if (rt_scale == nullptr) {
             return;
         }

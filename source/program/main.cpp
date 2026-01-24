@@ -154,9 +154,9 @@ namespace d3 {
                 PRINT_LINE("ResolutionHack config: inactive");
             }
 
-            // PatchRenderTargetCurrentResolutionScale(
-            //     global_config.resolution_hack.active ? global_config.resolution_hack.HandheldScaleFraction() : 0.0f
-            // );
+            PatchRenderTargetCurrentResolutionScale(
+                global_config.resolution_hack.active ? global_config.resolution_hack.HandheldScaleFraction() : 0.0f
+            );
 
             // Apply patches based on config
             if (!g_configHooksInstalled) {
