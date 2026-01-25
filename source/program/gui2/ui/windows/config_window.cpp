@@ -17,7 +17,7 @@ namespace d3::gui2::ui::windows {
 
         static auto SnapOutputTarget(int value) -> int {
             constexpr std::array<int, 6> kTargets       = {720, 900, 1080, 1440, 1800, 2160};
-            constexpr int                kSnapThreshold = 10;
+            constexpr int                kSnapThreshold = 20;
             int                          best           = kTargets.front();
             int                          best_dist      = std::abs(value - best);
             for (int target : kTargets) {

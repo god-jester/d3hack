@@ -162,8 +162,8 @@ namespace d3 {
         const u32 outW      = global_config.resolution_hack.OutputWidthPx();
         const u32 outH      = global_config.resolution_hack.OutputHeightPx();
         const u32 handheldH = global_config.resolution_hack.OutputHandheldHeightPx();
-        const u32 fallbackW = handheldH != 0 ? global_config.resolution_hack.WidthForHeight(handheldH) : 1600u;
-        const u32 fallbackH = handheldH != 0 ? handheldH : 900u;
+        const u32 fallbackW = handheldH != 0 ? global_config.resolution_hack.WidthForHeight(handheldH) : 1280u;
+        const u32 fallbackH = handheldH != 0 ? handheldH : 720u;
         // const u32 clampW = global_config.resolution_hack.ClampTextureWidthPx();
         // const u32 clampH = global_config.resolution_hack.ClampTextureHeightPx();
 

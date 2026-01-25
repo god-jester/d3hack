@@ -127,7 +127,7 @@ namespace d3 {
         static void Callback() {
             if (!VerifySignature()) {
                 PRINT("Signature guard failed; expected build %s", D3CLIENT_VER);
-                EXL_ABORT("Signature guard failed: offsets mismatch.");
+                EXL_ABORT("Signature guard failed: version string not found!");
             }
 
             // Require our SD to be mounted before running nnMain()
