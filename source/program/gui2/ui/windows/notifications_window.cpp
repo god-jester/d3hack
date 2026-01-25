@@ -8,17 +8,17 @@
 namespace d3::gui2::ui::windows {
 
     NotificationsWindow::NotificationsWindow() :
-        Window("Notifications") {
-        SetFlags(ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoInputs);
+        Window("Notifications", false) {
+        SetFlags(ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoInputs);
     }
 
     void NotificationsWindow::SetViewportSize(ImVec2 viewport_size) {
         viewport_size_ = viewport_size;
     }
 
-    void NotificationsWindow::Tick(float dt_s) {
+    void NotificationsWindow::Update(float dt_s) {
         if (notifications_.empty()) {
-            open_ = false;
+            SetOpen(false);
             return;
         }
 
@@ -29,12 +29,12 @@ namespace d3::gui2::ui::windows {
         auto removed = std::ranges::remove_if(notifications_, [](const Notification &n) -> bool { return n.ttl_s <= 0.0f; });
         notifications_.erase(removed.begin(), removed.end());
 
-        open_ = !notifications_.empty();
+        SetOpen(!notifications_.empty());
     }
 
     void NotificationsWindow::Clear() {
         notifications_.clear();
-        open_ = false;
+        SetOpen(false);
     }
 
     void NotificationsWindow::AddNotification(const ImVec4 &color, float ttl_s, const char *fmt, ...) {
@@ -53,11 +53,7 @@ namespace d3::gui2::ui::windows {
         n.ttl_s         = ttl_s;
         n.ttl_initial_s = ttl_s;
         notifications_.push_back(std::move(n));
-        open_ = true;
-    }
-
-    auto NotificationsWindow::GetOpenFlag() -> bool * {
-        return &open_;
+        SetOpen(true);
     }
 
     void NotificationsWindow::BeforeBegin() {

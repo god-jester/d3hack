@@ -9,8 +9,8 @@
 
 namespace d3::gui2::ui {
 
-    Window::Window(std::string title, bool enabled_default) :
-        title_(std::move(title)), enabled_(enabled_default) {
+    Window::Window(std::string title, bool open_default) :
+        title_(std::move(title)), open_(open_default) {
     }
 
     auto Window::Render() -> bool {
@@ -19,7 +19,8 @@ namespace d3::gui2::ui {
         }
 
         bool *open = GetOpenFlag();
-        if (open != nullptr && !*open) {
+        const bool was_open = (open == nullptr) || *open;
+        if (!was_open) {
             return false;
         }
 
@@ -87,6 +88,17 @@ namespace d3::gui2::ui {
 
         AfterEnd();
 
+        if (open != nullptr) {
+            const bool now_open = *open;
+            if (now_open != was_open) {
+                if (now_open) {
+                    OnOpen();
+                } else {
+                    OnClose();
+                }
+            }
+        }
+
         return window_visible;
     }
 
@@ -111,6 +123,26 @@ namespace d3::gui2::ui {
     auto Window::IsOpen() const -> bool {
         const bool *open = const_cast<Window *>(this)->GetOpenFlag();
         return (open == nullptr) || *open;
+    }
+
+    void Window::SetOpen(bool open) {
+        bool *open_flag = GetOpenFlag();
+        if (open_flag == nullptr) {
+            return;
+        }
+
+        const bool was_open = *open_flag;
+        if (was_open == open) {
+            return;
+        }
+
+        *open_flag = open;
+
+        if (open) {
+            OnOpen();
+        } else {
+            OnClose();
+        }
     }
 
     auto Window::GetTitle() const -> const std::string & {
@@ -150,7 +182,7 @@ namespace d3::gui2::ui {
     }
 
     auto Window::GetOpenFlag() -> bool * {
-        return nullptr;
+        return &open_;
     }
 
 }  // namespace d3::gui2::ui

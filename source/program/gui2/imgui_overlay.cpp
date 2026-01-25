@@ -326,11 +326,23 @@ namespace d3::imgui_overlay {
         static auto PushImGuiTouchInputs(const ImVec2 &viewport_size) -> bool;
         static auto PushImGuiMouseInputs(const ImVec2 &viewport_size) -> bool;
         static void PushImGuiKeyboardInputs();
+        static void DetectOverlaySwipe(const ImVec2 &viewport_size);
         static void UpdateImGuiStyleAndScale(ImVec2 viewport_size);
 
-        static bool       g_imgui_style_initialized = false;
-        static ImGuiStyle g_imgui_base_style {};
-        static float      g_last_gui_scale = -1.0f;
+        static bool g_touch_init_tried = false;
+
+        static void EnsureTouchInitialized() {
+            if (g_touch_init_tried) {
+                return;
+            }
+            g_touch_init_tried = true;
+            nn::hid::InitializeTouchScreen();
+        }
+
+        static bool                   g_imgui_style_initialized = false;
+        static ImGuiStyle             g_imgui_base_style {};
+        static float                  g_last_gui_scale = -1.0f;
+        static d3::gui2::ui::GuiTheme g_imgui_theme    = d3::gui2::ui::GuiTheme::D3Dark;
 
         static auto ComputeGuiScale(ImVec2 viewport_size) -> float {
             constexpr float kMinViewportH = 720.0f;
@@ -347,10 +359,7 @@ namespace d3::imgui_overlay {
             return kMinScale + t * (kMaxScale - kMinScale);
         }
 
-        static void InitializeImGuiStyle() {
-            ImGui::StyleColorsDark();
-
-            ImGuiStyle &style       = ImGui::GetStyle();
+        static void ApplyImGuiStyleCommon(ImGuiStyle &style) {
             style.WindowPadding     = ImVec2(14.0f, 12.0f);
             style.FramePadding      = ImVec2(10.0f, 8.0f);
             style.ItemSpacing       = ImVec2(10.0f, 8.0f);
@@ -369,8 +378,66 @@ namespace d3::imgui_overlay {
             style.TabRounding       = 4.0f;
 
             style.WindowBorderSize = 1.0f;
+            style.WindowBorderHoverPadding = 4.0f;
             style.FrameBorderSize  = 1.0f;
             style.TabBorderSize    = 1.0f;
+        }
+
+        static void ApplyImGuiThemeColors(ImGuiStyle &style, d3::gui2::ui::GuiTheme theme) {
+            ImVec4 *colors = style.Colors;
+
+            if (theme == d3::gui2::ui::GuiTheme::Blueish) {
+                // Lunakit-inspired: deep navy + misty cyan accent.
+                constexpr ImVec4 kAccent      = ImVec4(0.40f, 0.78f, 0.82f, 1.00f);
+                constexpr ImVec4 kAccentHi    = ImVec4(0.55f, 0.88f, 0.92f, 1.00f);
+                constexpr ImVec4 kBg          = ImVec4(0.06f, 0.07f, 0.09f, 0.94f);
+                constexpr ImVec4 kPanel       = ImVec4(0.12f, 0.13f, 0.16f, 1.00f);
+                constexpr ImVec4 kPanelHover  = ImVec4(0.18f, 0.19f, 0.23f, 1.00f);
+                constexpr ImVec4 kPanelActive = ImVec4(0.22f, 0.23f, 0.27f, 1.00f);
+
+                colors[ImGuiCol_Text]         = ImVec4(0.93f, 0.95f, 0.98f, 1.00f);
+                colors[ImGuiCol_TextDisabled] = ImVec4(0.55f, 0.58f, 0.62f, 1.00f);
+                colors[ImGuiCol_WindowBg]     = kBg;
+                colors[ImGuiCol_PopupBg]      = ImVec4(0.05f, 0.06f, 0.08f, 0.94f);
+                colors[ImGuiCol_Border]       = ImVec4(0.20f, 0.23f, 0.27f, 0.90f);
+                colors[ImGuiCol_BorderShadow] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+
+                colors[ImGuiCol_FrameBg]        = kPanel;
+                colors[ImGuiCol_FrameBgHovered] = kPanelHover;
+                colors[ImGuiCol_FrameBgActive]  = kPanelActive;
+
+                colors[ImGuiCol_TitleBg]          = ImVec4(0.08f, 0.10f, 0.14f, 1.00f);
+                colors[ImGuiCol_TitleBgActive]    = ImVec4(0.10f, 0.13f, 0.18f, 1.00f);
+                colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.08f, 0.10f, 0.14f, 0.80f);
+                colors[ImGuiCol_MenuBarBg]        = ImVec4(0.10f, 0.11f, 0.14f, 1.00f);
+
+                colors[ImGuiCol_CheckMark]        = kAccent;
+                colors[ImGuiCol_SliderGrab]       = kAccent;
+                colors[ImGuiCol_SliderGrabActive] = kAccentHi;
+
+                colors[ImGuiCol_Button]        = ImVec4(0.16f, 0.17f, 0.20f, 1.00f);
+                colors[ImGuiCol_ButtonHovered] = ImVec4(0.22f, 0.24f, 0.28f, 1.00f);
+                colors[ImGuiCol_ButtonActive]  = ImVec4(0.26f, 0.28f, 0.32f, 1.00f);
+
+                colors[ImGuiCol_Header]        = ImVec4(0.18f, 0.19f, 0.23f, 1.00f);
+                colors[ImGuiCol_HeaderHovered] = ImVec4(0.24f, 0.26f, 0.30f, 1.00f);
+                colors[ImGuiCol_HeaderActive]  = ImVec4(0.28f, 0.30f, 0.34f, 1.00f);
+
+                colors[ImGuiCol_Separator]        = ImVec4(0.20f, 0.23f, 0.27f, 1.00f);
+                colors[ImGuiCol_SeparatorHovered] = ImVec4(kAccent.x, kAccent.y, kAccent.z, 0.85f);
+                colors[ImGuiCol_SeparatorActive]  = ImVec4(kAccentHi.x, kAccentHi.y, kAccentHi.z, 0.95f);
+
+                colors[ImGuiCol_Tab]               = ImVec4(0.10f, 0.11f, 0.14f, 1.00f);
+                colors[ImGuiCol_TabHovered]        = ImVec4(kAccent.x, kAccent.y, kAccent.z, 0.55f);
+                colors[ImGuiCol_TabSelected]       = ImVec4(0.18f, 0.20f, 0.24f, 1.00f);
+                colors[ImGuiCol_TabDimmed]         = ImVec4(0.08f, 0.09f, 0.12f, 1.00f);
+                colors[ImGuiCol_TabDimmedSelected] = ImVec4(0.14f, 0.16f, 0.20f, 1.00f);
+
+                colors[ImGuiCol_TextSelectedBg]        = ImVec4(kAccent.x, kAccent.y, kAccent.z, 0.35f);
+                colors[ImGuiCol_NavCursor]             = ImVec4(kAccentHi.x, kAccentHi.y, kAccentHi.z, 0.80f);
+                colors[ImGuiCol_NavWindowingHighlight] = ImVec4(kAccent.x, kAccent.y, kAccent.z, 0.80f);
+                return;
+            }
 
             // D3-ish palette: dark stone + gold accent.
             constexpr ImVec4 kAccent      = ImVec4(0.86f, 0.67f, 0.18f, 1.00f);
@@ -380,7 +447,6 @@ namespace d3::imgui_overlay {
             constexpr ImVec4 kPanelHover  = ImVec4(0.22f, 0.22f, 0.25f, 1.00f);
             constexpr ImVec4 kPanelActive = ImVec4(0.26f, 0.26f, 0.29f, 1.00f);
 
-            ImVec4 *colors                = style.Colors;
             colors[ImGuiCol_Text]         = ImVec4(0.95f, 0.96f, 0.98f, 1.00f);
             colors[ImGuiCol_TextDisabled] = ImVec4(0.55f, 0.55f, 0.58f, 1.00f);
             colors[ImGuiCol_WindowBg]     = kBg;
@@ -422,14 +488,24 @@ namespace d3::imgui_overlay {
             colors[ImGuiCol_TextSelectedBg]        = ImVec4(kAccent.x, kAccent.y, kAccent.z, 0.35f);
             colors[ImGuiCol_NavCursor]             = ImVec4(kAccentHi.x, kAccentHi.y, kAccentHi.z, 0.80f);
             colors[ImGuiCol_NavWindowingHighlight] = ImVec4(kAccent.x, kAccent.y, kAccent.z, 0.80f);
+        }
+
+        static void InitializeImGuiStyle(d3::gui2::ui::GuiTheme theme) {
+            ImGuiStyle &style = ImGui::GetStyle();
+            style             = ImGuiStyle();
+            ImGui::StyleColorsDark(&style);
+            ApplyImGuiStyleCommon(style);
+            ApplyImGuiThemeColors(style, theme);
 
             g_imgui_base_style        = style;
             g_imgui_style_initialized = true;
+            g_imgui_theme             = theme;
         }
 
         static void UpdateImGuiStyleAndScale(ImVec2 viewport_size) {
-            if (!g_imgui_style_initialized) {
-                InitializeImGuiStyle();
+            const auto desired_theme = g_overlay.theme();
+            if (!g_imgui_style_initialized || desired_theme != g_imgui_theme) {
+                InitializeImGuiStyle(desired_theme);
                 g_last_gui_scale = -1.0f;
             }
 
@@ -446,6 +522,9 @@ namespace d3::imgui_overlay {
             style             = g_imgui_base_style;
             style.ScaleAllSizes(font_scale * 0.8f);
             style.FramePadding = ImVec2(style.FramePadding.x * kTouchButtonScale, style.FramePadding.y * kTouchButtonScale);
+            if (style.WindowBorderHoverPadding < 1.0f) {
+                style.WindowBorderHoverPadding = 1.0f;
+            }
 
             style.FontScaleMain = font_scale;
             g_last_gui_scale    = font_scale;
@@ -520,6 +599,77 @@ namespace d3::imgui_overlay {
             }
         }
 
+        static void DetectOverlaySwipe(const ImVec2 &viewport_size) {
+            if (!g_imgui_ctx_initialized) {
+                return;
+            }
+
+            if (d3::g_ptMainRWindow == nullptr) {
+                return;
+            }
+
+            if (!g_overlay.imgui_render_enabled()) {
+                return;
+            }
+
+            if (g_overlay.overlay_visible()) {
+                return;
+            }
+
+            ScopedHidPassthroughForOverlay const passthrough_guard;
+            EnsureTouchInitialized();
+
+            nn::hid::TouchScreenState<nn::hid::TouchStateCountMax> st {};
+            nn::hid::GetTouchScreenState(&st);
+
+            static bool s_swipe_active    = false;
+            static bool s_swipe_triggered = false;
+            static s32  s_start_x         = 0;
+            static s32  s_start_y         = 0;
+
+            const bool down = st.count > 0;
+            if (!down) {
+                s_swipe_active    = false;
+                s_swipe_triggered = false;
+                return;
+            }
+
+            if (!s_swipe_active) {
+                s_swipe_active    = true;
+                s_swipe_triggered = false;
+                s_start_x         = st.touches[0].x;
+                s_start_y         = st.touches[0].y;
+            }
+
+            if (s_swipe_triggered) {
+                return;
+            }
+
+            constexpr float kTouchWidth        = 1280.0f;
+            constexpr float kTouchHeight       = 720.0f;
+            constexpr float kEdgeFrac          = 0.05f;
+            constexpr float kTriggerFrac       = 0.20f;
+            constexpr float kMaxVerticalFrac   = 0.25f;
+            const float     edge_px            = kTouchWidth * kEdgeFrac;
+            const float     trigger_px         = kTouchWidth * kTriggerFrac;
+            const float     max_vertical_delta = kTouchHeight * kMaxVerticalFrac;
+
+            if (s_start_x > static_cast<s32>(edge_px)) {
+                return;
+            }
+
+            const s32 dx = st.touches[0].x - s_start_x;
+            const s32 dy = st.touches[0].y - s_start_y;
+            if (dx >= static_cast<s32>(trigger_px) &&
+                std::abs(dy) <= static_cast<s32>(max_vertical_delta)) {
+                g_overlay.set_overlay_visible_persist(true);
+                s_swipe_triggered = true;
+                PRINT_LINE("[imgui_overlay] Swipe opened overlay");
+            }
+
+            (void)viewport_size;
+        }
+
         static auto PushImGuiTouchInputs(const ImVec2 &viewport_size) -> bool {
             if (!g_imgui_ctx_initialized) {
                 return false;
@@ -530,7 +680,6 @@ namespace d3::imgui_overlay {
                 return false;
             }
 
-            static bool s_touch_init_tried = false;
             static s32  s_prev_touch_count = 0;
             static s32  s_last_touch_x     = 0;
             static s32  s_last_touch_y     = 0;
@@ -541,10 +690,7 @@ namespace d3::imgui_overlay {
             // Keep touch reads scoped so our own HID hooks don't block us while the overlay is visible.
             ScopedHidPassthroughForOverlay const passthrough_guard;
 
-            if (!s_touch_init_tried) {
-                s_touch_init_tried = true;
-                nn::hid::InitializeTouchScreen();
-            }
+            EnsureTouchInitialized();
 
             nn::hid::TouchScreenState<nn::hid::TouchStateCountMax> st {};
             nn::hid::GetTouchScreenState(&st);
@@ -989,6 +1135,8 @@ namespace d3::imgui_overlay {
                 io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
                 io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
                 io.BackendPlatformName = "Nintendo Switch";
+
+                g_overlay.OnImGuiContextCreated();
             }
 
             if (!g_backend_initialized && g_device && g_queue) {
@@ -1044,13 +1192,12 @@ namespace d3::imgui_overlay {
 
                 g_overlay.EnsureConfigLoaded();
 
-                g_block_gamepad_input_to_game.store(g_overlay.imgui_render_enabled() && g_overlay.overlay_visible(), std::memory_order_relaxed);
-
                 if (kImGuiBringup_DrawText && g_imgui_ctx_initialized && g_font_atlas_built && g_overlay.imgui_render_enabled()) {
                     ImguiNvnBackend::newFrame();
 
                     const ImVec2 viewport_size = ImguiNvnBackend::getBackendData()->viewportSize;
                     UpdateImGuiStyleAndScale(viewport_size);
+                    DetectOverlaySwipe(viewport_size);
                     ImGuiIO   &io              = ImGui::GetIO();
                     const bool overlay_visible = g_overlay.overlay_visible();
 
@@ -1087,8 +1234,13 @@ namespace d3::imgui_overlay {
                         g_last_npad.stick_r.X,
                         g_last_npad.stick_r.Y
                     );
+                    g_block_gamepad_input_to_game.store(
+                        g_overlay.focus_state().should_block_game_input,
+                        std::memory_order_relaxed
+                    );
 
                     ImGui::Render();
+                    g_overlay.AfterFrame();
                     ImguiNvnBackend::renderDrawData(ImGui::GetDrawData());
                     ImFontAtlas const   *fonts = ImGui::GetIO().Fonts;
                     ImTextureData const *font_tex =

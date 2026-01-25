@@ -20,18 +20,16 @@ namespace d3::gui2::ui::windows {
 
         void SetViewportSize(ImVec2 viewport_size);
 
-        void Tick(float dt_s);
         void Clear();
 
         void AddNotification(const ImVec4 &color, float ttl_s, const char *fmt, ...);
 
        protected:
-        bool *GetOpenFlag() override;
+        void  Update(float dt_s) override;
         void  BeforeBegin() override;
         void  RenderContents() override;
 
        private:
-        bool                      open_ = false;
         ImVec2                    viewport_size_ {};
         std::vector<Notification> notifications_ {};
     };

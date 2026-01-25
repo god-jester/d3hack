@@ -331,6 +331,7 @@ cmake --build --preset switch-iwyu
 - **Resolution Hack (ResHack)**: `source/program/d3/hooks/resolution.hpp` + `source/program/d3/patches.hpp`.
 - **Overlays + watermark text**: `source/program/d3/patches.hpp` (PatchBuildlocker, PatchDDMLabels, PatchReleaseFPSLabel).
 - **Hook gating + boot flow**: `source/program/main.cpp` (MainInit, SetupSeasonEventHooks).
+- **GUI overlay (dockspace/menu/layout)**: `source/program/gui2/ui/overlay.*`, `source/program/gui2/ui/window.*`, `source/program/gui2/ui/windows/*` (layout persisted at `sd:/config/d3hack-nx/gui_layout.ini`).
 - **ImGui romfs assets**: `data/` packaged to `deploy/romfs/d3gui/` by `misc/scripts/post-build.sh`.
 
 ---

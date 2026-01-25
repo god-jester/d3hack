@@ -8,8 +8,13 @@ namespace d3::gui2::ui {
 
     class Window {
        public:
-        explicit Window(std::string title, bool enabled_default = true);
+        explicit Window(std::string title, bool open_default = true);
         virtual ~Window() = default;
+
+        // Update logic (runs even when the window is hidden).
+        virtual void Update(float dt_s) {
+            (void)dt_s;
+        }
 
         // Returns the value from ImGui::Begin().
         bool Render();
@@ -18,6 +23,7 @@ namespace d3::gui2::ui {
         void SetEnabled(bool enabled);
 
         bool IsOpen() const;
+        void SetOpen(bool open);
 
         const std::string &GetTitle() const;
         void               SetTitle(std::string title);
@@ -40,10 +46,13 @@ namespace d3::gui2::ui {
 
         virtual void OnEnable() {}
         virtual void OnDisable() {}
+        virtual void OnOpen() {}
+        virtual void OnClose() {}
 
        private:
         std::string      title_;
         bool             enabled_ = true;
+        bool             open_    = true;
         ImGuiWindowFlags flags_   = 0;
 
         bool      has_default_pos_  = false;

@@ -18,10 +18,9 @@ namespace d3::gui2::ui::windows {
         void RenderContents() override;
 
        private:
-        bool *GetOpenFlag() override;
-
         bool         show_metrics_     = false;
         bool         restart_required_ = false;
+        int          section_index_    = 0;
         ui::Overlay &overlay_;
     };
 

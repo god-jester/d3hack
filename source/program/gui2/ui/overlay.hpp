@@ -14,7 +14,14 @@ namespace d3::gui2::ui {
         bool visible                 = false;
         bool nav_active              = false;
         bool want_capture_gamepad    = false;
+        bool want_capture_mouse      = false;
+        bool want_capture_keyboard   = false;
         bool should_block_game_input = false;
+    };
+
+    enum class GuiTheme {
+        D3Dark  = 0,
+        Blueish = 1,
     };
 
     namespace windows {
@@ -26,6 +33,7 @@ namespace d3::gui2::ui {
         Overlay();
         ~Overlay();
 
+        void OnImGuiContextCreated();
         void EnsureConfigLoaded();
         void EnsureWindowsCreated();
         void EnsureTranslationsLoaded();
@@ -66,6 +74,7 @@ namespace d3::gui2::ui {
         void  ToggleVisibleAndPersist();
 
         void RequestFocus();
+        void RequestFocusWindow(Window *window);
 
         bool imgui_render_enabled() const {
             return ui_config_initialized_ ? ui_config_.gui.enabled : global_config.gui.enabled;
@@ -77,6 +86,13 @@ namespace d3::gui2::ui {
         }
 
         bool is_config_loaded() const { return ui_config_initialized_; }
+
+        bool     layout_loaded() const { return layout_loaded_; }
+        bool     should_apply_default_layout() const { return !layout_loaded_ && !layout_default_applied_; }
+        ImGuiID  dockspace_id() const { return dockspace_id_; }
+        GuiTheme theme() const { return theme_; }
+        void     set_theme(GuiTheme theme);
+        void     AfterFrame();
 
         windows::NotificationsWindow       *notifications_window() { return notifications_window_; }
         const windows::NotificationsWindow *notifications_window() const { return notifications_window_; }
@@ -93,6 +109,7 @@ namespace d3::gui2::ui {
 
         bool overlay_visible_ = true;
         bool request_focus_   = false;
+        Window *focus_window_    = nullptr;
 
         std::string                                  translations_lang_ {};
         bool                                         translations_loaded_ = false;
@@ -100,6 +117,16 @@ namespace d3::gui2::ui {
 
         bool                                 windows_initialized_ = false;
         std::vector<std::unique_ptr<Window>> windows_ {};
+        std::vector<Window *>                dock_windows_ {};
+        std::vector<Window *>                overlay_windows_ {};
+
+        bool     imgui_context_ready_    = false;
+        bool     layout_loaded_          = false;
+        bool     layout_dirty_           = false;
+        bool     layout_default_applied_ = false;
+        bool     layout_reset_pending_   = false;
+        ImGuiID  dockspace_id_           = 0;
+        GuiTheme theme_                  = GuiTheme::Blueish;
 
         Window                       *config_window_        = nullptr;
         windows::NotificationsWindow *notifications_window_ = nullptr;
