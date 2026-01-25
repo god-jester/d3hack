@@ -9,6 +9,10 @@
 
 PatchConfig global_config {};
 
+namespace d3 {
+    float g_rt_scale = PatchConfig::ResolutionHackConfig::kHandheldScaleDefault * 0.01f;
+}  // namespace d3
+
 namespace {
     auto FindTable(const toml::table &root, std::string_view key) -> const toml::table * {
         if (auto node = root.get(key); node && node->is_table())
@@ -441,7 +445,6 @@ namespace {
             t.insert("SectionEnabled", config.resolution_hack.active);
             t.insert("OutputTarget", static_cast<s64>(config.resolution_hack.target_resolution));
             t.insert("OutputHandheldScale", static_cast<double>(config.resolution_hack.output_handheld_scale));
-            t.insert("OutputTargetHandheld", static_cast<s64>(config.resolution_hack.OutputHandheldHeightPx()));
             t.insert("SpoofDocked", config.resolution_hack.spoof_docked);
             t.insert("MinResScale", static_cast<double>(config.resolution_hack.min_res_scale));
             t.insert("MaxResScale", static_cast<double>(config.resolution_hack.max_res_scale));
@@ -744,21 +747,10 @@ void PatchConfig::ApplyTable(const toml::table &table) {
         if (resolution_hack.output_handheld_scale > 0.0f && resolution_hack.output_handheld_scale <= 1.0f) {
             resolution_hack.output_handheld_scale *= 100.0f;
         }
-        if (auto handheld_target = ReadNumber(
-                *resolution_section,
-                {"OutputTargetHandheld", "HandheldOutputTarget", "HandheldTarget"}
-            )) {
-            if (resolution_hack.target_resolution > 0) {
-                const float scale = static_cast<float>(*handheld_target) / static_cast<float>(resolution_hack.target_resolution);
-
-                resolution_hack.output_handheld_scale = scale * 100.0f;
-            } else {
-                resolution_hack.output_handheld_scale = 0.0f;
-            }
-        }
         resolution_hack.output_handheld_scale = PatchConfig::ResolutionHackConfig::NormalizeHandheldScale(
             resolution_hack.output_handheld_scale
         );
+        d3::g_rt_scale = resolution_hack.HandheldScaleFraction();
         u32 clamp_value = resolution_hack.clamp_texture_resolution;
         if (auto value = ReadNumber(
                 *resolution_section,
@@ -880,6 +872,7 @@ void PatchConfig::ApplyTable(const toml::table &table) {
     if (const auto *section = FindTable(table, "gui")) {
         gui.enabled = ReadBool(*section, {"Enabled", "SectionEnabled", "Active"}, gui.enabled);
         gui.visible = ReadBool(*section, {"Visible", "Show", "WindowVisible"}, gui.visible);
+
         gui.allow_left_stick_passthrough = ReadBool(
             *section,
             {"AllowLeftStickPassthrough", "LeftStickPassthrough", "AllowLeftStickThrough"},

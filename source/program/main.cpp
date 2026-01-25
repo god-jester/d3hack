@@ -154,18 +154,14 @@ namespace d3 {
                 PRINT_LINE("ResolutionHack config: inactive");
             }
 
-            PatchRenderTargetCurrentResolutionScale(
-                global_config.resolution_hack.active ? global_config.resolution_hack.HandheldScaleFraction() : 0.0f
-            );
-
             // Apply patches based on config
             if (!g_configHooksInstalled) {
                 SetupUtilityHooks();
                 SetupResolutionHooks();
                 SetupDebuggingHooks();
                 SetupSeasonEventHooks();
-                PatchVarResLabel();
-                PatchReleaseFPSLabel();
+                // PatchVarResLabel();
+                // PatchReleaseFPSLabel();
                 g_configHooksInstalled = true;
             }
             if (global_config.debug.enable_crashes)
@@ -176,8 +172,8 @@ namespace d3 {
                 PatchDynamicSeasonal();
             if (global_config.overlays.active && global_config.overlays.buildlocker_watermark)
                 PatchBuildlocker();
-            if (global_config.overlays.active && global_config.overlays.ddm_labels)
-                PatchDDMLabels();
+            // if (global_config.overlays.active && global_config.overlays.ddm_labels)
+            //     PatchDDMLabels();
             if (global_config.resolution_hack.active)
                 PatchResolutionTargets();
             PatchBase();
@@ -254,7 +250,6 @@ namespace d3 {
         if (prev.resolution_hack.active != global_config.resolution_hack.active ||
             prev.resolution_hack.output_handheld_scale != global_config.resolution_hack.output_handheld_scale) {
             result.restart_required = true;
-            append_note("RT scale");
         }
 
         // Dynamic/runtime patches.

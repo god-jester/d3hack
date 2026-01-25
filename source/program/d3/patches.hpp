@@ -172,7 +172,7 @@ namespace d3 {
         // NX64NVNHeap::EarlyInit (0x0E77A0): largest pool max_alloc.
         // 0x0E77A0: MOV reg::W3, #0x8000000
         // Increase heap headroom + largest pool max_alloc for >1280p output.
-        if (outH > 1280) {
+        if (outH > 1100) {
             const u32 heapSize = 0x59C00000;  // +0x10000000 (256 MB)
             const u32 maxAlloc = 0x10000000;  // +0x08000000 (128 MB)
             jest.Patch<ins::Movz>(0x0E7770, reg::W19, (heapSize >> 16), ins::ShiftValue_16);
@@ -202,54 +202,6 @@ namespace d3 {
 
         /* VariableResRWindowData->flPercentIncr = 0.05f - 0x03CBD4: MOVK reg::X9, #0x3D4C, LSL#48 */
         // jest.Patch<ins::Movk>(PatchTable("patch_resolution_targets_07_movk"), reg::X9, 0x3CF5, ins::ShiftValue_48);  // 3% (0.03f) resolution adjust percentage
-    }
-
-    inline void PatchResolutionTargetDeviceDims() {
-        if (!global_config.resolution_hack.active)
-            return;
-        auto jest = patch::RandomAccessPatcher();
-
-        const u32 outW      = global_config.resolution_hack.OutputWidthPx();
-        const u32 outH      = global_config.resolution_hack.OutputHeightPx();
-        const u32 handheldH = global_config.resolution_hack.OutputHandheldHeightPx();
-        const u32 fallbackW = handheldH != 0 ? global_config.resolution_hack.WidthForHeight(handheldH) : 2048u;
-        const u32 fallbackH = handheldH != 0 ? handheldH : 1152u;
-
-        // Display mode pair (full). GFXNX64NVN::Init (0x0E7850).
-        // 0x0E7858: MOV reg::X8, #1600
-        // 0x0E7860: MOVK reg::X8, #900, LSL#32
-        jest.Patch<ins::Movz>(PatchTable("patch_resolution_targets_01_movz"), reg::X8, outW);
-        jest.Patch<ins::Movk>(PatchTable("patch_resolution_targets_02_movk"), reg::X8, outH, ins::ShiftValue_32);
-        // Fallback/base scale mode (same block).
-        // 0x0E785C: MOV reg::X9, #1280
-        // 0x0E7864: MOVK reg::X9, #720, LSL#32
-        jest.Patch<ins::Movz>(PatchTable("patch_resolution_targets_03_movz"), reg::X9, fallbackW);
-        jest.Patch<ins::Movk>(PatchTable("patch_resolution_targets_04_movk"), reg::X9, fallbackH, ins::ShiftValue_32);
-    }
-
-    inline void PatchRenderTargetCurrentResolutionScale(float scale) {
-        auto jest = patch::RandomAccessPatcher();
-        // GFXNX64NVN::GetRenderTargetCurrentResolution (0x0EBB40).
-        // 0x0EBB44: ADRP reg::X8, #:pg_hi21:dword_EB0840
-        // 0x0EBB48: LDR  S1, [reg::X8,#:lo12:dword_EB0840]  // 0.8f scale
-        auto *rt_scale = reinterpret_cast<float *>(jest.RwFromAddr(PatchTable("data_render_target_scale_rw")));
-        if (rt_scale == nullptr) {
-            return;
-        }
-
-        static float s_default_scale = 0.0f;
-        static bool  s_default_init  = false;
-        if (!s_default_init) {
-            s_default_scale = *rt_scale;
-            s_default_init  = true;
-        }
-
-        if (scale <= 0.0f) {
-            *rt_scale = s_default_scale;
-            return;
-        }
-        // PRINT_EXPR("%f : %f", *rt_scale, scale);
-        *rt_scale = scale;
     }
 
     inline void PatchDynamicSeasonal() {

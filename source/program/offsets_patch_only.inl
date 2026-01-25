@@ -53,8 +53,6 @@
     {util::ModuleIndex::Main, 0xE46144, "data_release_fps_format_rw"},   // RwFromAddr | szReleaseFPSFormat
     {util::ModuleIndex::Main, 0x1098658, "data_release_fps_pos_x_ro"},   // RoFromAddr | nReleaseFPSPosX
     {util::ModuleIndex::Main, 0x109865C, "data_release_fps_pos_y_ro"},   // RoFromAddr | nReleaseFPSPosY
-    {util::ModuleIndex::Main, 0xEB0840, "data_render_target_scale_rw"},  // RwFromAddr | 0.8f scale in GetRenderTargetCurrentResolution
-
     /* Patch_buildlocker */
     {util::ModuleIndex::Main, 0xF6C, "patch_buildlocker_01_nop"},      // NOP
     {util::ModuleIndex::Main, 0xFD4, "patch_buildlocker_02_movz"},     // MOVZ | W20

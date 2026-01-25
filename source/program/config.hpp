@@ -22,7 +22,7 @@ struct PatchConfig {
         float max_res_scale         = 100.0f;  // default
         bool  spoof_docked          = false;
         bool  exp_scheduler         = true;
-        float output_handheld_scale = 0.0f;  // percent (0 = auto/stock)
+        float output_handheld_scale = 80.0f;  // percent (0 = auto/stock)
 
         struct ExtraConfig {
             static constexpr s32 kUnset          = -1;
@@ -52,9 +52,10 @@ struct PatchConfig {
         ExtraConfig extra {};
 
         static constexpr float kAspectRatio       = 16.0f / 9.0f;
-        static constexpr float kHandheldScaleMin  = 30.0f;
+        static constexpr float kHandheldScaleMin  = 40.0f;
         static constexpr float kHandheldScaleMax  = 100.0f;
-        static constexpr float kHandheldScaleStep = 1.0f;
+        static constexpr float kHandheldScaleStep = 5.0f;
+        static constexpr float kHandheldScaleDefault = 80.0f;
 
         static constexpr u32 WidthForHeight(u32 height) {
             return static_cast<u32>(height * kAspectRatio);
@@ -81,9 +82,9 @@ struct PatchConfig {
 
         float HandheldScaleFraction() const {
             if (output_handheld_scale <= 0.0f) {
-                return 0.0f;
+                return kHandheldScaleDefault * 0.01f;
             }
-            return output_handheld_scale * 0.01f;
+            return std::clamp(output_handheld_scale, kHandheldScaleMin, kHandheldScaleMax) * 0.01f;
         }
 
         u32 OutputHandheldHeightPx() const {

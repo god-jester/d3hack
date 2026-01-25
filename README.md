@@ -70,7 +70,6 @@ Current baseline (validated 2026-01-20)
 SectionEnabled = true
 OutputTarget = 2160
 OutputHandheldScale = 80
-OutputTargetHandheld = 0
 SpoofDocked = false
 ClampTextureResolution = 1152
 MaxResScale = 100 # Adjust max scale for better performance while keeping native UI
@@ -153,7 +152,7 @@ Edit `config.toml` after copying.
 
 Key sections:
 
-- `[resolution_hack]`: OutputTarget, OutputHandheldScale (percent), OutputTargetHandheld (derived), SpoofDocked, ClampTextureResolution, MinResScale, MaxResScale, ExperimentalScheduler.
+- `[resolution_hack]`: OutputTarget, OutputHandheldScale (percent),SpoofDocked, ClampTextureResolution, MinResScale, MaxResScale, ExperimentalScheduler.
 - `[resolution_hack.extra]`: display mode overrides (MSAALevel, BitDepth, RefreshRate, window/UI/render dimensions).
 - `[seasons]`: SeasonNumber, AllowOnlinePlay, SpoofPtr.
 - `[events]`: seasonal flags + SeasonMapMode (MapOnly, OverlayConfig, Disabled).
