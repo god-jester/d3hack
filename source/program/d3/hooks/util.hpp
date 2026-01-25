@@ -171,11 +171,11 @@ namespace d3 {
                 ptVarRWindow->flMinPercent = min_pct * 0.01f;
                 ptVarRWindow->flMaxPercent = max_pct * 0.01f;
             }
-            if (global_config.overlays.active && global_config.overlays.var_res_label) {
-                ctx->X[1] = reinterpret_cast<uintptr_t>(&g_szVariableResString);
-                ctx->X[2] = g_ptGfxData->workerData[0].dwRTHeight;
-                ctx->X[3] = static_cast<uint32>(ptVarRWindow->flPercent * g_ptGfxData->tCurrentMode.dwHeight);
-            }
+            // if (global_config.overlays.active && global_config.overlays.var_res_label) {
+            //     ctx->X[1] = reinterpret_cast<uintptr_t>(&g_szVariableResString);
+            //     ctx->X[2] = g_ptGfxData->workerData[0].dwRTHeight;
+            //     ctx->X[3] = static_cast<uint32>(ptVarRWindow->flPercent * g_ptGfxData->tCurrentMode.dwHeight);
+            // }
 
             // if (global_config.overlays.active && global_config.overlays.var_res_label)
             //     AppDrawFlagSet(APP_DRAW_VARIABLE_RES_DEBUG_BIT, 1);
@@ -254,14 +254,14 @@ namespace d3 {
         static void Callback(GameBalanceType eType, GBHandleList *listResults) {
             Orig(eType, listResults);
 
-            if (global_config.overlays.active && global_config.overlays.var_res_label)
-                AppDrawFlagSet(APP_DRAW_VARIABLE_RES_DEBUG_BIT, 1);
-            if (global_config.overlays.active && global_config.overlays.fps_label)
-                AppDrawFlagSet(APP_DRAW_FPS_BIT, 1);
-            if (global_config.overlays.ddm_labels)
-                g_tAppGlobals.eDebugDisplayMode = DDM_FPS_SIMPLE;
-            else
-                g_tAppGlobals.eDebugDisplayMode = DDM_DISABLED;
+            // if (global_config.overlays.active && global_config.overlays.var_res_label)
+            //     AppDrawFlagSet(APP_DRAW_VARIABLE_RES_DEBUG_BIT, 1);
+            // if (global_config.overlays.active && global_config.overlays.fps_label)
+            //     AppDrawFlagSet(APP_DRAW_FPS_BIT, 1);
+            // if (global_config.overlays.ddm_labels)
+            //     g_tAppGlobals.eDebugDisplayMode = DDM_FPS_SIMPLE;
+            // else
+            //     g_tAppGlobals.eDebugDisplayMode = DDM_DISABLED;
             if (global_config.defaults_only || !global_config.debug.active || !global_config.debug.enable_debug_flags) {
                 return;
             }
@@ -421,7 +421,7 @@ namespace d3 {
         HostArgV::
             InstallAtFuncPtr(nn::os::GetHostArgv);
 
-        if ((global_config.overlays.active && global_config.overlays.var_res_label) || global_config.resolution_hack.active) {
+        if (global_config.resolution_hack.active) {
             VarResHook::
                 InstallAtSymbol("sym_var_res_label");
         }

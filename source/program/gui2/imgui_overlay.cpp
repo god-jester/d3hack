@@ -159,6 +159,7 @@ namespace d3::imgui_overlay {
         float                  g_overlay_toggle_hold_s = 0.0f;
         bool                   g_overlay_toggle_armed  = true;
         std::atomic<bool>      g_block_gamepad_input_to_game {false};
+        std::atomic<bool>      g_allow_left_stick_passthrough {false};
         bool                   g_hid_hooks_installed = false;
         std::atomic<int>       g_hid_passthrough_depth {0};
         std::atomic<uintptr_t> g_hid_passthrough_thread {0};
@@ -198,6 +199,15 @@ namespace d3::imgui_overlay {
         }
 
         template<typename TState>
+        static void ClearNpadButtonsAndRightStick(TState *st) {
+            if (st == nullptr) {
+                return;
+            }
+            st->mButtons      = {};
+            st->mAnalogStickR = {};
+        }
+
+        template<typename TState>
         static void ResetNpadState(TState *st) {
             if (st == nullptr) {
                 return;
@@ -215,21 +225,30 @@ namespace d3::imgui_overlay {
             }
         }
 
-        static auto ShouldBlockGamepadInput() -> bool {
+        enum class GamepadBlockMode {
+            None,
+            Full,
+            LeftStickOnly,
+        };
+
+        static auto GetGamepadBlockMode() -> GamepadBlockMode {
             if (!g_block_gamepad_input_to_game.load(std::memory_order_relaxed)) {
-                return false;
+                return GamepadBlockMode::None;
             }
 
+            const bool allow_left_stick =
+                g_allow_left_stick_passthrough.load(std::memory_order_relaxed);
+
             if (g_hid_passthrough_depth.load(std::memory_order_relaxed) <= 0) {
-                return true;
+                return allow_left_stick ? GamepadBlockMode::LeftStickOnly : GamepadBlockMode::Full;
             }
 
             const auto passthrough_thread = g_hid_passthrough_thread.load(std::memory_order_acquire);
             if (passthrough_thread != 0 && passthrough_thread == GetCurrentThreadToken()) {
-                return false;
+                return GamepadBlockMode::None;
             }
 
-            return true;
+            return allow_left_stick ? GamepadBlockMode::LeftStickOnly : GamepadBlockMode::Full;
         }
 
         struct NpadCombinedState {
@@ -496,6 +515,9 @@ namespace d3::imgui_overlay {
             ImGui::StyleColorsDark(&style);
             ApplyImGuiStyleCommon(style);
             ApplyImGuiThemeColors(style, theme);
+            if (style.WindowBorderHoverPadding < 1.0f) {
+                style.WindowBorderHoverPadding = 1.0f;
+            }
 
             g_imgui_base_style        = style;
             g_imgui_style_initialized = true;
@@ -583,19 +605,24 @@ namespace d3::imgui_overlay {
             io.AddKeyEvent(ImGuiKey_GamepadL3, NpadButtonDown(st.buttons, nn::hid::NpadButton::StickL));
             io.AddKeyEvent(ImGuiKey_GamepadR3, NpadButtonDown(st.buttons, nn::hid::NpadButton::StickR));
 
-            if (st.have_stick_l) {
-                const float     x        = NormalizeStickComponent(st.stick_l.X);
-                const float     y        = NormalizeStickComponent(st.stick_l.Y);
-                constexpr float deadzone = 0.20f;
-                io.AddKeyAnalogEvent(ImGuiKey_GamepadLStickLeft, x < -deadzone, std::max(0.0f, -x));
-                io.AddKeyAnalogEvent(ImGuiKey_GamepadLStickRight, x > deadzone, std::max(0.0f, x));
-                io.AddKeyAnalogEvent(ImGuiKey_GamepadLStickUp, y > deadzone, std::max(0.0f, y));
-                io.AddKeyAnalogEvent(ImGuiKey_GamepadLStickDown, y < -deadzone, std::max(0.0f, -y));
+            constexpr float deadzone = 0.20f;
+            io.AddKeyAnalogEvent(ImGuiKey_GamepadLStickLeft, false, 0.0f);
+            io.AddKeyAnalogEvent(ImGuiKey_GamepadLStickRight, false, 0.0f);
+            io.AddKeyAnalogEvent(ImGuiKey_GamepadLStickUp, false, 0.0f);
+            io.AddKeyAnalogEvent(ImGuiKey_GamepadLStickDown, false, 0.0f);
+
+            if (st.have_stick_r) {
+                const float x = NormalizeStickComponent(st.stick_r.X);
+                const float y = NormalizeStickComponent(st.stick_r.Y);
+                io.AddKeyAnalogEvent(ImGuiKey_GamepadRStickLeft, x < -deadzone, std::max(0.0f, -x));
+                io.AddKeyAnalogEvent(ImGuiKey_GamepadRStickRight, x > deadzone, std::max(0.0f, x));
+                io.AddKeyAnalogEvent(ImGuiKey_GamepadRStickUp, y > deadzone, std::max(0.0f, y));
+                io.AddKeyAnalogEvent(ImGuiKey_GamepadRStickDown, y < -deadzone, std::max(0.0f, -y));
             } else {
-                io.AddKeyAnalogEvent(ImGuiKey_GamepadLStickLeft, false, 0.0f);
-                io.AddKeyAnalogEvent(ImGuiKey_GamepadLStickRight, false, 0.0f);
-                io.AddKeyAnalogEvent(ImGuiKey_GamepadLStickUp, false, 0.0f);
-                io.AddKeyAnalogEvent(ImGuiKey_GamepadLStickDown, false, 0.0f);
+                io.AddKeyAnalogEvent(ImGuiKey_GamepadRStickLeft, false, 0.0f);
+                io.AddKeyAnalogEvent(ImGuiKey_GamepadRStickRight, false, 0.0f);
+                io.AddKeyAnalogEvent(ImGuiKey_GamepadRStickUp, false, 0.0f);
+                io.AddKeyAnalogEvent(ImGuiKey_GamepadRStickDown, false, 0.0f);
             }
         }
 
@@ -939,8 +966,14 @@ namespace d3::imgui_overlay {
 #define DEFINE_HID_GET_STATE_HOOK(HOOK_NAME, STATE_TYPE)                           \
     HOOK_DEFINE_TRAMPOLINE(HOOK_NAME) {                                            \
         static auto Callback(nn::hid::STATE_TYPE *out, uint const &port) -> void { \
-            if (ShouldBlockGamepadInput()) {                                       \
-                ResetNpadState(out);                                               \
+            const auto mode = GetGamepadBlockMode();                               \
+            if (mode != GamepadBlockMode::None) {                                  \
+                if (mode == GamepadBlockMode::LeftStickOnly) {                     \
+                    Orig(out, port);                                               \
+                    ClearNpadButtonsAndRightStick(out);                            \
+                } else {                                                           \
+                    ResetNpadState(out);                                           \
+                }                                                                  \
                 return;                                                            \
             }                                                                      \
             Orig(out, port);                                                       \
@@ -951,8 +984,18 @@ namespace d3::imgui_overlay {
     HOOK_DEFINE_TRAMPOLINE(HOOK_NAME) {                                                 \
         static auto Callback(nn::hid::STATE_TYPE *out, int count, uint const &port)     \
             -> void {                                                                   \
-            if (ShouldBlockGamepadInput()) {                                            \
-                ResetNpadStates(out, count);                                            \
+            const auto mode = GetGamepadBlockMode();                                    \
+            if (mode != GamepadBlockMode::None) {                                       \
+                if (mode == GamepadBlockMode::LeftStickOnly) {                          \
+                    Orig(out, count, port);                                             \
+                    if (out != nullptr && count > 0) {                                  \
+                        for (int i = 0; i < count; ++i) {                               \
+                            ClearNpadButtonsAndRightStick(out + i);                     \
+                        }                                                               \
+                    }                                                                   \
+                } else {                                                                \
+                    ResetNpadStates(out, count);                                        \
+                }                                                                       \
                 return;                                                                 \
             }                                                                           \
             Orig(out, count, port);                                                     \
@@ -963,7 +1006,17 @@ namespace d3::imgui_overlay {
     HOOK_DEFINE_TRAMPOLINE(HOOK_NAME) {                                                 \
         static auto Callback(int *out_count, nn::hid::STATE_TYPE *out, int count,       \
                              uint const &port) -> int {                                 \
-            if (ShouldBlockGamepadInput()) {                                            \
+            const auto mode = GetGamepadBlockMode();                                    \
+            if (mode != GamepadBlockMode::None) {                                       \
+                if (mode == GamepadBlockMode::LeftStickOnly) {                          \
+                    const int rc = Orig(out_count, out, count, port);                   \
+                    if (out != nullptr && count > 0) {                                  \
+                        for (int i = 0; i < count; ++i) {                               \
+                            ClearNpadButtonsAndRightStick(out + i);                     \
+                        }                                                               \
+                    }                                                                   \
+                    return rc;                                                          \
+                }                                                                       \
                 if (out_count != nullptr) {                                             \
                     *out_count = 0;                                                     \
                 }                                                                       \
@@ -995,7 +1048,7 @@ namespace d3::imgui_overlay {
 
         HOOK_DEFINE_TRAMPOLINE(HidGetMouseStateHook) {
             static auto Callback(nn::hid::MouseState *out) -> void {
-                if (ShouldBlockGamepadInput()) {
+                if (GetGamepadBlockMode() != GamepadBlockMode::None) {
                     if (out != nullptr) {
                         *out = {};
                     }
@@ -1007,7 +1060,7 @@ namespace d3::imgui_overlay {
 
         HOOK_DEFINE_TRAMPOLINE(HidGetKeyboardStateHook) {
             static auto Callback(nn::hid::KeyboardState *out) -> void {
-                if (ShouldBlockGamepadInput()) {
+                if (GetGamepadBlockMode() != GamepadBlockMode::None) {
                     if (out != nullptr) {
                         *out = {};
                     }
@@ -1236,6 +1289,10 @@ namespace d3::imgui_overlay {
                     );
                     g_block_gamepad_input_to_game.store(
                         g_overlay.focus_state().should_block_game_input,
+                        std::memory_order_relaxed
+                    );
+                    g_allow_left_stick_passthrough.store(
+                        g_overlay.focus_state().allow_left_stick_passthrough,
                         std::memory_order_relaxed
                     );
 

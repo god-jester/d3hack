@@ -251,14 +251,6 @@ namespace d3 {
             result.restart_required = true;
         }
 
-        if (global_config.overlays.active && global_config.overlays.ddm_labels && !(prev.overlays.active && prev.overlays.ddm_labels)) {
-            PatchDDMLabels();
-            result.applied_enable_only = true;
-            append_note("DDM labels");
-        } else if ((prev.overlays.active && prev.overlays.ddm_labels) && !(global_config.overlays.active && global_config.overlays.ddm_labels)) {
-            result.restart_required = true;
-        }
-
         if (prev.resolution_hack.active != global_config.resolution_hack.active ||
             prev.resolution_hack.output_handheld_scale != global_config.resolution_hack.output_handheld_scale) {
             result.restart_required = true;

@@ -23,6 +23,8 @@ namespace d3::gui2::ui::windows {
         void Clear();
 
         void AddNotification(const ImVec4 &color, float ttl_s, const char *fmt, ...);
+        void SetPinnedOpen(bool pinned);
+        bool IsPinnedOpen() const { return pinned_open_; }
 
        protected:
         void  Update(float dt_s) override;
@@ -32,6 +34,7 @@ namespace d3::gui2::ui::windows {
        private:
         ImVec2                    viewport_size_ {};
         std::vector<Notification> notifications_ {};
+        bool                      pinned_open_ = false;
     };
 
 }  // namespace d3::gui2::ui::windows

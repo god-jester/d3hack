@@ -23,6 +23,9 @@ lang_zh = "中国語"
 enabled_persist = "有効(保存)"
 # Visible (persist)
 visible_persist = "表示(保存)"
+# Allow left stick passthrough
+left_stick_passthrough = "左スティックのパススルーを許可"
+
 # Hold + and - (0.5s) to toggle overlay visibility.
 hotkey_toggle = "ショートカット: + と - を同時に0.5秒押して表示を切り替え。"
 # Config not loaded yet.
@@ -32,7 +35,7 @@ ui_state_dirty = "UI状態: 未保存の変更"
 # UI state: clean
 ui_state_clean = "UI状態: クリーン"
 # Reset UI to current config
-reset_ui = "UIを現在の設定にリセット"
+reset_ui = "変更を元に戻す"
 # GUI enabled
 gui_enabled = "GUI有効"
 # Apply
@@ -71,6 +74,34 @@ notify_save_failed = "保存に失敗: %s"
 notify_reloaded = "config.toml を再読み込みしました"
 # Reload failed: %s
 notify_reload_failed = "再読み込みに失敗: %s"
+
+# Windows
+menu_windows = "ウィンドウ"
+# Show all
+menu_windows_show_all = "すべて表示"
+# Hide all
+menu_windows_hide_all = "すべて非表示"
+# Tools
+menu_tools = "ツール"
+# Open config
+tool_open_config = "設定を開く"
+# Open notifications
+tool_open_notifications = "通知を開く"
+# Clear notifications
+tool_clear_toasts = "通知をクリア"
+# Toggle GUI (hotkey or swipe)
+toast_toggle_hint = "+ と - を長押し、または左端からスワイプしてGUIを切り替え"
+# Save layout
+menu_save_layout = "レイアウトを保存"
+# Hide overlay
+menu_hide_overlay = "オーバーレイを非表示"
+# Reset layout
+menu_reset_layout = "レイアウトをリセット"
+# Theme
+menu_theme = "テーマ"
+# Help
+menu_help = "ヘルプ"
+
 # Overlays
 tab_overlays = "オーバーレイ"
 # GUI
@@ -184,17 +215,17 @@ events_double_goblins = "宝箱ゴブリン倍増"
 # Double bounty bags
 events_double_bounty_bags = "報酬バッグ倍増"
 # Royal Grandeur
-events_royal_grandeur = "ロイヤル・グランダー"
+events_royal_grandeur = "王家の威光"
 # Legacy of Nightmares
-events_legacy_of_nightmares = "ナイトメアの遺産"
+events_legacy_of_nightmares = "悪夢の遺産"
 # Triune's Will
-events_triunes_will = "トリウネの意志"
+events_triunes_will = "三位一体の願い"
 # Pandemonium
 events_pandemonium = "パンデモニウム"
 # Kanai powers
 events_kanai_powers = "カナイの力"
 # Trials of Tempests
-events_trials_of_tempests = "テンペストの試練"
+events_trials_of_tempests = "嵐の試練"
 # Shadow clones
 events_shadow_clones = "影のクローン"
 # Fourth Kanai's Cube slot
@@ -231,7 +262,7 @@ rare_cheats_no_cooldowns = "クールダウンなし"
 # Instant craft actions
 rare_cheats_instant_craft = "即時クラフトアクション"
 # Any gem any slot
-rare_cheats_any_gem_any_slot = "任意の宝石を任意のスロットへ"
+rare_cheats_any_gem_any_slot = "全宝石 全スロット対応"
 # Auto pickup
 rare_cheats_auto_pickup = "自動拾取"
 # Equip any slot
@@ -239,7 +270,7 @@ rare_cheats_equip_any_slot = "任意スロット装備"
 # Unlock all difficulties
 rare_cheats_unlock_all_difficulties = "全難易度解放"
 # Easy kill damage
-rare_cheats_easy_kill = "簡単キルダメージ"
+rare_cheats_easy_kill = "即死ダメージ"
 # Cube no consume
 rare_cheats_cube_no_consume = "キューブ消費なし"
 # Gem upgrade always

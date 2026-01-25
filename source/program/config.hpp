@@ -198,6 +198,7 @@ struct PatchConfig {
     struct {
         bool        enabled = true;        // render the ImGui UI (proof-of-life stays separate)
         bool        visible = true;        // window visible by default
+        bool        allow_left_stick_passthrough = false;  // allow left stick to reach game while overlay is open
         std::string language_override {};  // optional; when set, overrides game locale for GUI translations (e.g. "zh")
     } gui;
 

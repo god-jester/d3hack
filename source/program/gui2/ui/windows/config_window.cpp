@@ -2,10 +2,12 @@
 
 #include <array>
 #include <algorithm>
+#include <cmath>
 #include <cstdlib>
 #include <string>
 
 #include "program/d3/setting.hpp"
+#include "program/gui2/imgui_overlay.hpp"
 #include "program/gui2/ui/overlay.hpp"
 #include "program/gui2/ui/windows/notifications_window.hpp"
 #include "program/runtime_apply.hpp"
@@ -43,6 +45,16 @@ namespace d3::gui2::ui::windows {
             return "Disabled";
         }
 
+        static auto NormalizeStickComponent(int v) -> float {
+            constexpr float kMax = 32767.0f;
+            float           out  = static_cast<float>(v) / kMax;
+            if (out < -1.0f)
+                out = -1.0f;
+            if (out > 1.0f)
+                out = 1.0f;
+            return out;
+        }
+
     }  // namespace
 
     ConfigWindow::ConfigWindow(ui::Overlay &overlay) :
@@ -75,11 +87,146 @@ namespace d3::gui2::ui::windows {
         }
     }
 
+    void ConfigWindow::UpdateDockSwipe(ImVec2 window_pos, ImVec2 window_size) {
+        if (!overlay_.overlay_visible()) {
+            dock_swipe_active_    = false;
+            dock_swipe_triggered_ = false;
+            return;
+        }
+
+        ImGuiIO &io = ImGui::GetIO();
+        const bool down = io.MouseDown[ImGuiMouseButton_Left];
+        if (!down) {
+            dock_swipe_active_    = false;
+            dock_swipe_triggered_ = false;
+            return;
+        }
+
+        const ImGuiViewport *viewport = ImGui::GetWindowViewport();
+        if (viewport == nullptr) {
+            viewport = ImGui::GetMainViewport();
+        }
+        if (viewport == nullptr) {
+            return;
+        }
+
+        const ImVec2 win_pos  = window_pos;
+        const ImVec2 win_size = window_size;
+        const float  left_dist = std::abs(win_pos.x - viewport->Pos.x);
+        const float  right_dist =
+            std::abs((viewport->Pos.x + viewport->Size.x) - (win_pos.x + win_size.x));
+        const float  top_dist = std::abs(win_pos.y - viewport->Pos.y);
+        const float  bottom_dist =
+            std::abs((viewport->Pos.y + viewport->Size.y) - (win_pos.y + win_size.y));
+
+        DockEdge nearest_edge = DockEdge::Left;
+        float    nearest_dist = left_dist;
+        if (right_dist < nearest_dist) {
+            nearest_dist = right_dist;
+            nearest_edge = DockEdge::Right;
+        }
+        if (top_dist < nearest_dist) {
+            nearest_dist = top_dist;
+            nearest_edge = DockEdge::Top;
+        }
+        if (bottom_dist < nearest_dist) {
+            nearest_dist = bottom_dist;
+            nearest_edge = DockEdge::Bottom;
+        }
+
+        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+            const ImVec2 pos = io.MousePos;
+            const bool inside =
+                pos.x >= win_pos.x && pos.x <= (win_pos.x + win_size.x) &&
+                pos.y >= win_pos.y && pos.y <= (win_pos.y + win_size.y);
+            bool in_edge = false;
+            if (inside) {
+                const float mid_x = win_pos.x + win_size.x * 0.5f;
+                const float mid_y = win_pos.y + win_size.y * 0.5f;
+                switch (nearest_edge) {
+                case DockEdge::Left:
+                    in_edge = (pos.x <= mid_x);
+                    break;
+                case DockEdge::Right:
+                    in_edge = (pos.x >= mid_x);
+                    break;
+                case DockEdge::Top:
+                    in_edge = (pos.y <= mid_y);
+                    break;
+                case DockEdge::Bottom:
+                    in_edge = (pos.y >= mid_y);
+                    break;
+                }
+            }
+            dock_swipe_active_    = in_edge;
+            dock_swipe_triggered_ = false;
+            dock_swipe_edge_      = nearest_edge;
+            dock_swipe_start_     = pos;
+        }
+
+        if (!dock_swipe_active_ || dock_swipe_triggered_) {
+            return;
+        }
+
+        const ImVec2 delta(
+            io.MousePos.x - dock_swipe_start_.x,
+            io.MousePos.y - dock_swipe_start_.y
+        );
+        const float abs_x = std::abs(delta.x);
+        const float abs_y = std::abs(delta.y);
+        const float trigger_x = win_size.x * 0.20f;
+        const float trigger_y = win_size.y * 0.20f;
+        const float max_ortho_x = win_size.x * 0.25f;
+        const float max_ortho_y = win_size.y * 0.25f;
+
+        switch (dock_swipe_edge_) {
+        case DockEdge::Left:
+            if (abs_y > max_ortho_y) {
+                return;
+            }
+            if (delta.x <= -trigger_x) {
+                overlay_.set_overlay_visible_persist(false);
+                dock_swipe_triggered_ = true;
+            }
+            break;
+        case DockEdge::Right:
+            if (abs_y > max_ortho_y) {
+                return;
+            }
+            if (delta.x >= trigger_x) {
+                overlay_.set_overlay_visible_persist(false);
+                dock_swipe_triggered_ = true;
+            }
+            break;
+        case DockEdge::Top:
+            if (abs_x > max_ortho_x) {
+                return;
+            }
+            if (delta.y <= -trigger_y) {
+                overlay_.set_overlay_visible_persist(false);
+                dock_swipe_triggered_ = true;
+            }
+            break;
+        case DockEdge::Bottom:
+            if (abs_x > max_ortho_x) {
+                return;
+            }
+            if (delta.y >= trigger_y) {
+                overlay_.set_overlay_visible_persist(false);
+                dock_swipe_triggered_ = true;
+            }
+            break;
+        }
+    }
+
     void ConfigWindow::RenderContents() {
+        const ImVec2 window_pos  = ImGui::GetWindowPos();
+        const ImVec2 window_size = ImGui::GetWindowSize();
         ImGui::TextUnformatted(overlay_.tr("gui.hotkey_toggle", "Hold + and - (0.5s) to toggle overlay visibility."));
 
         if (!overlay_.is_config_loaded()) {
             ImGui::TextUnformatted(overlay_.tr("gui.config_not_loaded", "Config not loaded yet."));
+            UpdateDockSwipe(window_pos, window_size);
             return;
         }
 
@@ -89,91 +236,9 @@ namespace d3::gui2::ui::windows {
         ImGui::Text(overlay_.tr("gui.config_source", "Config source: %s"), config_source);
         ImGui::Separator();
 
-        const auto &dbg = overlay_.frame_debug();
-        ImGui::Text(overlay_.tr("gui.viewport_info", "Viewport: %.0fx%.0f | Crop: %dx%d | Swapchain: %d"), dbg.viewport_size.x, dbg.viewport_size.y, dbg.crop_w, dbg.crop_h, dbg.swapchain_texture_count);
-
-        if (overlay_.ui_dirty()) {
-            ImGui::TextUnformatted(overlay_.tr("gui.ui_state_dirty", "UI state: UNSAVED changes"));
-        } else {
-            ImGui::TextUnformatted(overlay_.tr("gui.ui_state_clean", "UI state: clean"));
-        }
-
-        if (ImGui::Button(overlay_.tr("gui.reset_ui", "Reset UI to current config"))) {
-            cfg = global_config;
-            overlay_.set_overlay_visible(global_config.gui.visible);
-            overlay_.set_ui_dirty(false);
-            restart_required_ = false;
-        }
-
-        ImGui::SameLine();
-        if (ImGui::Checkbox(overlay_.tr("gui.gui_enabled", "GUI enabled"), &cfg.gui.enabled)) {
-            overlay_.set_ui_dirty(true);
-        }
-
-        ImGui::SameLine();
-        if (ImGui::Button(overlay_.tr("gui.apply", "Apply"))) {
-            const PatchConfig      normalized = NormalizePatchConfig(cfg);
-            d3::RuntimeApplyResult apply {};
-            d3::ApplyPatchConfigRuntime(normalized, &apply);
-            restart_required_ = apply.restart_required;
-
-            cfg = global_config;
-            overlay_.set_overlay_visible(global_config.gui.visible);
-            overlay_.set_ui_dirty(false);
-
-            auto *notifications = overlay_.notifications_window();
-            if (apply.restart_required) {
-                if (notifications != nullptr)
-                    notifications->AddNotification(ImVec4(1.0f, 0.75f, 0.2f, 1.0f), 6.0f, overlay_.tr("gui.notify_applied_restart", "Applied. Restart required."));
-            } else if (apply.applied_enable_only || apply.note[0] != '\0') {
-                if (notifications != nullptr)
-                    notifications->AddNotification(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), 4.0f, overlay_.tr("gui.notify_applied_note", "Applied (%s)."), apply.note[0] ? apply.note : overlay_.tr("gui.note_runtime", "runtime"));
-            } else {
-                if (notifications != nullptr)
-                    notifications->AddNotification(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), 4.0f, overlay_.tr("gui.notify_applied", "Applied."));
-            }
-        }
-
-        ImGui::SameLine();
-        if (ImGui::Button(overlay_.tr("gui.save", "Save"))) {
-            std::string error;
-            cfg.gui.visible = overlay_.overlay_visible();
-            if (SavePatchConfigToPath("sd:/config/d3hack-nx/config.toml", cfg, error)) {
-                if (auto *notifications = overlay_.notifications_window())
-                    notifications->AddNotification(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), 4.0f, overlay_.tr("gui.notify_saved", "Saved config.toml"));
-            } else {
-                if (auto *notifications = overlay_.notifications_window())
-                    notifications->AddNotification(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), 8.0f, overlay_.tr("gui.notify_save_failed", "Save failed: %s"), error.empty() ? overlay_.tr("gui.error_unknown", "unknown") : error.c_str());
-            }
-        }
-
-        ImGui::SameLine();
-        if (ImGui::Button(overlay_.tr("gui.reload", "Reload"))) {
-            PatchConfig loaded {};
-            std::string error;
-            if (LoadPatchConfigFromPath("sd:/config/d3hack-nx/config.toml", loaded, error)) {
-                d3::RuntimeApplyResult apply {};
-                d3::ApplyPatchConfigRuntime(loaded, &apply);
-                restart_required_ = apply.restart_required;
-                cfg               = global_config;
-                overlay_.set_overlay_visible(global_config.gui.visible);
-                overlay_.set_ui_dirty(false);
-                if (auto *notifications = overlay_.notifications_window())
-                    notifications->AddNotification(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), 4.0f, overlay_.tr("gui.notify_reloaded", "Reloaded config.toml"));
-            } else {
-                if (auto *notifications = overlay_.notifications_window())
-                    notifications->AddNotification(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), 8.0f, overlay_.tr("gui.notify_reload_failed", "Reload failed: %s"), error.empty() ? overlay_.tr("gui.error_not_found", "not found") : error.c_str());
-            }
-        }
-
-        if (restart_required_) {
-            ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.2f, 1.0f), "%s", overlay_.tr("gui.restart_required_banner", "Restart required for some changes."));
-        }
-
-        ImGui::Separator();
-
         if (!cfg.gui.enabled) {
             ImGui::TextUnformatted(overlay_.tr("gui.disabled_help", "GUI is disabled (proof-of-life stays on). Enable GUI to edit config."));
+            UpdateDockSwipe(window_pos, window_size);
             return;
         }
 
@@ -215,6 +280,15 @@ namespace d3::gui2::ui::windows {
             mark_dirty(ImGui::Checkbox(overlay_.tr("gui.enabled_persist", "Enabled (persist)"), &cfg.gui.enabled));
             if (ImGui::Checkbox(overlay_.tr("gui.visible_persist", "Visible (persist)"), &cfg.gui.visible)) {
                 overlay_.set_overlay_visible_persist(cfg.gui.visible);
+            }
+            bool allow_left_stick_passthrough = cfg.gui.allow_left_stick_passthrough;
+            if (ImGui::Checkbox(
+                    overlay_.tr("gui.left_stick_passthrough", "Allow left stick passthrough"),
+                    &allow_left_stick_passthrough
+                )) {
+                cfg.gui.allow_left_stick_passthrough = allow_left_stick_passthrough;
+                overlay_.set_allow_left_stick_passthrough(allow_left_stick_passthrough);
+                overlay_.set_ui_dirty(true);
             }
 
             const char *preview = cfg.gui.language_override.empty() ? overlay_.tr("gui.lang_auto", "Auto (game)") : cfg.gui.language_override.c_str();
@@ -592,20 +666,86 @@ namespace d3::gui2::ui::windows {
             ImGui::Checkbox(overlay_.tr("gui.debug_show_metrics", "Show ImGui metrics"), &show_metrics_);
         };
 
-        ImGui::BeginChild("cfg_body", ImVec2(0.0f, 0.0f), false);
-        ImGui::BeginChild("cfg_nav", ImVec2(210.0f, 0.0f), true);
+        const ImGuiStyle &style = ImGui::GetStyle();
+        constexpr float   kNavMinWidth = 200.0f;
+        constexpr float   kNavMaxWidth = 320.0f;
+        constexpr float   kNavFontScale = 1.12f;
+        constexpr float   kNavRowHeightScale = 1.45f;
+        constexpr float   kNavExtraSpacingY = 6.0f;
+        constexpr float   kNavExtraPaddingY = 4.0f;
+        const float       nav_font_size = style.FontSizeBase * kNavFontScale;
+        ImFont           *nav_font      = d3::imgui_overlay::GetTitleFont();
+        const bool        has_nav_font  = (nav_font != nullptr);
+        float             nav_text_w    = 0.0f;
+        ImGui::PushFont(has_nav_font ? nav_font : nullptr, nav_font_size);
+        for (const auto &section : kSections) {
+            const char *label = overlay_.tr(section.key, section.fallback);
+            nav_text_w         = std::max(nav_text_w, ImGui::CalcTextSize(label).x);
+        }
+        ImGui::PopFont();
+        float nav_width = nav_text_w + style.FramePadding.x * 2.0f + style.ItemSpacing.x * 2.0f;
+        const float avail_w = ImGui::GetContentRegionAvail().x;
+        const float nav_max = std::max(kNavMinWidth, std::min(kNavMaxWidth, avail_w * 0.45f));
+        nav_width           = std::clamp(nav_width, kNavMinWidth, nav_max);
+
+        const float action_bar_height = ImGui::GetFrameHeightWithSpacing() + style.WindowPadding.y * 2.0f;
+
+        ImGui::BeginChild("cfg_body", ImVec2(0.0f, -action_bar_height), false);
+        ImGui::BeginChild("cfg_nav", ImVec2(nav_width, 0.0f), true);
+        ImGui::PushFont(has_nav_font ? nav_font : nullptr, nav_font_size);
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(style.ItemSpacing.x, style.ItemSpacing.y + kNavExtraSpacingY));
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(style.FramePadding.x, style.FramePadding.y + kNavExtraPaddingY));
+        ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.0f, 0.5f));
+        const float nav_row_height = ImGui::GetTextLineHeightWithSpacing() * kNavRowHeightScale;
         for (int i = 0; i < static_cast<int>(kSections.size()); ++i) {
             const bool selected = (section_index_ == i);
             const char *label   = overlay_.tr(kSections[static_cast<size_t>(i)].key, kSections[static_cast<size_t>(i)].fallback);
-            if (ImGui::Selectable(label, selected)) {
+            if (ImGui::Selectable(label, selected, 0, ImVec2(0.0f, nav_row_height))) {
                 section_index_ = i;
             }
+            if (selected) {
+                ImGui::SetItemDefaultFocus();
+            }
         }
+        ImGui::PopStyleVar(3);
+        ImGui::PopFont();
         ImGui::EndChild();
 
         ImGui::SameLine();
 
-        ImGui::BeginChild("cfg_panel", ImVec2(0.0f, 0.0f), false, ImGuiWindowFlags_AlwaysVerticalScrollbar);
+        auto apply_panel_scroll = [&]() -> void {
+            ImGuiIO &io = ImGui::GetIO();
+            const float line_height = ImGui::GetTextLineHeightWithSpacing();
+            float       scroll_delta = 0.0f;
+
+            if (ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) &&
+                io.MouseWheel != 0.0f) {
+                scroll_delta -= io.MouseWheel * line_height * 5.0f;
+            }
+
+            const auto &dbg = overlay_.frame_debug();
+            const float ry = NormalizeStickComponent(dbg.last_npad_stick_ry);
+            constexpr float kStickDeadzone = 0.25f;
+            constexpr float kStickLinesPerSecond = 16.0f;
+            const float abs_ry = std::abs(ry);
+            if (abs_ry > kStickDeadzone) {
+                const float t = (abs_ry - kStickDeadzone) / (1.0f - kStickDeadzone);
+                const float speed = t * kStickLinesPerSecond * line_height;
+                scroll_delta -= (ry > 0.0f ? 1.0f : -1.0f) * speed * io.DeltaTime;
+            }
+
+            if (scroll_delta != 0.0f) {
+                const float max_scroll = ImGui::GetScrollMaxY();
+                float       next = std::clamp(ImGui::GetScrollY() + scroll_delta, 0.0f, max_scroll);
+                ImGui::SetScrollY(next);
+            }
+        };
+
+        const ImGuiWindowFlags panel_flags =
+            ImGuiWindowFlags_AlwaysVerticalScrollbar |
+            ImGuiWindowFlags_NoScrollWithMouse;
+        ImGui::BeginChild("cfg_panel", ImVec2(0.0f, 0.0f), false, panel_flags);
+        apply_panel_scroll();
         ImGui::TextUnformatted(overlay_.tr(kSections[static_cast<size_t>(section_index_)].key, kSections[static_cast<size_t>(section_index_)].fallback));
         ImGui::Separator();
         switch (section_index_) {
@@ -640,6 +780,117 @@ namespace d3::gui2::ui::windows {
         }
         ImGui::EndChild();
         ImGui::EndChild();
+
+        ImGui::BeginChild("cfg_action_bar", ImVec2(0.0f, action_bar_height), true,
+                          ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+        ImGui::AlignTextToFramePadding();
+
+        const char *label_reload = overlay_.tr("gui.reload", "Reload");
+        const char *label_reset  = overlay_.tr("gui.reset_ui", "Revert Changes");
+        const char *label_apply  = overlay_.tr("gui.apply", "Apply");
+        const char *label_save   = overlay_.tr("gui.save", "Save");
+
+        auto button_width = [&](const char *label) -> float {
+            return ImGui::CalcTextSize(label).x + style.FramePadding.x * 2.0f;
+        };
+
+        const float buttons_width =
+            button_width(label_reset) + button_width(label_reload) + button_width(label_save) +
+            button_width(label_apply) + style.ItemSpacing.x * 3.0f;
+
+        const float start_x = ImGui::GetCursorPosX();
+        const float avail_x = ImGui::GetContentRegionAvail().x;
+        const float right_x = start_x + avail_x - buttons_width;
+        bool        has_state = false;
+        if (overlay_.ui_dirty()) {
+            ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.2f, 1.0f), "%s",
+                               overlay_.tr("gui.ui_state_dirty", "UI state: UNSAVED changes"));
+            has_state = true;
+        }
+        if (restart_required_) {
+            if (has_state) {
+                ImGui::SameLine();
+            }
+            ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.2f, 1.0f), "%s",
+                               overlay_.tr("gui.restart_required_banner", "Restart required for some changes."));
+            has_state = true;
+        }
+        if (has_state) {
+            ImGui::SameLine();
+        }
+        if (right_x > ImGui::GetCursorPosX()) {
+            ImGui::SetCursorPosX(right_x);
+        }
+
+        if (ImGui::Button(label_reload)) {
+            PatchConfig loaded {};
+            std::string error;
+            if (LoadPatchConfigFromPath("sd:/config/d3hack-nx/config.toml", loaded, error)) {
+                d3::RuntimeApplyResult apply {};
+                d3::ApplyPatchConfigRuntime(loaded, &apply);
+                restart_required_ = apply.restart_required;
+                cfg               = global_config;
+                overlay_.set_overlay_visible(global_config.gui.visible);
+                overlay_.set_allow_left_stick_passthrough(cfg.gui.allow_left_stick_passthrough);
+                overlay_.set_ui_dirty(false);
+                if (auto *notifications = overlay_.notifications_window())
+                    notifications->AddNotification(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), 4.0f, overlay_.tr("gui.notify_reloaded", "Reloaded config.toml"));
+            } else {
+                if (auto *notifications = overlay_.notifications_window())
+                    notifications->AddNotification(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), 8.0f, overlay_.tr("gui.notify_reload_failed", "Reload failed: %s"), error.empty() ? overlay_.tr("gui.error_not_found", "not found") : error.c_str());
+            }
+        }
+
+        ImGui::SameLine();
+        if (ImGui::Button(label_reset)) {
+            cfg = global_config;
+            overlay_.set_overlay_visible(global_config.gui.visible);
+            overlay_.set_allow_left_stick_passthrough(cfg.gui.allow_left_stick_passthrough);
+            overlay_.set_ui_dirty(false);
+            restart_required_ = false;
+        }
+
+        ImGui::SameLine();
+        if (ImGui::Button(label_apply)) {
+            const PatchConfig      normalized = NormalizePatchConfig(cfg);
+            d3::RuntimeApplyResult apply {};
+            d3::ApplyPatchConfigRuntime(normalized, &apply);
+            restart_required_ = apply.restart_required;
+
+            cfg = global_config;
+            overlay_.set_overlay_visible(global_config.gui.visible);
+            overlay_.set_allow_left_stick_passthrough(cfg.gui.allow_left_stick_passthrough);
+            overlay_.set_ui_dirty(false);
+
+            auto *notifications = overlay_.notifications_window();
+            if (apply.restart_required) {
+                if (notifications != nullptr)
+                    notifications->AddNotification(ImVec4(1.0f, 0.75f, 0.2f, 1.0f), 6.0f, overlay_.tr("gui.notify_applied_restart", "Applied. Restart required."));
+            } else if (apply.applied_enable_only || apply.note[0] != '\0') {
+                if (notifications != nullptr)
+                    notifications->AddNotification(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), 4.0f, overlay_.tr("gui.notify_applied_note", "Applied (%s)."), apply.note[0] ? apply.note : overlay_.tr("gui.note_runtime", "runtime"));
+            } else {
+                if (notifications != nullptr)
+                    notifications->AddNotification(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), 4.0f, overlay_.tr("gui.notify_applied", "Applied."));
+            }
+        }
+
+        ImGui::SameLine();
+        if (ImGui::Button(label_save)) {
+            std::string error;
+            cfg.gui.visible = overlay_.overlay_visible();
+            if (SavePatchConfigToPath("sd:/config/d3hack-nx/config.toml", cfg, error)) {
+                if (auto *notifications = overlay_.notifications_window())
+                    notifications->AddNotification(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), 4.0f, overlay_.tr("gui.notify_saved", "Saved config.toml"));
+            } else {
+                if (auto *notifications = overlay_.notifications_window())
+                    notifications->AddNotification(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), 8.0f, overlay_.tr("gui.notify_save_failed", "Save failed: %s"), error.empty() ? overlay_.tr("gui.error_unknown", "unknown") : error.c_str());
+            }
+        }
+
+        ImGui::EndChild();
+
+        UpdateDockSwipe(window_pos, window_size);
     }
 
 }  // namespace d3::gui2::ui::windows

@@ -23,6 +23,9 @@ lang_zh = "Chinese"
 enabled_persist = "Enabled (persist)"
 # Visible (persist)
 visible_persist = "Visible (persist)"
+# Allow left stick passthrough
+left_stick_passthrough = "Allow left stick passthrough"
+
 # Hold + and - (0.5s) to toggle overlay visibility.
 hotkey_toggle = "Hold + and - (0.5s) to toggle overlay visibility."
 # Config not loaded yet.
@@ -31,8 +34,8 @@ config_not_loaded = "Config not loaded yet."
 ui_state_dirty = "UI state: UNSAVED changes"
 # UI state: clean
 ui_state_clean = "UI state: clean"
-# Reset UI to current config
-reset_ui = "Reset UI to current config"
+# Revert Changes
+reset_ui = "Revert Changes"
 # GUI enabled
 gui_enabled = "GUI enabled"
 # Apply
@@ -71,6 +74,34 @@ notify_save_failed = "Save failed: %s"
 notify_reloaded = "Reloaded config.toml"
 # Reload failed: %s
 notify_reload_failed = "Reload failed: %s"
+
+# Windows
+menu_windows = "Windows"
+# Show all
+menu_windows_show_all = "Show all"
+# Hide all
+menu_windows_hide_all = "Hide all"
+# Tools
+menu_tools = "Tools"
+# Open config
+tool_open_config = "Open config"
+# Open notifications
+tool_open_notifications = "Open notifications"
+# Clear notifications
+tool_clear_toasts = "Clear notifications"
+# Toggle GUI (hotkey or swipe)
+toast_toggle_hint = "Hold + and - or swipe from left edge to toggle GUI"
+# Save layout
+menu_save_layout = "Save layout"
+# Hide overlay
+menu_hide_overlay = "Hide overlay"
+# Reset layout
+menu_reset_layout = "Reset layout"
+# Theme
+menu_theme = "Theme"
+# Help
+menu_help = "Help"
+
 # Overlays
 tab_overlays = "Overlays"
 # GUI

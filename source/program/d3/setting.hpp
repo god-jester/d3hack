@@ -11,7 +11,7 @@
 #define D3HACK_WEB     "https://jester.dev"
 #define CRLF           "\n"
 #define D3HACK_DESC    "Realtime hack for Diablo III: Eternal Collection" CRLF D3HACK_WEB
-#define D3HACK_BUILD   " (Built by " D3HACK_AUTHOR " @ " __DATE__ " " __TIME__ ")"
+#define D3HACK_BUILD   " (Built @ " __DATE__ " " __TIME__ ")"
 #define D3HACK_FULLVER D3HACK_VER " by " D3HACK_AUTHOR " - Diablo III: Eternal Collection [v" D3CLIENT_VER "]"
 #define D3HACK_FULLFPS D3HACK_VER D3HACK_BUILD
 #define D3HACK_FULLWWW D3HACK_VER D3HACK_BUILD CRLF CRLF D3HACK_DESC

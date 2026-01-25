@@ -23,6 +23,9 @@ lang_zh = "中文"
 enabled_persist = "启用(保存)"
 # Visible (persist)
 visible_persist = "显示(保存)"
+# Allow left stick passthrough
+left_stick_passthrough = "允许左摇杆透传"
+
 # Hold + and - (0.5s) to toggle overlay visibility.
 hotkey_toggle = "快捷键: 同时按住 + 和 - (0.5秒) 切换显示."
 # Config not loaded yet.
@@ -32,7 +35,7 @@ ui_state_dirty = "UI 状态: 有未保存的更改"
 # UI state: clean
 ui_state_clean = "UI 状态: 无未保存的更改"
 # Reset UI to current config
-reset_ui = "重置 UI 为当前配置"
+reset_ui = "撤销更改"
 # GUI enabled
 gui_enabled = "启用 GUI"
 # Apply
@@ -71,6 +74,34 @@ notify_save_failed = "保存失败: %s"
 notify_reloaded = "已重新加载 config.toml"
 # Reload failed: %s
 notify_reload_failed = "重新加载失败: %s"
+
+# Windows
+menu_windows = "窗口"
+# Show all
+menu_windows_show_all = "显示全部"
+# Hide all
+menu_windows_hide_all = "隐藏全部"
+# Tools
+menu_tools = "工具"
+# Open config
+tool_open_config = "打开设置"
+# Open notifications
+tool_open_notifications = "打开通知"
+# Clear notifications
+tool_clear_toasts = "清除通知"
+# Toggle GUI (hotkey or swipe)
+toast_toggle_hint = "按住 + 和 - 或从左边缘滑动以切换 GUI"
+# Save layout
+menu_save_layout = "保存布局"
+# Hide overlay
+menu_hide_overlay = "隐藏叠加层"
+# Reset layout
+menu_reset_layout = "重置布局"
+# Theme
+menu_theme = "主题"
+# Help
+menu_help = "帮助"
+
 # Overlays
 tab_overlays = "叠加层"
 # GUI
@@ -239,7 +270,7 @@ rare_cheats_equip_any_slot = "任意槽位装备"
 # Unlock all difficulties
 rare_cheats_unlock_all_difficulties = "解锁所有难度"
 # Easy kill damage
-rare_cheats_easy_kill = "易杀伤害"
+rare_cheats_easy_kill = "秒杀伤害"
 # Cube no consume
 rare_cheats_cube_no_consume = "魔盒不消耗材料"
 # Gem upgrade always
@@ -252,7 +283,7 @@ rare_cheats_gem_upgrade_lvl150 = "宝石升级至 150"
 rare_cheats_equip_multi_legendary = "可装备多个传奇"
 
 # Enabled##cr
-challenge_rifts_enabled = "启用##cr"
+challenge_rifts_enabled = "挑战秘境##cr"
 # Randomize within range
 challenge_rifts_random = "范围内随机"
 # Range start

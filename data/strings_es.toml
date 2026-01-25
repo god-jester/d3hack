@@ -23,6 +23,9 @@ lang_zh = "Chino"
 enabled_persist = "Activado (persistente)"
 # Visible (persist)
 visible_persist = "Visible (persistente)"
+# Allow left stick passthrough
+left_stick_passthrough = "Permitir el paso del stick izquierdo"
+
 # Hold + and - (0.5s) to toggle overlay visibility.
 hotkey_toggle = "Atajo: mantener + y - (0.5s) para alternar la superposicion."
 # Config not loaded yet.
@@ -32,7 +35,7 @@ ui_state_dirty = "Estado de UI: cambios NO GUARDADOS"
 # UI state: clean
 ui_state_clean = "Estado de UI: limpio"
 # Reset UI to current config
-reset_ui = "Restablecer UI a la configuracion actual"
+reset_ui = "Deshacer cambios"
 # GUI enabled
 gui_enabled = "GUI activada"
 # Apply
@@ -71,6 +74,34 @@ notify_save_failed = "Error al guardar: %s"
 notify_reloaded = "config.toml recargado"
 # Reload failed: %s
 notify_reload_failed = "Error al recargar: %s"
+
+# Windows
+menu_windows = "Ventanas"
+# Show all
+menu_windows_show_all = "Mostrar todo"
+# Hide all
+menu_windows_hide_all = "Ocultar todo"
+# Tools
+menu_tools = "Herramientas"
+# Open config
+tool_open_config = "Abrir configuracion"
+# Open notifications
+tool_open_notifications = "Abrir notificaciones"
+# Clear notifications
+tool_clear_toasts = "Limpiar notificaciones"
+# Toggle GUI (hotkey or swipe)
+toast_toggle_hint = "Manten presionado + y - o desliza desde el borde izquierdo para alternar la GUI"
+# Save layout
+menu_save_layout = "Guardar diseño"
+# Hide overlay
+menu_hide_overlay = "Ocultar superposicion"
+# Reset layout
+menu_reset_layout = "Restablecer diseño"
+# Theme
+menu_theme = "Tema"
+# Help
+menu_help = "Ayuda"
+
 # Overlays
 tab_overlays = "Superposiciones"
 # GUI
@@ -188,13 +219,13 @@ events_royal_grandeur = "Grandeza real"
 # Legacy of Nightmares
 events_legacy_of_nightmares = "Legado de pesadillas"
 # Triune's Will
-events_triunes_will = "Voluntad de Triuno"
+events_triunes_will = "Voluntad de la Triada"
 # Pandemonium
-events_pandemonium = "Pandemonium"
+events_pandemonium = "Pandemonio"
 # Kanai powers
 events_kanai_powers = "Poderes de Kanai"
 # Trials of Tempests
-events_trials_of_tempests = "Pruebas de tempestades"
+events_trials_of_tempests = "Pruebas de las tempestades"
 # Shadow clones
 events_shadow_clones = "Clones de sombra"
 # Fourth Kanai's Cube slot
@@ -239,7 +270,7 @@ rare_cheats_equip_any_slot = "Equipar en cualquier ranura"
 # Unlock all difficulties
 rare_cheats_unlock_all_difficulties = "Desbloquear todas las dificultades"
 # Easy kill damage
-rare_cheats_easy_kill = "Dano de muerte facil"
+rare_cheats_easy_kill = "Daño de muerte instantánea"
 # Cube no consume
 rare_cheats_cube_no_consume = "Cubo sin consumo"
 # Gem upgrade always
@@ -283,7 +314,7 @@ loot_rank_normal = "Normal"
 # Ancient
 loot_rank_ancient = "Ancestral"
 # Primal
-loot_rank_primal = "Primordial"
+loot_rank_primal = "Primal"
 
 # Enabled##debug
 debug_enabled = "Activado##debug"

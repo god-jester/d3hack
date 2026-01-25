@@ -23,6 +23,9 @@ lang_zh = "중국어"
 enabled_persist = "활성화(저장)"
 # Visible (persist)
 visible_persist = "표시(저장)"
+# Allow left stick passthrough
+left_stick_passthrough = "왼쪽 스틱 통과 허용"
+
 # Hold + and - (0.5s) to toggle overlay visibility.
 hotkey_toggle = "단축키: + 와 - 를 0.5초 동안 눌러 표시 전환."
 # Config not loaded yet.
@@ -32,7 +35,7 @@ ui_state_dirty = "UI 상태: 저장되지 않은 변경"
 # UI state: clean
 ui_state_clean = "UI 상태: 깨끗함"
 # Reset UI to current config
-reset_ui = "UI를 현재 설정으로 재설정"
+reset_ui = "변경 사항 되돌리기"
 # GUI enabled
 gui_enabled = "GUI 활성화"
 # Apply
@@ -71,6 +74,34 @@ notify_save_failed = "저장 실패: %s"
 notify_reloaded = "config.toml 다시 불러옴"
 # Reload failed: %s
 notify_reload_failed = "다시 불러오기 실패: %s"
+
+# Windows
+menu_windows = "창"
+# Show all
+menu_windows_show_all = "모두 표시"
+# Hide all
+menu_windows_hide_all = "모두 숨기기"
+# Tools
+menu_tools = "도구"
+# Open config
+tool_open_config = "설정 열기"
+# Open notifications
+tool_open_notifications = "알림 열기"
+# Clear notifications
+tool_clear_toasts = "알림 지우기"
+# Toggle GUI (hotkey or swipe)
+toast_toggle_hint = "+ 와 - 를 길게 누르거나 왼쪽 가장자리에서 스와이프하여 GUI 전환"
+# Save layout
+menu_save_layout = "레이아웃 저장"
+# Hide overlay
+menu_hide_overlay = "오버레이 숨기기"
+# Reset layout
+menu_reset_layout = "레이아웃 초기화"
+# Theme
+menu_theme = "테마"
+# Help
+menu_help = "도움말"
+
 # Overlays
 tab_overlays = "오버레이"
 # GUI
@@ -184,11 +215,11 @@ events_double_goblins = "보물 고블린 2배"
 # Double bounty bags
 events_double_bounty_bags = "현상금 가방 2배"
 # Royal Grandeur
-events_royal_grandeur = "왕실 위엄"
+events_royal_grandeur = "왕실의 권위"
 # Legacy of Nightmares
 events_legacy_of_nightmares = "악몽의 유산"
 # Triune's Will
-events_triunes_will = "트리운의 의지"
+events_triunes_will = "삼위일체의 의지"
 # Pandemonium
 events_pandemonium = "팬데모니엄"
 # Kanai powers
@@ -204,7 +235,7 @@ events_ethereal_items = "에테리얼 아이템"
 # Soul shards
 events_soul_shards = "영혼 파편"
 # Swarm rifts
-events_swarm_rifts = "스웜 균열"
+events_swarm_rifts = "메아리치는 악몽"
 # Sanctified items
 events_sanctified_items = "성화된 아이템"
 # Dark Alchemy
@@ -239,7 +270,7 @@ rare_cheats_equip_any_slot = "모든 슬롯 장착"
 # Unlock all difficulties
 rare_cheats_unlock_all_difficulties = "모든 난이도 해제"
 # Easy kill damage
-rare_cheats_easy_kill = "쉬운 처치 피해"
+rare_cheats_easy_kill = "원킬 데미지"
 # Cube no consume
 rare_cheats_cube_no_consume = "큐브 재료 소비 없음"
 # Gem upgrade always

@@ -23,6 +23,9 @@ lang_zh = "Chinesisch"
 enabled_persist = "Aktiviert (speichern)"
 # Visible (persist)
 visible_persist = "Sichtbar (speichern)"
+# Allow left stick passthrough
+left_stick_passthrough = "Linken Stick durchreichen lassen"
+
 # Hold + and - (0.5s) to toggle overlay visibility.
 hotkey_toggle = "Hotkey: + und - (0.5s) gedrueckt halten, um die Anzeige zu wechseln."
 # Config not loaded yet.
@@ -32,7 +35,7 @@ ui_state_dirty = "UI-Status: NICHT GESPEICHERTE Aenderungen"
 # UI state: clean
 ui_state_clean = "UI-Status: sauber"
 # Reset UI to current config
-reset_ui = "UI auf aktuelle Konfiguration zuruecksetzen"
+reset_ui = "Aenderungen rueckgaengig machen"
 # GUI enabled
 gui_enabled = "GUI aktiviert"
 # Apply
@@ -71,6 +74,34 @@ notify_save_failed = "Speichern fehlgeschlagen: %s"
 notify_reloaded = "config.toml neu geladen"
 # Reload failed: %s
 notify_reload_failed = "Neuladen fehlgeschlagen: %s"
+
+# Windows
+menu_windows = "Fenster"
+# Show all
+menu_windows_show_all = "Alle anzeigen"
+# Hide all
+menu_windows_hide_all = "Alle ausblenden"
+# Tools
+menu_tools = "Werkzeuge"
+# Open config
+tool_open_config = "Konfiguration oeffnen"
+# Open notifications
+tool_open_notifications = "Benachrichtigungen oeffnen"
+# Clear notifications
+tool_clear_toasts = "Benachrichtigungen loeschen"
+# Toggle GUI (hotkey or swipe)
+toast_toggle_hint = "Halte + und - gedrueckt oder wische vom linken Rand, um die GUI umzuschalten"
+# Save layout
+menu_save_layout = "Layout speichern"
+# Hide overlay
+menu_hide_overlay = "Overlay ausblenden"
+# Reset layout
+menu_reset_layout = "Layout zuruecksetzen"
+# Theme
+menu_theme = "Design"
+# Help
+menu_help = "Hilfe"
+
 # Overlays
 tab_overlays = "Overlays"
 # GUI
@@ -184,17 +215,17 @@ events_double_goblins = "Doppelte Schatzgoblins"
 # Double bounty bags
 events_double_bounty_bags = "Doppelte Kopfgeldtaschen"
 # Royal Grandeur
-events_royal_grandeur = "Royal Grandeur"
+events_royal_grandeur = "Koeniglicher Prunk"
 # Legacy of Nightmares
-events_legacy_of_nightmares = "Legacy of Nightmares"
+events_legacy_of_nightmares = "Vermaechtnis der Alptraeume"
 # Triune's Will
-events_triunes_will = "Triunes Will"
+events_triunes_will = "Wille der Dreieinigkeit"
 # Pandemonium
 events_pandemonium = "Pandemonium"
 # Kanai powers
 events_kanai_powers = "Kanai-Kraefte"
 # Trials of Tempests
-events_trials_of_tempests = "Trials of Tempests"
+events_trials_of_tempests = "Pruefungen der Stuerme"
 # Shadow clones
 events_shadow_clones = "Schattenklone"
 # Fourth Kanai's Cube slot
@@ -239,7 +270,7 @@ rare_cheats_equip_any_slot = "In jedem Slot ausruesten"
 # Unlock all difficulties
 rare_cheats_unlock_all_difficulties = "Alle Schwierigkeitsgrade freischalten"
 # Easy kill damage
-rare_cheats_easy_kill = "Leichter-Kill-Schaden"
+rare_cheats_easy_kill = "One-Hit-Kill Schaden"
 # Cube no consume
 rare_cheats_cube_no_consume = "Wuerfel verbraucht nichts"
 # Gem upgrade always

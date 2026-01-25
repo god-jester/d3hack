@@ -17,6 +17,7 @@ namespace d3::gui2::ui {
         bool want_capture_mouse      = false;
         bool want_capture_keyboard   = false;
         bool should_block_game_input = false;
+        bool allow_left_stick_passthrough = false;
     };
 
     enum class GuiTheme {
@@ -73,6 +74,9 @@ namespace d3::gui2::ui {
         void  set_overlay_visible_persist(bool v);
         void  ToggleVisibleAndPersist();
 
+        bool allow_left_stick_passthrough() const { return allow_left_stick_passthrough_; }
+        void set_allow_left_stick_passthrough(bool allow) { allow_left_stick_passthrough_ = allow; }
+
         void RequestFocus();
         void RequestFocusWindow(Window *window);
 
@@ -110,6 +114,7 @@ namespace d3::gui2::ui {
         bool overlay_visible_ = true;
         bool request_focus_   = false;
         Window *focus_window_    = nullptr;
+        bool    allow_left_stick_passthrough_ = false;
 
         std::string                                  translations_lang_ {};
         bool                                         translations_loaded_ = false;

@@ -571,6 +571,7 @@ namespace {
             toml::table t;
             t.insert("Enabled", config.gui.enabled);
             t.insert("Visible", config.gui.visible);
+            t.insert("AllowLeftStickPassthrough", config.gui.allow_left_stick_passthrough);
             if (!config.gui.language_override.empty()) {
                 t.insert("Language", config.gui.language_override);
             }
@@ -879,6 +880,11 @@ void PatchConfig::ApplyTable(const toml::table &table) {
     if (const auto *section = FindTable(table, "gui")) {
         gui.enabled = ReadBool(*section, {"Enabled", "SectionEnabled", "Active"}, gui.enabled);
         gui.visible = ReadBool(*section, {"Visible", "Show", "WindowVisible"}, gui.visible);
+        gui.allow_left_stick_passthrough = ReadBool(
+            *section,
+            {"AllowLeftStickPassthrough", "LeftStickPassthrough", "AllowLeftStickThrough"},
+            gui.allow_left_stick_passthrough
+        );
         if (auto value = ReadValue<std::string>(*section, {"Language", "Lang", "Locale"})) {
             gui.language_override = *value;
         }

@@ -196,5 +196,7 @@ EnableDebugFlags = false
 # Hotkey: hold + and - (0.5s) to toggle visibility.
 Enabled = true
 Visible = true
+# Allow left stick to reach the game while the overlay is open.
+AllowLeftStickPassthrough = false
 # Optional GUI language override (e.g. "zh"). Leave empty to use game locale.
 Language = ""

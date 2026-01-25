@@ -2,11 +2,15 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdio>
 #include <cstring>
 #include <string_view>
 
 #include "program/romfs_assets.hpp"
+#include "program/d3/_util.hpp"
 #include "program/d3/setting.hpp"
+#include "program/d3/types/common.hpp"
+#include "program/d3/types/enums.hpp"
 #include "nn/fs.hpp"  // IWYU pragma: keep
 #include "symbols/common.hpp"
 #include "tomlplusplus/toml.hpp"
@@ -98,6 +102,146 @@ namespace d3::gui2::ui {
             }
         }
 
+        static void RenderOverlayLabels(const PatchConfig &cfg) {
+            if (!cfg.initialized || !cfg.overlays.active) {
+                return;
+            }
+
+            if (!cfg.gui.enabled) {
+                return;
+            }
+            const bool show_ddm = cfg.overlays.ddm_labels;
+            const bool show_fps = cfg.overlays.fps_label;
+            const bool show_var = cfg.overlays.var_res_label;
+            if (!show_ddm && !show_fps && !show_var) {
+                return;
+            }
+
+            const auto *gfx_data = g_ptGfxData;
+            const auto *rwindow  = g_ptMainRWindow;
+            const auto *var_data = (rwindow != nullptr) ? rwindow->m_ptVariableResRWindowData : nullptr;
+
+            const char *build_line = nullptr;
+            char        fps_line[32] {};
+            char        var_line[96] {};
+
+            if (show_ddm) {
+                build_line = D3HACK_VER D3HACK_BUILD;
+            }
+
+            if (show_fps) {
+                snprintf(fps_line, sizeof(fps_line), "FPS: %.0f", ImGui::GetIO().Framerate);
+            }
+
+            if (show_var && gfx_data != nullptr && gfx_data->tCurrentMode.dwHeight > 0) {
+                uint32 output_h = gfx_data->workerData[0].dwRTHeight;
+                if (output_h == 0) {
+                    output_h = gfx_data->tCurrentMode.dwHeight;
+                }
+                uint32 variable_h = output_h;
+                if (var_data != nullptr) {
+                    const float percent = std::clamp(var_data->flPercent, 0.0f, 1.0f);
+                    variable_h          = static_cast<uint32>(percent * static_cast<float>(gfx_data->tCurrentMode.dwHeight));
+                }
+                if (output_h > 0 && variable_h > 0) {
+                    snprintf(var_line, sizeof(var_line), "%4up Output (Variable: %4up)", output_h, variable_h);
+                }
+            }
+
+            if (build_line == nullptr && fps_line[0] == '\0' && var_line[0] == '\0') {
+                return;
+            }
+
+            struct OverlayLabelStyle {
+                float scale;
+                ImVec4 color;
+                float alpha;
+            };
+
+            // Code-only knobs for overlay label appearance.
+            const OverlayLabelStyle kBuildStyle = {
+                1.0f,
+                ImVec4(1.0f, 1.0f, 1.0f, 1.0f),
+                0.8f,
+            };
+            const OverlayLabelStyle kFpsStyle = {
+                1.0f,
+                ImVec4(1.0f, 1.0f, 1.0f, 1.0f),
+                1.0f,
+            };
+            const OverlayLabelStyle kVarStyle = {
+                1.0f,
+                ImVec4(1.0f, 1.0f, 1.0f, 1.0f),
+                1.0f,
+            };
+
+            const float kFpsBottomOffsetPct = 0.2f;
+            const float kShadowOffset       = 1.0f;
+            const float kShadowAlpha        = 0.6f;
+
+            ImGuiViewport    *viewport = ImGui::GetMainViewport();
+            const ImVec2      viewport_pos =
+                (viewport != nullptr) ? viewport->Pos : ImVec2(0.0f, 0.0f);
+            const ImVec2 viewport_size =
+                (viewport != nullptr) ? viewport->Size : ImGui::GetIO().DisplaySize;
+            const ImGuiStyle &style = ImGui::GetStyle();
+            const float       pad_x = style.WindowPadding.x;
+            const float       pad_y = style.WindowPadding.y;
+
+            const float left   = viewport_pos.x + pad_x;
+            const float right  = viewport_pos.x + viewport_size.x - pad_x;
+            const float top    = viewport_pos.y + pad_y;
+            const float bottom = viewport_pos.y + viewport_size.y - pad_y;
+
+            ImDrawList *draw      = ImGui::GetBackgroundDrawList(viewport);
+            ImFont     *font      = ImGui::GetFont();
+            const float font_size = ImGui::GetFontSize();
+
+            const auto make_color = [](const OverlayLabelStyle &style) -> ImU32 {
+                ImVec4 color = style.color;
+                color.w      = std::clamp(color.w * style.alpha, 0.0f, 1.0f);
+                return ImGui::ColorConvertFloat4ToU32(color);
+            };
+
+            const auto make_shadow = [&](const OverlayLabelStyle &style) -> ImU32 {
+                const float alpha = std::clamp(style.alpha * kShadowAlpha, 0.0f, 1.0f);
+                return ImGui::ColorConvertFloat4ToU32(ImVec4(0.0f, 0.0f, 0.0f, alpha));
+            };
+
+            const auto draw_label = [&](const char *text,
+                                        const OverlayLabelStyle &style,
+                                        const ImVec2 anchor,
+                                        const ImVec2 align) -> void {
+                if (text == nullptr || text[0] == '\0') {
+                    return;
+                }
+                const float size_px = font_size * style.scale;
+                const ImVec2 text_size =
+                    font->CalcTextSizeA(size_px, 10000.0f, 0.0f, text);
+                const ImVec2 pos =
+                    ImVec2(anchor.x - align.x * text_size.x, anchor.y - align.y * text_size.y);
+                const ImVec2 shadow_pos = ImVec2(pos.x + kShadowOffset, pos.y + kShadowOffset);
+                draw->AddText(font, size_px, shadow_pos, make_shadow(style), text);
+                draw->AddText(font, size_px, pos, make_color(style), text);
+            };
+
+            if (show_ddm) {
+                const ImVec2 anchor(right, bottom);
+                draw_label(build_line, kBuildStyle, anchor, ImVec2(1.0f, 1.0f));
+            }
+
+            if (show_fps) {
+                const float offset = viewport_size.y * kFpsBottomOffsetPct;
+                const ImVec2 anchor(right, bottom - offset);
+                draw_label(fps_line, kFpsStyle, anchor, ImVec2(1.0f, 1.0f));
+            }
+
+            if (show_var) {
+                const ImVec2 anchor(left, top);
+                draw_label(var_line, kVarStyle, anchor, ImVec2(0.0f, 0.0f));
+            }
+        }
+
         constexpr const char *kGuiLayoutPath        = "sd:/config/d3hack-nx/gui_layout.ini";
         constexpr const char *kGuiLayoutThemePrefix = ";d3hack_theme=";
 
@@ -105,8 +249,8 @@ namespace d3::gui2::ui {
             switch (theme) {
             case GuiTheme::D3Dark:
                 return "d3";
-            case GuiTheme::Luna:
-                return "luna";
+            case GuiTheme::Blueish:
+                return "blueish";
             }
             return "d3";
         }
@@ -126,8 +270,8 @@ namespace d3::gui2::ui {
             if (lower == "d3" || lower == "d3dark" || lower == "classic") {
                 return GuiTheme::D3Dark;
             }
-            if (lower == "luna" || lower == "lunakit") {
-                return GuiTheme::Luna;
+            if (lower == "blue" || lower == "blueish") {
+                return GuiTheme::Blueish;
             }
             return fallback;
         }
@@ -318,7 +462,11 @@ namespace d3::gui2::ui {
         auto notifications    = std::make_unique<windows::NotificationsWindow>();
         notifications_window_ = notifications.get();
         notifications_window_->AddNotification(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), 6.0f, D3HACK_VER " initialized!");
-        notifications_window_->AddNotification(ImVec4(1.0f, 1.0f, 0.3f, 1.0f), 10.0f, "Hold + and - to toggle GUI");
+        notifications_window_->AddNotification(
+            ImVec4(1.0f, 1.0f, 0.3f, 1.0f),
+            10.0f,
+            tr("gui.toast_toggle_hint", "Hold + and - or swipe from left edge to toggle GUI")
+        );
         overlay_windows_.push_back(notifications_window_);
 
         auto config    = std::make_unique<windows::ConfigWindow>(*this);
@@ -339,8 +487,9 @@ namespace d3::gui2::ui {
             return;
         }
 
-        ui_config_             = global_config;
-        overlay_visible_       = global_config.gui.visible;
+        ui_config_                        = global_config;
+        overlay_visible_                  = global_config.gui.visible;
+        allow_left_stick_passthrough_     = global_config.gui.allow_left_stick_passthrough;
         ui_config_initialized_ = true;
         ui_dirty_              = false;
     }
@@ -473,7 +622,8 @@ namespace d3::gui2::ui {
             EnsureTranslationsLoaded();
         }
 
-        bool consumed_focus = false;
+        bool        consumed_focus     = false;
+        static bool s_reset_layout_pop = false;
 
         if (notifications_window_ != nullptr) {
             notifications_window_->SetViewportSize(viewport_size);
@@ -526,17 +676,6 @@ namespace d3::gui2::ui {
                             layout_dirty_                      = true;
                             ImGui::GetIO().WantSaveIniSettings = true;
                         }
-                        if (ImGui::MenuItem(tr("gui.menu_reset_layout", "Reset layout"))) {
-                            DeleteLayoutFile();
-                            layout_loaded_          = false;
-                            layout_default_applied_ = false;
-                            layout_reset_pending_   = true;
-                            layout_dirty_           = true;
-                            if (config_window_ != nullptr) {
-                                config_window_->SetOpen(true);
-                                RequestFocusWindow(config_window_);
-                            }
-                        }
                         ImGui::Separator();
                         if (ImGui::MenuItem(tr("gui.menu_hide_overlay", "Hide overlay"))) {
                             set_overlay_visible_persist(false);
@@ -585,22 +724,32 @@ namespace d3::gui2::ui {
                                 RequestFocusWindow(config_window_);
                             }
                         }
+                        if (notifications_window_ != nullptr) {
+                            const bool pinned = notifications_window_->IsPinnedOpen();
+                            if (ImGui::MenuItem(tr("gui.tool_open_notifications", "Open notifications"), nullptr, pinned)) {
+                                notifications_window_->SetPinnedOpen(!pinned);
+                            }
+                        }
                         if (ImGui::MenuItem(tr("gui.tool_clear_toasts", "Clear notifications"))) {
                             if (notifications_window_ != nullptr) {
                                 notifications_window_->Clear();
                             }
                         }
+                        ImGui::Separator();
+                        if (ImGui::MenuItem(tr("gui.menu_reset_layout", "Reset layout"))) {
+                            s_reset_layout_pop = true;
+                        }
                         ImGui::EndMenu();
                     }
 
                     if (ImGui::BeginMenu(tr("gui.menu_theme", "Theme"))) {
-                        const bool is_d3   = (theme_ == GuiTheme::D3Dark);
-                        const bool is_luna = (theme_ == GuiTheme::Luna);
-                        if (ImGui::MenuItem(tr("gui.theme_d3", "D3 dark"), nullptr, is_d3)) {
+                        const bool is_d3      = (theme_ == GuiTheme::D3Dark);
+                        const bool is_blueish = (theme_ == GuiTheme::Blueish);
+                        if (ImGui::MenuItem("D3 dark", nullptr, is_d3)) {
                             set_theme(GuiTheme::D3Dark);
                         }
-                        if (ImGui::MenuItem(tr("gui.theme_luna", "Luna"), nullptr, is_luna)) {
-                            set_theme(GuiTheme::Luna);
+                        if (ImGui::MenuItem("Blueish", nullptr, is_blueish)) {
+                            set_theme(GuiTheme::Blueish);
                         }
                         ImGui::EndMenu();
                     }
@@ -608,6 +757,57 @@ namespace d3::gui2::ui {
                     if (ImGui::BeginMenu(tr("gui.menu_help", "Help"))) {
                         ImGui::TextUnformatted(tr("gui.hotkey_toggle", "Hold + and - (0.5s) to toggle overlay visibility."));
                         ImGui::EndMenu();
+                    }
+
+                    if (s_reset_layout_pop) {
+                        ImGui::OpenPopup("Reset layout?");
+                        s_reset_layout_pop = false;
+                    }
+                    if (ImGui::BeginPopupModal("Reset layout?", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+                        ImGui::TextUnformatted("Reset GUI layout to defaults?");
+                        ImGui::Separator();
+                        if (ImGui::Button("Reset")) {
+                            DeleteLayoutFile();
+                            layout_loaded_          = false;
+                            layout_default_applied_ = false;
+                            layout_reset_pending_   = true;
+                            layout_dirty_           = true;
+                            if (config_window_ != nullptr) {
+                                config_window_->SetOpen(true);
+                                RequestFocusWindow(config_window_);
+                            }
+                            ImGui::CloseCurrentPopup();
+                        }
+                        ImGui::SameLine();
+                        if (ImGui::Button("Cancel")) {
+                            ImGui::CloseCurrentPopup();
+                        }
+                        ImGui::EndPopup();
+                    }
+
+                    {
+                        const auto &dbg = frame_debug_;
+                        char        status[96] {};
+                        if (dbg.viewport_size.x > 0.0f && dbg.viewport_size.y > 0.0f) {
+                            snprintf(status, sizeof(status), "Viewport %.0fx%.0f | Crop %dx%d | Swap %d", dbg.viewport_size.x, dbg.viewport_size.y, dbg.crop_w, dbg.crop_h, dbg.swapchain_texture_count);
+                        }
+                        const ImGuiStyle &style      = ImGui::GetStyle();
+                        const float       close_w    = ImGui::CalcTextSize("X").x + style.FramePadding.x * 2.0f;
+                        const float       status_w   = ImGui::CalcTextSize(status).x;
+                        float             right_edge = ImGui::GetWindowWidth() - close_w - style.ItemSpacing.x;
+                        if (status_w > 0.0f) {
+                            right_edge -= (status_w + style.ItemSpacing.x);
+                        }
+                        if (right_edge > ImGui::GetCursorPosX()) {
+                            ImGui::SetCursorPosX(right_edge);
+                        }
+                        if (status_w > 0.0f) {
+                            ImGui::TextUnformatted(status);
+                            ImGui::SameLine();
+                        }
+                        if (ImGui::Button("X")) {
+                            set_overlay_visible_persist(false);
+                        }
                     }
 
                     ImGui::EndMenuBar();
@@ -636,6 +836,17 @@ namespace d3::gui2::ui {
                     consumed_focus = true;
                 }
             }
+
+            bool any_open = false;
+            for (auto *window : dock_windows_) {
+                if (window != nullptr && window->IsOpen()) {
+                    any_open = true;
+                    break;
+                }
+            }
+            if (!any_open) {
+                set_overlay_visible_persist(false);
+            }
         } else {
             dockspace_id_ = 0;
         }
@@ -648,6 +859,8 @@ namespace d3::gui2::ui {
                 window->Render();
             }
 
+            RenderOverlayLabels(global_config);
+
             ImGuiIO const &io = ImGui::GetIO();
             focus_.nav_active            = io.NavActive;
             focus_.want_capture_mouse    = io.WantCaptureMouse;
@@ -657,6 +870,7 @@ namespace d3::gui2::ui {
             const bool toasts_visible      = (notifications_window_ != nullptr && notifications_window_->IsOpen());
             focus_.visible                 = can_draw && (overlay_visible_ || toasts_visible);
             focus_.should_block_game_input = can_draw && overlay_visible_;
+            focus_.allow_left_stick_passthrough = allow_left_stick_passthrough_ && overlay_visible_;
 
             if (apply_default_layout) {
                 layout_default_applied_ = true;

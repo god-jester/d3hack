@@ -18,7 +18,7 @@ namespace d3::gui2::ui::windows {
 
     void NotificationsWindow::Update(float dt_s) {
         if (notifications_.empty()) {
-            SetOpen(false);
+            SetOpen(pinned_open_);
             return;
         }
 
@@ -29,12 +29,12 @@ namespace d3::gui2::ui::windows {
         auto removed = std::ranges::remove_if(notifications_, [](const Notification &n) -> bool { return n.ttl_s <= 0.0f; });
         notifications_.erase(removed.begin(), removed.end());
 
-        SetOpen(!notifications_.empty());
+        SetOpen(pinned_open_ || !notifications_.empty());
     }
 
     void NotificationsWindow::Clear() {
         notifications_.clear();
-        SetOpen(false);
+        SetOpen(pinned_open_);
     }
 
     void NotificationsWindow::AddNotification(const ImVec4 &color, float ttl_s, const char *fmt, ...) {
@@ -56,15 +56,25 @@ namespace d3::gui2::ui::windows {
         SetOpen(true);
     }
 
+    void NotificationsWindow::SetPinnedOpen(bool pinned) {
+        pinned_open_ = pinned;
+        SetOpen(pinned_open_ || !notifications_.empty());
+    }
+
     void NotificationsWindow::BeforeBegin() {
         if (viewport_size_.x > 0.0f) {
-            ImGui::SetNextWindowPos(ImVec2(viewport_size_.x - 20.0f, 20.0f), ImGuiCond_Always, ImVec2(1.0f, 0.0f));
+            const float bar_h = ImGui::GetFrameHeightWithSpacing();
+            const float top   = 20.0f + bar_h;
+            ImGui::SetNextWindowPos(ImVec2(viewport_size_.x - 20.0f, top), ImGuiCond_Always, ImVec2(1.0f, 0.0f));
         }
         ImGui::SetNextWindowBgAlpha(0.35f);
     }
 
     void NotificationsWindow::RenderContents() {
         if (notifications_.empty()) {
+            if (pinned_open_) {
+                ImGui::TextUnformatted("No notifications.");
+            }
             return;
         }
 

@@ -23,6 +23,9 @@ lang_zh = "Chinois"
 enabled_persist = "Active (persistant)"
 # Visible (persist)
 visible_persist = "Visible (persistant)"
+# Allow left stick passthrough
+left_stick_passthrough = "Autoriser le passage du stick gauche"
+
 # Hold + and - (0.5s) to toggle overlay visibility.
 hotkey_toggle = "Raccourci: maintenir + et - (0.5s) pour basculer l'affichage."
 # Config not loaded yet.
@@ -32,7 +35,7 @@ ui_state_dirty = "Etat UI: changements NON ENREGISTRES"
 # UI state: clean
 ui_state_clean = "Etat UI: propre"
 # Reset UI to current config
-reset_ui = "Reinitialiser l'UI avec la configuration actuelle"
+reset_ui = "Annuler les changements"
 # GUI enabled
 gui_enabled = "GUI activee"
 # Apply
@@ -71,6 +74,34 @@ notify_save_failed = "Echec de l'enregistrement: %s"
 notify_reloaded = "config.toml rechargee"
 # Reload failed: %s
 notify_reload_failed = "Echec du rechargement: %s"
+
+# Windows
+menu_windows = "Fenetres"
+# Show all
+menu_windows_show_all = "Tout afficher"
+# Hide all
+menu_windows_hide_all = "Tout masquer"
+# Tools
+menu_tools = "Outils"
+# Open config
+tool_open_config = "Ouvrir la config"
+# Open notifications
+tool_open_notifications = "Ouvrir les notifications"
+# Clear notifications
+tool_clear_toasts = "Effacer les notifications"
+# Toggle GUI (hotkey or swipe)
+toast_toggle_hint = "Maintenir + et - ou glisser du bord gauche pour basculer la GUI"
+# Save layout
+menu_save_layout = "Enregistrer la disposition"
+# Hide overlay
+menu_hide_overlay = "Masquer l'overlay"
+# Reset layout
+menu_reset_layout = "Reinitialiser la disposition"
+# Theme
+menu_theme = "Theme"
+# Help
+menu_help = "Aide"
+
 # Overlays
 tab_overlays = "Superpositions"
 # GUI
@@ -186,9 +217,9 @@ events_double_bounty_bags = "Sacs de primes doubles"
 # Royal Grandeur
 events_royal_grandeur = "Grandeur royale"
 # Legacy of Nightmares
-events_legacy_of_nightmares = "Legacy of Nightmares"
+events_legacy_of_nightmares = "Heritage des cauchemars"
 # Triune's Will
-events_triunes_will = "Volonte de Triune"
+events_triunes_will = "Volonte de la Trinite"
 # Pandemonium
 events_pandemonium = "Pandemonium"
 # Kanai powers
@@ -239,7 +270,7 @@ rare_cheats_equip_any_slot = "Equiper n'importe quel slot"
 # Unlock all difficulties
 rare_cheats_unlock_all_difficulties = "Debloquer toutes les difficultes"
 # Easy kill damage
-rare_cheats_easy_kill = "Degats tue-facile"
+rare_cheats_easy_kill = "Dégâts One-Shot"
 # Cube no consume
 rare_cheats_cube_no_consume = "Cube sans consommer"
 # Gem upgrade always
@@ -283,7 +314,7 @@ loot_rank_normal = "Normal"
 # Ancient
 loot_rank_ancient = "Ancien"
 # Primal
-loot_rank_primal = "Primordial"
+loot_rank_primal = "Primitif"
 
 # Enabled##debug
 debug_enabled = "Active##debug"

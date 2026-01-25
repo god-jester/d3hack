@@ -8,7 +8,7 @@ lang_en = "Inglese"
 # Deutsch
 lang_de = "Tedesco"
 # Francais
-lang_fr = "Francese"
+lang_fr = "Français"
 # Espanol
 lang_es = "Spagnolo"
 # Italiano
@@ -23,6 +23,9 @@ lang_zh = "Cinese"
 enabled_persist = "Abilitato (persistente)"
 # Visible (persist)
 visible_persist = "Visibile (persistente)"
+# Allow left stick passthrough
+left_stick_passthrough = "Consenti il passaggio dello stick sinistro"
+
 # Hold + and - (0.5s) to toggle overlay visibility.
 hotkey_toggle = "Scorciatoia: tieni premuti + e - (0.5s) per mostrare/nascondere l'overlay."
 # Config not loaded yet.
@@ -32,7 +35,7 @@ ui_state_dirty = "Stato UI: modifiche NON SALVATE"
 # UI state: clean
 ui_state_clean = "Stato UI: pulito"
 # Reset UI to current config
-reset_ui = "Ripristina UI alla configurazione corrente"
+reset_ui = "Annulla modifiche"
 # GUI enabled
 gui_enabled = "GUI abilitata"
 # Apply
@@ -71,6 +74,34 @@ notify_save_failed = "Salvataggio fallito: %s"
 notify_reloaded = "config.toml ricaricato"
 # Reload failed: %s
 notify_reload_failed = "Ricarica fallita: %s"
+
+# Windows
+menu_windows = "Finestre"
+# Show all
+menu_windows_show_all = "Mostra tutto"
+# Hide all
+menu_windows_hide_all = "Nascondi tutto"
+# Tools
+menu_tools = "Strumenti"
+# Open config
+tool_open_config = "Apri configurazione"
+# Open notifications
+tool_open_notifications = "Apri notifiche"
+# Clear notifications
+tool_clear_toasts = "Cancella notifiche"
+# Toggle GUI (hotkey or swipe)
+toast_toggle_hint = "Tieni premuto + e - o scorri dal bordo sinistro per attivare la GUI"
+# Save layout
+menu_save_layout = "Salva layout"
+# Hide overlay
+menu_hide_overlay = "Nascondi overlay"
+# Reset layout
+menu_reset_layout = "Ripristina layout"
+# Theme
+menu_theme = "Tema"
+# Help
+menu_help = "Aiuto"
+
 # Overlays
 tab_overlays = "Overlay"
 # GUI
@@ -186,11 +217,11 @@ events_double_bounty_bags = "Borse taglie doppie"
 # Royal Grandeur
 events_royal_grandeur = "Grandezza reale"
 # Legacy of Nightmares
-events_legacy_of_nightmares = "Legacy of Nightmares"
+events_legacy_of_nightmares = "Retaggio degli Incubi"
 # Triune's Will
-events_triunes_will = "Volonta di Triune"
+events_triunes_will = "Volonta della Trinita"
 # Pandemonium
-events_pandemonium = "Pandemonium"
+events_pandemonium = "Pandemonio"
 # Kanai powers
 events_kanai_powers = "Poteri di Kanai"
 # Trials of Tempests
@@ -239,7 +270,7 @@ rare_cheats_equip_any_slot = "Equipaggia qualsiasi slot"
 # Unlock all difficulties
 rare_cheats_unlock_all_difficulties = "Sblocca tutte le difficolta"
 # Easy kill damage
-rare_cheats_easy_kill = "Danno uccisione facile"
+rare_cheats_easy_kill = "Danno uccisione istantanea"
 # Cube no consume
 rare_cheats_cube_no_consume = "Cubo senza consumo"
 # Gem upgrade always

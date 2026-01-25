@@ -37,6 +37,7 @@ See: [Resolution Hack (ResHack) overview](#resolution-hack-reshack).
 - **Challenge Rifts offline fix**: SD card protobufs now parse at full size (previous blz::string ctor issue resolved).
 - **Safer offline UX**: hides "Connect to Diablo Servers" and network hints when AllowOnlinePlay = false.
 - **Resolution Hack (ResHack)**: 1080p/1440p/2160p output is stable with internal RT clamping and extra heap headroom.
+- **GUI overlay upgrades**: dockable windows + menu tools, touch swipe open/close, layout persistence, overlay labels rendered by ImGui, optional left-stick passthrough.
 - **CMake presets**: CMakePresets.json mirrors the Makefile pipeline for devkitA64.
 
 ---
@@ -87,7 +88,7 @@ RefreshRate = -1
 ### Notes
 - 1080 output stays at or below 2048x1152, so the clamp path is usually inactive.
 - If you raise the clamp too high at 1440/2160 output, the old crash signature can return (DisplayInternalError + InvalidMemoryRegionException).
-- Label overlays (FPS/resolution/DDM) can flicker white in the main menu; disable overlays if it bothers you.
+- Overlay labels (FPS/variable-res/DDM) are rendered by the GUI overlay; they require `[gui].Enabled = true` and overlays toggles.
 
 ---
 
@@ -104,6 +105,7 @@ d3hack-nx is an exlaunch-based module that hooks D3 at runtime. It modifies game
 | **Loot Research** | Control Ancient/Primal drops, GR tier logic, and item level forcing for drop-table experiments. |
 | **QoL Cheats** | Instant portal/crafts, movement speed multiplier, no cooldowns, equip-any-slot, and more. |
 | **Visuals & Performance** | FPS/DDM overlays and resolution targets for 1080p or specific dynamic-res bounds. |
+| **GUI Overlay** | Dockable ImGui windows with menu tools (show/hide/reset layout, notifications), touch swipe open/close, layout saved to `sd:/config/d3hack-nx/gui_layout.ini`, optional left-stick passthrough while the overlay is open, and overlay labels drawn by the GUI. |
 | **Safety & Core** | Patches are gated by a lightweight signature guard for game build 2.7.6.90885. |
 
 ---
@@ -157,7 +159,7 @@ Key sections:
 - `[events]`: seasonal flags + SeasonMapMode (MapOnly, OverlayConfig, Disabled).
 - `[challenge_rifts]`: enable/disable, randomize, or define a range.
 - `[rare_cheats]`, `[overlays]`, `[debug]`.
-- `[gui]`: Enabled, Visible, Language (override).
+- `[gui]`: Enabled, Visible, AllowLeftStickPassthrough, Language (override).
 
 ### 4) (Optional) Challenge Rift data
 
@@ -295,7 +297,7 @@ cmake --build --preset switch-iwyu
 
 - 2160 output is stable with internal RT clamping enabled.
 - Raising the clamp too high at 1440/2160 output can trigger DisplayInternalError + InvalidMemoryRegionException.
-- Label overlays (FPS/resolution/DDM) can flicker in the main menu; disable overlays if it bothers you.
+- Overlay labels (FPS/variable-res/DDM) are rendered by the GUI overlay; they require `[gui].Enabled = true` and overlays toggles.
 
 ---
 
@@ -329,7 +331,7 @@ cmake --build --preset switch-iwyu
 - **Season theme map**: `source/program/config.cpp` (BuildSeasonEventMap).
 - **Challenge rifts**: `source/program/d3/_util.hpp` (PopulateChallengeRiftData) + `source/program/d3/hooks/debug.hpp` (ChallengeRiftCallback).
 - **Resolution Hack (ResHack)**: `source/program/d3/hooks/resolution.hpp` + `source/program/d3/patches.hpp`.
-- **Overlays + watermark text**: `source/program/d3/patches.hpp` (PatchBuildlocker, PatchDDMLabels, PatchReleaseFPSLabel).
+- **Overlay labels (FPS/VarRes/DDM)**: `source/program/gui2/ui/overlay.cpp` (RenderOverlayLabels) and overlay toggles in `source/program/config.hpp`.
 - **Hook gating + boot flow**: `source/program/main.cpp` (MainInit, SetupSeasonEventHooks).
 - **GUI overlay (dockspace/menu/layout)**: `source/program/gui2/ui/overlay.*`, `source/program/gui2/ui/window.*`, `source/program/gui2/ui/windows/*` (layout persisted at `sd:/config/d3hack-nx/gui_layout.ini`).
 - **ImGui romfs assets**: `data/` packaged to `deploy/romfs/d3gui/` by `misc/scripts/post-build.sh`.
