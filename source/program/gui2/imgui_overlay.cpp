@@ -396,10 +396,10 @@ namespace d3::imgui_overlay {
             style.GrabRounding      = 4.0f;
             style.TabRounding       = 4.0f;
 
-            style.WindowBorderSize = 1.0f;
+            style.WindowBorderSize         = 1.0f;
             style.WindowBorderHoverPadding = 4.0f;
-            style.FrameBorderSize  = 1.0f;
-            style.TabBorderSize    = 1.0f;
+            style.FrameBorderSize          = 1.0f;
+            style.TabBorderSize            = 1.0f;
         }
 
         static void ApplyImGuiThemeColors(ImGuiStyle &style, d3::gui2::ui::GuiTheme theme) {

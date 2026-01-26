@@ -153,9 +153,9 @@ namespace d3::gui2::ui {
             }
 
             struct OverlayLabelStyle {
-                float scale;
+                float  scale;
                 ImVec4 color;
-                float alpha;
+                float  alpha;
             };
 
             // Code-only knobs for overlay label appearance.
@@ -179,8 +179,8 @@ namespace d3::gui2::ui {
             const float kShadowOffset       = 1.0f;
             const float kShadowAlpha        = 0.6f;
 
-            ImGuiViewport    *viewport = ImGui::GetMainViewport();
-            const ImVec2      viewport_pos =
+            ImGuiViewport *viewport = ImGui::GetMainViewport();
+            const ImVec2   viewport_pos =
                 (viewport != nullptr) ? viewport->Pos : ImVec2(0.0f, 0.0f);
             const ImVec2 viewport_size =
                 (viewport != nullptr) ? viewport->Size : ImGui::GetIO().DisplaySize;
@@ -208,14 +208,14 @@ namespace d3::gui2::ui {
                 return ImGui::ColorConvertFloat4ToU32(ImVec4(0.0f, 0.0f, 0.0f, alpha));
             };
 
-            const auto draw_label = [&](const char *text,
+            const auto draw_label = [&](const char              *text,
                                         const OverlayLabelStyle &style,
-                                        const ImVec2 anchor,
-                                        const ImVec2 align) -> void {
+                                        const ImVec2             anchor,
+                                        const ImVec2             align) -> void {
                 if (text == nullptr || text[0] == '\0') {
                     return;
                 }
-                const float size_px = font_size * style.scale;
+                const float  size_px = font_size * style.scale;
                 const ImVec2 text_size =
                     font->CalcTextSizeA(size_px, 10000.0f, 0.0f, text);
                 const ImVec2 pos =
@@ -231,7 +231,7 @@ namespace d3::gui2::ui {
             }
 
             if (show_fps) {
-                const float offset = viewport_size.y * kFpsBottomOffsetPct;
+                const float  offset = viewport_size.y * kFpsBottomOffsetPct;
                 const ImVec2 anchor(right, bottom - offset);
                 draw_label(fps_line, kFpsStyle, anchor, ImVec2(1.0f, 1.0f));
             }
@@ -487,11 +487,11 @@ namespace d3::gui2::ui {
             return;
         }
 
-        ui_config_                        = global_config;
-        overlay_visible_                  = global_config.gui.visible;
-        allow_left_stick_passthrough_     = global_config.gui.allow_left_stick_passthrough;
-        ui_config_initialized_ = true;
-        ui_dirty_              = false;
+        ui_config_                    = global_config;
+        overlay_visible_              = global_config.gui.visible;
+        allow_left_stick_passthrough_ = global_config.gui.allow_left_stick_passthrough;
+        ui_config_initialized_        = true;
+        ui_dirty_                     = false;
     }
 
     void Overlay::EnsureTranslationsLoaded() {
@@ -861,15 +861,15 @@ namespace d3::gui2::ui {
 
             RenderOverlayLabels(global_config);
 
-            ImGuiIO const &io = ImGui::GetIO();
+            ImGuiIO const &io            = ImGui::GetIO();
             focus_.nav_active            = io.NavActive;
             focus_.want_capture_mouse    = io.WantCaptureMouse;
             focus_.want_capture_keyboard = io.WantCaptureKeyboard;
             focus_.want_capture_gamepad  = io.NavActive || io.WantCaptureKeyboard;
 
-            const bool toasts_visible      = (notifications_window_ != nullptr && notifications_window_->IsOpen());
-            focus_.visible                 = can_draw && (overlay_visible_ || toasts_visible);
-            focus_.should_block_game_input = can_draw && overlay_visible_;
+            const bool toasts_visible           = (notifications_window_ != nullptr && notifications_window_->IsOpen());
+            focus_.visible                      = can_draw && (overlay_visible_ || toasts_visible);
+            focus_.should_block_game_input      = can_draw && overlay_visible_;
             focus_.allow_left_stick_passthrough = allow_left_stick_passthrough_ && overlay_visible_;
 
             if (apply_default_layout) {

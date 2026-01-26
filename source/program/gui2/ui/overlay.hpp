@@ -11,12 +11,12 @@
 namespace d3::gui2::ui {
 
     struct GuiFocusState {
-        bool visible                 = false;
-        bool nav_active              = false;
-        bool want_capture_gamepad    = false;
-        bool want_capture_mouse      = false;
-        bool want_capture_keyboard   = false;
-        bool should_block_game_input = false;
+        bool visible                      = false;
+        bool nav_active                   = false;
+        bool want_capture_gamepad         = false;
+        bool want_capture_mouse           = false;
+        bool want_capture_keyboard        = false;
+        bool should_block_game_input      = false;
         bool allow_left_stick_passthrough = false;
     };
 
@@ -111,9 +111,9 @@ namespace d3::gui2::ui {
         PatchConfig ui_config_ {};
         bool        ui_dirty_ = false;
 
-        bool overlay_visible_ = true;
-        bool request_focus_   = false;
-        Window *focus_window_    = nullptr;
+        bool    overlay_visible_              = true;
+        bool    request_focus_                = false;
+        Window *focus_window_                 = nullptr;
         bool    allow_left_stick_passthrough_ = false;
 
         std::string                                  translations_lang_ {};

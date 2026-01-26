@@ -94,7 +94,7 @@ namespace d3::gui2::ui::windows {
             return;
         }
 
-        ImGuiIO &io = ImGui::GetIO();
+        ImGuiIO   &io   = ImGui::GetIO();
         const bool down = io.MouseDown[ImGuiMouseButton_Left];
         if (!down) {
             dock_swipe_active_    = false;
@@ -110,13 +110,13 @@ namespace d3::gui2::ui::windows {
             return;
         }
 
-        const ImVec2 win_pos  = window_pos;
-        const ImVec2 win_size = window_size;
+        const ImVec2 win_pos   = window_pos;
+        const ImVec2 win_size  = window_size;
         const float  left_dist = std::abs(win_pos.x - viewport->Pos.x);
         const float  right_dist =
             std::abs((viewport->Pos.x + viewport->Size.x) - (win_pos.x + win_size.x));
-        const float  top_dist = std::abs(win_pos.y - viewport->Pos.y);
-        const float  bottom_dist =
+        const float top_dist = std::abs(win_pos.y - viewport->Pos.y);
+        const float bottom_dist =
             std::abs((viewport->Pos.y + viewport->Size.y) - (win_pos.y + win_size.y));
 
         DockEdge nearest_edge = DockEdge::Left;
@@ -136,7 +136,7 @@ namespace d3::gui2::ui::windows {
 
         if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
             const ImVec2 pos = io.MousePos;
-            const bool inside =
+            const bool   inside =
                 pos.x >= win_pos.x && pos.x <= (win_pos.x + win_size.x) &&
                 pos.y >= win_pos.y && pos.y <= (win_pos.y + win_size.y);
             bool in_edge = false;
@@ -172,10 +172,10 @@ namespace d3::gui2::ui::windows {
             io.MousePos.x - dock_swipe_start_.x,
             io.MousePos.y - dock_swipe_start_.y
         );
-        const float abs_x = std::abs(delta.x);
-        const float abs_y = std::abs(delta.y);
-        const float trigger_x = win_size.x * 0.20f;
-        const float trigger_y = win_size.y * 0.20f;
+        const float abs_x       = std::abs(delta.x);
+        const float abs_y       = std::abs(delta.y);
+        const float trigger_x   = win_size.x * 0.20f;
+        const float trigger_y   = win_size.y * 0.20f;
         const float max_ortho_x = win_size.x * 0.25f;
         const float max_ortho_y = win_size.y * 0.25f;
 
@@ -666,27 +666,27 @@ namespace d3::gui2::ui::windows {
             ImGui::Checkbox(overlay_.tr("gui.debug_show_metrics", "Show ImGui metrics"), &show_metrics_);
         };
 
-        const ImGuiStyle &style = ImGui::GetStyle();
-        constexpr float   kNavMinWidth = 200.0f;
-        constexpr float   kNavMaxWidth = 320.0f;
-        constexpr float   kNavFontScale = 1.12f;
+        const ImGuiStyle &style              = ImGui::GetStyle();
+        constexpr float   kNavMinWidth       = 200.0f;
+        constexpr float   kNavMaxWidth       = 320.0f;
+        constexpr float   kNavFontScale      = 1.12f;
         constexpr float   kNavRowHeightScale = 1.45f;
-        constexpr float   kNavExtraSpacingY = 6.0f;
-        constexpr float   kNavExtraPaddingY = 4.0f;
-        const float       nav_font_size = style.FontSizeBase * kNavFontScale;
-        ImFont           *nav_font      = d3::imgui_overlay::GetTitleFont();
-        const bool        has_nav_font  = (nav_font != nullptr);
-        float             nav_text_w    = 0.0f;
+        constexpr float   kNavExtraSpacingY  = 6.0f;
+        constexpr float   kNavExtraPaddingY  = 4.0f;
+        const float       nav_font_size      = style.FontSizeBase * kNavFontScale;
+        ImFont           *nav_font           = d3::imgui_overlay::GetTitleFont();
+        const bool        has_nav_font       = (nav_font != nullptr);
+        float             nav_text_w         = 0.0f;
         ImGui::PushFont(has_nav_font ? nav_font : nullptr, nav_font_size);
         for (const auto &section : kSections) {
             const char *label = overlay_.tr(section.key, section.fallback);
-            nav_text_w         = std::max(nav_text_w, ImGui::CalcTextSize(label).x);
+            nav_text_w        = std::max(nav_text_w, ImGui::CalcTextSize(label).x);
         }
         ImGui::PopFont();
-        float nav_width = nav_text_w + style.FramePadding.x * 2.0f + style.ItemSpacing.x * 2.0f;
-        const float avail_w = ImGui::GetContentRegionAvail().x;
-        const float nav_max = std::max(kNavMinWidth, std::min(kNavMaxWidth, avail_w * 0.45f));
-        nav_width           = std::clamp(nav_width, kNavMinWidth, nav_max);
+        float       nav_width = nav_text_w + style.FramePadding.x * 2.0f + style.ItemSpacing.x * 2.0f;
+        const float avail_w   = ImGui::GetContentRegionAvail().x;
+        const float nav_max   = std::max(kNavMinWidth, std::min(kNavMaxWidth, avail_w * 0.45f));
+        nav_width             = std::clamp(nav_width, kNavMinWidth, nav_max);
 
         const float action_bar_height = ImGui::GetFrameHeightWithSpacing() + style.WindowPadding.y * 2.0f;
 
@@ -698,8 +698,8 @@ namespace d3::gui2::ui::windows {
         ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.0f, 0.5f));
         const float nav_row_height = ImGui::GetTextLineHeightWithSpacing() * kNavRowHeightScale;
         for (int i = 0; i < static_cast<int>(kSections.size()); ++i) {
-            const bool selected = (section_index_ == i);
-            const char *label   = overlay_.tr(kSections[static_cast<size_t>(i)].key, kSections[static_cast<size_t>(i)].fallback);
+            const bool  selected = (section_index_ == i);
+            const char *label    = overlay_.tr(kSections[static_cast<size_t>(i)].key, kSections[static_cast<size_t>(i)].fallback);
             if (ImGui::Selectable(label, selected, 0, ImVec2(0.0f, nav_row_height))) {
                 section_index_ = i;
             }
@@ -714,8 +714,8 @@ namespace d3::gui2::ui::windows {
         ImGui::SameLine();
 
         auto apply_panel_scroll = [&]() -> void {
-            ImGuiIO &io = ImGui::GetIO();
-            const float line_height = ImGui::GetTextLineHeightWithSpacing();
+            ImGuiIO    &io           = ImGui::GetIO();
+            const float line_height  = ImGui::GetTextLineHeightWithSpacing();
             float       scroll_delta = 0.0f;
 
             if (ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) &&
@@ -723,20 +723,20 @@ namespace d3::gui2::ui::windows {
                 scroll_delta -= io.MouseWheel * line_height * 5.0f;
             }
 
-            const auto &dbg = overlay_.frame_debug();
-            const float ry = NormalizeStickComponent(dbg.last_npad_stick_ry);
-            constexpr float kStickDeadzone = 0.25f;
+            const auto     &dbg                  = overlay_.frame_debug();
+            const float     ry                   = NormalizeStickComponent(dbg.last_npad_stick_ry);
+            constexpr float kStickDeadzone       = 0.25f;
             constexpr float kStickLinesPerSecond = 16.0f;
-            const float abs_ry = std::abs(ry);
+            const float     abs_ry               = std::abs(ry);
             if (abs_ry > kStickDeadzone) {
-                const float t = (abs_ry - kStickDeadzone) / (1.0f - kStickDeadzone);
+                const float t     = (abs_ry - kStickDeadzone) / (1.0f - kStickDeadzone);
                 const float speed = t * kStickLinesPerSecond * line_height;
                 scroll_delta -= (ry > 0.0f ? 1.0f : -1.0f) * speed * io.DeltaTime;
             }
 
             if (scroll_delta != 0.0f) {
                 const float max_scroll = ImGui::GetScrollMaxY();
-                float       next = std::clamp(ImGui::GetScrollY() + scroll_delta, 0.0f, max_scroll);
+                float       next       = std::clamp(ImGui::GetScrollY() + scroll_delta, 0.0f, max_scroll);
                 ImGui::SetScrollY(next);
             }
         };
@@ -781,8 +781,7 @@ namespace d3::gui2::ui::windows {
         ImGui::EndChild();
         ImGui::EndChild();
 
-        ImGui::BeginChild("cfg_action_bar", ImVec2(0.0f, action_bar_height), true,
-                          ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+        ImGui::BeginChild("cfg_action_bar", ImVec2(0.0f, action_bar_height), true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
         ImGui::AlignTextToFramePadding();
 
         const char *label_reload = overlay_.tr("gui.reload", "Reload");
@@ -798,21 +797,19 @@ namespace d3::gui2::ui::windows {
             button_width(label_reset) + button_width(label_reload) + button_width(label_save) +
             button_width(label_apply) + style.ItemSpacing.x * 3.0f;
 
-        const float start_x = ImGui::GetCursorPosX();
-        const float avail_x = ImGui::GetContentRegionAvail().x;
-        const float right_x = start_x + avail_x - buttons_width;
+        const float start_x   = ImGui::GetCursorPosX();
+        const float avail_x   = ImGui::GetContentRegionAvail().x;
+        const float right_x   = start_x + avail_x - buttons_width;
         bool        has_state = false;
         if (overlay_.ui_dirty()) {
-            ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.2f, 1.0f), "%s",
-                               overlay_.tr("gui.ui_state_dirty", "UI state: UNSAVED changes"));
+            ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.2f, 1.0f), "%s", overlay_.tr("gui.ui_state_dirty", "UI state: UNSAVED changes"));
             has_state = true;
         }
         if (restart_required_) {
             if (has_state) {
                 ImGui::SameLine();
             }
-            ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.2f, 1.0f), "%s",
-                               overlay_.tr("gui.restart_required_banner", "Restart required for some changes."));
+            ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.2f, 1.0f), "%s", overlay_.tr("gui.restart_required_banner", "Restart required for some changes."));
             has_state = true;
         }
         if (has_state) {

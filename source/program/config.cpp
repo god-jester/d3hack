@@ -750,7 +750,7 @@ void PatchConfig::ApplyTable(const toml::table &table) {
         resolution_hack.output_handheld_scale = PatchConfig::ResolutionHackConfig::NormalizeHandheldScale(
             resolution_hack.output_handheld_scale
         );
-        d3::g_rt_scale = resolution_hack.HandheldScaleFraction();
+        d3::g_rt_scale  = resolution_hack.HandheldScaleFraction();
         u32 clamp_value = resolution_hack.clamp_texture_resolution;
         if (auto value = ReadNumber(
                 *resolution_section,

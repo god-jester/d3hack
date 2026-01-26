@@ -12,7 +12,7 @@
 
 namespace d3 {
     extern float g_rt_scale;
-    inline auto ClampTexturesEnabled() -> bool {
+    inline auto  ClampTexturesEnabled() -> bool {
         return global_config.resolution_hack.active && global_config.resolution_hack.ClampTexturesEnabled();
     }
     HOOK_DEFINE_TRAMPOLINE(GfxGetDesiredDisplayModeHook) {
@@ -104,7 +104,7 @@ namespace d3 {
                 return;
             }
 
-            const float scale = (g_rt_scale >= 0.4f) ? std::clamp(g_rt_scale, 0.4f, 1.0f) : 0.8f;
+            const float scale    = (g_rt_scale >= 0.4f) ? std::clamp(g_rt_scale, 0.4f, 1.0f) : 0.8f;
             const u32   scaled_w = static_cast<u32>(std::lroundf(static_cast<float>(tex_w) * scale));
             const u32   scaled_h = static_cast<u32>(std::lroundf(static_cast<float>(tex_h) * scale));
 

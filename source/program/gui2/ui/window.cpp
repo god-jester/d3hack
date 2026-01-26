@@ -18,7 +18,7 @@ namespace d3::gui2::ui {
             return false;
         }
 
-        bool *open = GetOpenFlag();
+        bool      *open     = GetOpenFlag();
         const bool was_open = (open == nullptr) || *open;
         if (!was_open) {
             return false;

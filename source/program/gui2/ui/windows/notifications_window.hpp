@@ -27,9 +27,9 @@ namespace d3::gui2::ui::windows {
         bool IsPinnedOpen() const { return pinned_open_; }
 
        protected:
-        void  Update(float dt_s) override;
-        void  BeforeBegin() override;
-        void  RenderContents() override;
+        void Update(float dt_s) override;
+        void BeforeBegin() override;
+        void RenderContents() override;
 
        private:
         ImVec2                    viewport_size_ {};
