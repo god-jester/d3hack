@@ -99,8 +99,6 @@ namespace d3 {
             PRINT_LINE("ShellInitialized");
             g_requestSeasonsLoad = true;
 
-            // EXL_ABORT("Hello!");
-
             return ret;
         }
     };
@@ -133,6 +131,10 @@ namespace d3 {
             // Require our SD to be mounted before running nnMain()
             R_ABORT_UNLESS(nn::fs::MountSdCardForDebug("sd"));
             LoadPatchConfig();
+
+            // Needs config to decide heap size, but must run before nnMain()/game init. Cantfix
+            // PatchGraphicsPersistentHeapEarly();
+
             if (global_config.resolution_hack.active) {
                 const u32 outW   = global_config.resolution_hack.OutputWidthPx();
                 const u32 outH   = global_config.resolution_hack.OutputHeightPx();

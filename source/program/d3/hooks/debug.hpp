@@ -122,7 +122,26 @@ namespace d3 {
     HOOK_DEFINE_INLINE(Print_ErrorDisplay) {
         static void Callback(exl::hook::InlineCtx *ctx) {
             // DisplayInternalError(LPCSTR pszMessage, LPCSTR szFile, int32 nLine, ErrorCode eErrorCode)
-            PRINT_EXPR("\t!!!INTERNAL ERROR!!!\n\tpszMessage: %s szFile: %s nLine: %d", (LPCSTR)ctx->X[0], (LPCSTR)ctx->X[1], (u32)ctx->X[2])
+            const uintptr_t pszMessage = ctx->X[0];
+            const uintptr_t szFile     = ctx->X[1];
+            const u32       nLine      = static_cast<u32>(ctx->X[2]);
+
+            const auto *pszMessageStr = (pszMessage >= 0x8000000u) ? reinterpret_cast<const char *>(pszMessage) : nullptr;
+            const auto *szFileStr     = (szFile >= 0x8000000u) ? reinterpret_cast<const char *>(szFile) : nullptr;
+
+            const char *pszMessageOut = (pszMessageStr != nullptr) ? pszMessageStr : "<null>";
+            const char *szFileOut     = (szFileStr != nullptr) ? szFileStr : "<invalid>";
+            PRINT_EXPR(
+                "\t!!!INTERNAL ERROR!!!\n\tpszMessage: %s\n\tszFile: %s\n\tnLine: %u",
+                pszMessageOut,
+                szFileOut,
+                nLine
+            )
+            PRINT_EXPR(
+                "\tpszMessage=0x%lx szFile=0x%lx",
+                static_cast<unsigned long>(pszMessage),
+                static_cast<unsigned long>(szFile)
+            )
             PRINT_EXPR("eErrorCode: 0x%x | FP: 0x%lx LR: 0x%lx", (u32)ctx->X[3], ctx->X[29], ctx->X[30])
             DumpStackTrace("DisplayInternalError", ctx->X[29]);
         }

@@ -1215,7 +1215,33 @@ namespace d3::imgui_overlay {
                     PrepareFonts();
                 }
 
-                // Dynamic viewport: prefer crop (if available), otherwise swapchain texture size.
+                // Dynamic viewport: prefer crop (if available), but never exceed the swapchain texture.
+                // int tex_w = 0;
+                // int tex_h = 0;
+                // if (texture_index >= 0 && texture_index < g_swapchain_texture_count &&
+                //     g_swapchain_textures[texture_index] != nullptr) {
+                //     tex_w = g_swapchain_textures[texture_index]->GetWidth();
+                //     tex_h = g_swapchain_textures[texture_index]->GetHeight();
+                // }
+                // if (tex_w > 0 && tex_h > 0) {
+                //     if (w <= 0 || h <= 0) {
+                //         w = tex_w;
+                //         h = tex_h;
+                //     } else if (w > tex_w || h > tex_h) {
+                //         static bool s_logged_crop_clamp = false;
+                //         if (!s_logged_crop_clamp) {
+                //             s_logged_crop_clamp = true;
+                //             PRINT(
+                //                 "[imgui_overlay] Crop exceeds swapchain texture; clamping (crop=%dx%d tex=%dx%d)",
+                //                 w,
+                //                 h,
+                //                 tex_w,
+                //                 tex_h
+                //             );
+                //         }
+                //         w = std::min(w, tex_w);
+                //         h = std::min(h, tex_h);
+                //     }
                 int w = g_crop_w;
                 int h = g_crop_h;
                 if (w <= 0 || h <= 0) {

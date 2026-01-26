@@ -88,8 +88,18 @@ namespace d3 {
         auto jest = patch::RandomAccessPatcher();
         // SigmaMemoryInit (sSigmaMemoryInit, 0xA36A50): gptGraphicsPersistentMemoryHeap size.
         // 0xA36B34: MOV reg::W19, #0x17400000
+        u32 gfxPersistentHeapSize = 0x17400000u;
+        gfxPersistentHeapSize += 0xE000000;  // 224 MB seems stable on Switch + Emu
+        PRINT_EXPR("%08X", gfxPersistentHeapSize)
+
         // Bump graphics persistent heap (XRemoteHeap) to reduce alloc failures.
-        const u32 gfxPersistentHeapSize = 0x27400000;  // +0x10000000 (256 MB)
+        [[maybe_unused]] constexpr u32 MB512 = 0x20000000u;
+
+        // if (false) {  // unable to read config early enough to make this dynamic, skip for now
+        //     const u32 outH = global_config.resolution_hack.OutputHeightPx();
+        //     if (outH >= 2160) {
+        //         gfxPersistentHeapSize += MB512;
+        // }
         jest.Patch<ins::Movz>(0xA36B34, reg::W19, (gfxPersistentHeapSize >> 16), ins::ShiftValue_16);
     }
 
@@ -172,9 +182,13 @@ namespace d3 {
         // NX64NVNHeap::EarlyInit (0x0E77A0): largest pool max_alloc.
         // 0x0E77A0: MOV reg::W3, #0x8000000
         // Increase heap headroom + largest pool max_alloc for >1280p output.
-        if (outH > 1100) {
-            const u32 heapSize = 0x59C00000;  // +0x10000000 (256 MB)
-            const u32 maxAlloc = 0x10000000;  // +0x08000000 (128 MB)
+        if (outH > 1280) {
+            u32 heapSize = 0x59C00000;  // +0x10000000 (256 MB)
+            u32 maxAlloc = 0x10000000;  // +0x08000000 (128 MB)
+            if (outH >= 2160) {
+                heapSize = 0x69C00000;  // +0x20000000 (512 MB)
+                maxAlloc = 0x20000000;  // +0x18000000 (384 MB)
+            }
             jest.Patch<ins::Movz>(0x0E7770, reg::W19, (heapSize >> 16), ins::ShiftValue_16);
             jest.Patch<ins::Movz>(0x0E77A0, reg::W3, (maxAlloc >> 16), ins::ShiftValue_16);
         }

@@ -193,8 +193,8 @@ EnableDebugFlags = false
 # NVN ImGui overlay configuration UI.
 # Hotkey: hold + and - (0.5s) to toggle visibility.
 Enabled = true
-Visible = true
+Visible = false
 # Allow left stick to reach the game while the overlay is open.
-AllowLeftStickPassthrough = false
+AllowLeftStickPassthrough = true
 # Optional GUI language override (e.g. "zh"). Leave empty to use game locale.
 Language = ""

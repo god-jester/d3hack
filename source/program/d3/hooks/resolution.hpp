@@ -80,6 +80,9 @@ namespace d3 {
     HOOK_DEFINE_REPLACE(GetRenderTargetCurrentResolutionHook) {
         // @ 0x0EBAC0: void __fastcall GFXNX64NVN::GetRenderTargetCurrentResolution(GFXNX64NVN *this, NVNTexInfo *pTexInfo, uint32 *width, uint32 *height)
         static void Callback(void * /*self*/, NVNTexInfo *pTexInfo, u32 *width, u32 *height) {
+            if (pTexInfo == nullptr || width == nullptr || height == nullptr || g_ptGfxNVNGlobals == nullptr) {
+                return;
+            }
             const u32  tex_w     = pTexInfo->dwPixelWidth;
             const u32  tex_h     = pTexInfo->dwPixelHeight;
             const u32  dev_w     = g_ptGfxNVNGlobals->dwDeviceWidth;
@@ -102,9 +105,11 @@ namespace d3 {
             }
 
             const float scale = (g_rt_scale >= 0.4f) ? std::clamp(g_rt_scale, 0.4f, 1.0f) : 0.8f;
+            const u32   scaled_w = static_cast<u32>(std::lroundf(static_cast<float>(tex_w) * scale));
+            const u32   scaled_h = static_cast<u32>(std::lroundf(static_cast<float>(tex_h) * scale));
 
-            *width       = static_cast<u32>(static_cast<float>(tex_w) * scale);
-            *height      = static_cast<u32>(static_cast<float>(tex_h) * scale);
+            *width  = PatchConfig::ResolutionHackConfig::AlignEven(scaled_w);
+            *height = PatchConfig::ResolutionHackConfig::AlignEven(scaled_h);
         }
     };
 
@@ -112,7 +117,7 @@ namespace d3 {
         if (!global_config.resolution_hack.active)
             return;
 
-        GfxGetDesiredDisplayModeHook::InstallAtFuncPtr(GfxGetDesiredDisplayMode);
+        // GfxGetDesiredDisplayModeHook::InstallAtFuncPtr(GfxGetDesiredDisplayMode);
         // GfxWindowChangeDisplayModeHook::InstallAtOffset(0x29B0E0);
         GetRenderTargetCurrentResolutionHook::InstallAtOffset(0x0EBAC0);
 

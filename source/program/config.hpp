@@ -51,10 +51,10 @@ struct PatchConfig {
 
         ExtraConfig extra {};
 
-        static constexpr float kAspectRatio       = 16.0f / 9.0f;
-        static constexpr float kHandheldScaleMin  = 40.0f;
-        static constexpr float kHandheldScaleMax  = 100.0f;
-        static constexpr float kHandheldScaleStep = 5.0f;
+        static constexpr float kAspectRatio          = 16.0f / 9.0f;
+        static constexpr float kHandheldScaleMin     = 40.0f;
+        static constexpr float kHandheldScaleMax     = 100.0f;
+        static constexpr float kHandheldScaleStep    = 5.0f;
         static constexpr float kHandheldScaleDefault = 80.0f;
 
         static constexpr u32 WidthForHeight(u32 height) {
@@ -197,10 +197,10 @@ struct PatchConfig {
     } debug;
 
     struct {
-        bool        enabled = true;        // render the ImGui UI (proof-of-life stays separate)
-        bool        visible = true;        // window visible by default
+        bool        enabled                      = true;   // render the ImGui UI (proof-of-life stays separate)
+        bool        visible                      = false;  // window not visible by default
         bool        allow_left_stick_passthrough = false;  // allow left stick to reach game while overlay is open
-        std::string language_override {};  // optional; when set, overrides game locale for GUI translations (e.g. "zh")
+        std::string language_override {};                  // optional; when set, overrides game locale for GUI translations (e.g. "zh")
     } gui;
 
     void ApplyTable(const toml::table &table);
