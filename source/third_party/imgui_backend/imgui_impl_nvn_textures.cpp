@@ -33,7 +33,66 @@ namespace {
     bool g_descriptor_pools_ready = false;
     int g_next_texture_id = 1;
     int g_next_sampler_id = 1;
+    int g_texture_descriptor_count = 0;
+    int g_sampler_descriptor_count = 0;
+    int g_texture_descriptor_first = 1;
+    int g_sampler_descriptor_first = 1;
     std::vector<DescriptorPair> g_free_descriptors;
+
+    void DestroyTextureFromImGui(ImTextureData *tex);
+
+    size_t GetDevicePageSizeOrFallback(const nvn::Device *device) {
+        int page_size = 0;
+        if (device != nullptr) {
+            device->GetInteger(nvn::DeviceInfo::MEMORY_POOL_PAGE_SIZE, &page_size);
+        }
+        const size_t page_size_u = page_size > 0 ? static_cast<size_t>(page_size) : 0;
+        const bool is_power_of_two = page_size_u != 0 && ((page_size_u & (page_size_u - 1)) == 0);
+        return is_power_of_two ? page_size_u : 0x1000;
+    }
+
+    bool InitDescriptorCountsInternal(const nvn::Device *device) {
+        if (g_texture_descriptor_count > 0 && g_sampler_descriptor_count > 0 &&
+            g_texture_descriptor_first > 0 && g_sampler_descriptor_first > 0) {
+            return true;
+        }
+
+        int reserved_sampler_desc = 0;
+        int reserved_texture_desc = 0;
+        int max_sampler_desc = 0;
+        int max_texture_desc = 0;
+        if (device != nullptr) {
+            device->GetInteger(nvn::DeviceInfo::RESERVED_SAMPLER_DESCRIPTORS, &reserved_sampler_desc);
+            device->GetInteger(nvn::DeviceInfo::RESERVED_TEXTURE_DESCRIPTORS, &reserved_texture_desc);
+            device->GetInteger(nvn::DeviceInfo::MAX_SAMPLER_POOL_SIZE, &max_sampler_desc);
+            device->GetInteger(nvn::DeviceInfo::MAX_TEXTURE_POOL_SIZE, &max_texture_desc);
+        }
+
+        int sampler_desc_count = reserved_sampler_desc + MaxSampDescriptors;
+        int texture_desc_count = reserved_texture_desc + MaxTexDescriptors;
+        if (max_sampler_desc > 0 && sampler_desc_count > max_sampler_desc) {
+            sampler_desc_count = max_sampler_desc;
+        }
+        if (max_texture_desc > 0 && texture_desc_count > max_texture_desc) {
+            texture_desc_count = max_texture_desc;
+        }
+
+        if (sampler_desc_count < reserved_sampler_desc || texture_desc_count < reserved_texture_desc) {
+            return false;
+        }
+
+        const int sampler_first = std::max(reserved_sampler_desc, 1);
+        const int texture_first = std::max(reserved_texture_desc, 1);
+        if (sampler_first >= sampler_desc_count || texture_first >= texture_desc_count) {
+            return false;
+        }
+
+        g_sampler_descriptor_count = sampler_desc_count;
+        g_texture_descriptor_count = texture_desc_count;
+        g_sampler_descriptor_first = sampler_first;
+        g_texture_descriptor_first = texture_first;
+        return true;
+    }
 
     bool EnsureDescriptorPoolsInternal(NvnBackendData *bd) {
         if (g_descriptor_pools_ready) {
@@ -45,33 +104,50 @@ namespace {
         bd->device->GetInteger(nvn::DeviceInfo::SAMPLER_DESCRIPTOR_SIZE, &sampler_desc_size);
         bd->device->GetInteger(nvn::DeviceInfo::TEXTURE_DESCRIPTOR_SIZE, &texture_desc_size);
 
-        const int sampler_pool_size = sampler_desc_size * MaxSampDescriptors;
-        const int texture_pool_size = texture_desc_size * MaxTexDescriptors;
-        const int total_pool_size = ALIGN_UP(sampler_pool_size + texture_pool_size, 0x1000);
+        if (sampler_desc_size <= 0 || texture_desc_size <= 0) {
+            return false;
+        }
+
+        if (!InitDescriptorCountsInternal(bd->device)) {
+            return false;
+        }
+
+        const size_t sampler_pool_size = static_cast<size_t>(sampler_desc_size) *
+                                         static_cast<size_t>(g_sampler_descriptor_count);
+        const size_t texture_pool_size = static_cast<size_t>(texture_desc_size) *
+                                         static_cast<size_t>(g_texture_descriptor_count);
+        const size_t texture_pool_offset = ALIGN_UP(sampler_pool_size, static_cast<size_t>(texture_desc_size));
+        const size_t total_pool_size = ALIGN_UP(texture_pool_offset + texture_pool_size,
+                                                GetDevicePageSizeOrFallback(bd->device));
 
         if (!MemoryPoolMaker::createPool(&bd->sampTexMemPool, total_pool_size)) {
             return false;
         }
-        if (!bd->samplerPool.Initialize(&bd->sampTexMemPool, 0, MaxSampDescriptors)) {
+        if (!bd->samplerPool.Initialize(&bd->sampTexMemPool, 0, g_sampler_descriptor_count)) {
             return false;
         }
-        if (!bd->texPool.Initialize(&bd->sampTexMemPool, sampler_pool_size, MaxTexDescriptors)) {
+        if (!bd->texPool.Initialize(&bd->sampTexMemPool, texture_pool_offset, g_texture_descriptor_count)) {
             return false;
         }
 
-        g_next_texture_id = 1;
-        g_next_sampler_id = 1;
+        g_next_texture_id = g_texture_descriptor_first;
+        g_next_sampler_id = g_sampler_descriptor_first;
         g_free_descriptors.clear();
         g_descriptor_pools_ready = true;
         return true;
     }
 
-    void AdoptDescriptorPoolsInternal(int next_texture_id, int next_sampler_id) {
-        if (next_texture_id > g_next_texture_id) {
-            g_next_texture_id = next_texture_id;
+    void AdoptDescriptorPoolsInternal(const nvn::Device *device, int next_texture_id, int next_sampler_id) {
+        if (!InitDescriptorCountsInternal(device)) {
+            return;
         }
-        if (next_sampler_id > g_next_sampler_id) {
-            g_next_sampler_id = next_sampler_id;
+        const int safe_texture_next = std::max(next_texture_id, g_texture_descriptor_first);
+        const int safe_sampler_next = std::max(next_sampler_id, g_sampler_descriptor_first);
+        if (safe_texture_next > g_next_texture_id) {
+            g_next_texture_id = safe_texture_next;
+        }
+        if (safe_sampler_next > g_next_sampler_id) {
+            g_next_sampler_id = safe_sampler_next;
         }
         g_free_descriptors.clear();
         g_descriptor_pools_ready = true;
@@ -89,7 +165,10 @@ namespace {
             return true;
         }
 
-        if (g_next_texture_id >= MaxTexDescriptors || g_next_sampler_id >= MaxSampDescriptors) {
+        if (g_texture_descriptor_count <= 0 || g_sampler_descriptor_count <= 0) {
+            return false;
+        }
+        if (g_next_texture_id >= g_texture_descriptor_count || g_next_sampler_id >= g_sampler_descriptor_count) {
             return false;
         }
 
@@ -191,9 +270,7 @@ namespace {
 
         const size_t storage_size = tex_builder.GetStorageSize();
         const size_t storage_align = tex_builder.GetStorageAlignment();
-        const size_t pool_align = std::max<size_t>(0x1000, storage_align);
-        const size_t pool_size = ALIGN_UP(storage_size, pool_align);
-        if (!MemoryPoolMaker::createPool(&backend->storage_pool, pool_size,
+        if (!MemoryPoolMaker::createPoolAligned(&backend->storage_pool, storage_size, storage_align,
                                          nvn::MemoryPoolFlags::CPU_UNCACHED |
                                              nvn::MemoryPoolFlags::GPU_CACHED)) {
             IM_DELETE(backend);
@@ -202,7 +279,7 @@ namespace {
 
         tex_builder.SetStorage(&backend->storage_pool, 0);
         if (!backend->texture.Initialize(&tex_builder)) {
-            backend->storage_pool.Finalize();
+            MemoryPoolMaker::destroyPool(&backend->storage_pool);
             IM_DELETE(backend);
             return false;
         }
@@ -215,7 +292,7 @@ namespace {
 
         if (!backend->sampler.Initialize(&sampler_builder)) {
             backend->texture.Finalize();
-            backend->storage_pool.Finalize();
+            MemoryPoolMaker::destroyPool(&backend->storage_pool);
             IM_DELETE(backend);
             return false;
         }
@@ -223,7 +300,7 @@ namespace {
         if (!AllocateDescriptorIdsInternal(&backend->texture_id, &backend->sampler_id)) {
             backend->sampler.Finalize();
             backend->texture.Finalize();
-            backend->storage_pool.Finalize();
+            MemoryPoolMaker::destroyPool(&backend->storage_pool);
             IM_DELETE(backend);
             return false;
         }
@@ -242,6 +319,7 @@ namespace {
             static_cast<unsigned short>(tex->Height),
         };
         if (!UploadTextureRegion(tex, backend, full_rect)) {
+            DestroyTextureFromImGui(tex);
             return false;
         }
 
@@ -273,7 +351,7 @@ namespace {
 
         backend->sampler.Finalize();
         backend->texture.Finalize();
-        backend->storage_pool.Finalize();
+        MemoryPoolMaker::destroyPool(&backend->storage_pool);
         if (backend->texture_id >= 0 && backend->sampler_id >= 0) {
             g_free_descriptors.push_back({backend->texture_id, backend->sampler_id});
         }
@@ -335,6 +413,10 @@ void ShutdownDescriptorPools() {
         g_descriptor_pools_ready = false;
         g_next_texture_id = 1;
         g_next_sampler_id = 1;
+        g_texture_descriptor_count = 0;
+        g_sampler_descriptor_count = 0;
+        g_texture_descriptor_first = 1;
+        g_sampler_descriptor_first = 1;
         g_free_descriptors.clear();
         return;
     }
@@ -344,17 +426,25 @@ void ShutdownDescriptorPools() {
         g_descriptor_pools_ready = false;
         g_next_texture_id = 1;
         g_next_sampler_id = 1;
+        g_texture_descriptor_count = 0;
+        g_sampler_descriptor_count = 0;
+        g_texture_descriptor_first = 1;
+        g_sampler_descriptor_first = 1;
         g_free_descriptors.clear();
         return;
     }
 
     bd->samplerPool.Finalize();
     bd->texPool.Finalize();
-    bd->sampTexMemPool.Finalize();
+    MemoryPoolMaker::destroyPool(&bd->sampTexMemPool);
 
     g_descriptor_pools_ready = false;
     g_next_texture_id = 1;
     g_next_sampler_id = 1;
+    g_texture_descriptor_count = 0;
+    g_sampler_descriptor_count = 0;
+    g_texture_descriptor_first = 1;
+    g_sampler_descriptor_first = 1;
     g_free_descriptors.clear();
 }
 
@@ -375,7 +465,8 @@ bool AllocateDescriptorIds(int *out_texture_id, int *out_sampler_id) {
 }
 
 void AdoptDescriptorPools(int next_texture_id, int next_sampler_id) {
-    AdoptDescriptorPoolsInternal(next_texture_id, next_sampler_id);
+    const NvnBackendData *bd = getBackendData();
+    AdoptDescriptorPoolsInternal(bd ? bd->device : nullptr, next_texture_id, next_sampler_id);
 }
 
 }  // namespace TextureSupport

@@ -23,6 +23,9 @@ public:
 
     void ClearBuffer();
 
+    void FlushRange(size_t offset, size_t size) const;
+    void InvalidateRange(size_t offset, size_t size) const;
+
     operator nvn::BufferAddress() const { return buffer.GetAddress(); }
 
 private:

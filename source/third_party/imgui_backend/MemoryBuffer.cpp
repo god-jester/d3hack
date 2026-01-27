@@ -142,13 +142,29 @@ MemoryBuffer::MemoryBuffer(size_t size, void *bufferPtr, nvn::MemoryPoolFlags fl
 }
 
 void MemoryBuffer::Finalize() {
+    buffer.Finalize();
+    pool.Finalize();
     if (ownsBuffer && rawBuffer != nullptr) {
         IM_FREE(rawBuffer);
     }
-    pool.Finalize();
-    buffer.Finalize();
 }
 
 void MemoryBuffer::ClearBuffer() {
     memset(memBuffer, 0, pool.GetSize());
+}
+
+void MemoryBuffer::FlushRange(size_t offset, size_t size) const {
+    const int flags = static_cast<int>(pool.GetFlags());
+    if ((flags & static_cast<int>(nvn::MemoryPoolFlags::CPU_CACHED)) == 0) {
+        return;
+    }
+    buffer.FlushMappedRange(static_cast<ptrdiff_t>(offset), size);
+}
+
+void MemoryBuffer::InvalidateRange(size_t offset, size_t size) const {
+    const int flags = static_cast<int>(pool.GetFlags());
+    if ((flags & static_cast<int>(nvn::MemoryPoolFlags::CPU_CACHED)) == 0) {
+        return;
+    }
+    buffer.InvalidateMappedRange(static_cast<ptrdiff_t>(offset), size);
 }

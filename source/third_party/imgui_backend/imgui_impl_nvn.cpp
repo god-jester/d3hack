@@ -1,19 +1,17 @@
-#include "imgui_backend/imgui_impl_nvn.hpp"
-
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
 #include <vector>
-
+#include "imgui_backend/imgui_impl_nvn.hpp"
 #include "imgui_backend/imgui_hid_mappings.h"
 #include "lib/diag/assert.hpp"
-#include "program/d3/setting.hpp"
+// #include "program/d3/setting.hpp"
 #include "program/romfs_assets.hpp"
 
 #define UBOSIZE 0x1000
-// #define PRINT(...) (static_cast<void>(sizeof(__VA_ARGS__)));
-// #define PRINT_LINE(...) (static_cast<void>(sizeof(__VA_ARGS__)));
+#define PRINT(...) (static_cast<void>(sizeof(__VA_ARGS__)));
+#define PRINT_LINE(...) (static_cast<void>(sizeof(__VA_ARGS__)));
 
 typedef float Matrix44f[4][4];
 
@@ -555,6 +553,8 @@ namespace ImguiNvnBackend {
             // copy data from imgui command list into our gpu dedicated memory
             memcpy(bd->vtxBuffer->GetMemPtr() + vtxOffset, cmdList->VtxBuffer.Data, vtxSize);
             memcpy(bd->idxBuffer->GetMemPtr() + idxOffset, cmdList->IdxBuffer.Data, idxSize);
+            bd->vtxBuffer->FlushRange(vtxOffset, vtxSize);
+            bd->idxBuffer->FlushRange(idxOffset, idxSize);
 
             for (const ImDrawCmd &cmd: cmdList->CmdBuffer) {
                 if (cmd.UserCallback != nullptr) {
