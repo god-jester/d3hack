@@ -217,31 +217,31 @@ events_double_bounty_bags = "双倍悬赏宝箱"
 # Royal Grandeur
 events_royal_grandeur = "皇家华戒"
 # Legacy of Nightmares
-events_legacy_of_nightmares = "梦魇遗赠"
+events_legacy_of_nightmares = "梦魇者的遗礼"
 # Triune's Will
-events_triunes_will = "三位一体"
+events_triunes_will = "三神教的意志"
 # Pandemonium
-events_pandemonium = "永恒冲突"
+events_pandemonium = "永恒之战(混沌魔域)"
 # Kanai powers
-events_kanai_powers = "卡奈魔盒能力"
+events_kanai_powers = "禁忌档案室(威能混搭)"
 # Trials of Tempests
 events_trials_of_tempests = "风暴试炼"
 # Shadow clones
-events_shadow_clones = "暗影分身"
+events_shadow_clones = "奈非天之影(暗影分身)"
 # Fourth Kanai's Cube slot
-events_fourth_kanais = "第四个魔盒槽位"
+events_fourth_kanais = "第四个魔盒栏位"
 # Ethereal items
-events_ethereal_items = "虚幻武器"
+events_ethereal_items = "无形之忆(无形物品)"
 # Soul shards
-events_soul_shards = "灵魂碎片"
+events_soul_shards = "地狱魔王(灵魂碎片)"
 # Swarm rifts
 events_swarm_rifts = "回响梦魇"
 # Sanctified items
-events_sanctified_items = "圣化物品"
+events_sanctified_items = "光明的呼唤(圣化物品)"
 # Dark Alchemy
-events_dark_alchemy = "黑暗炼金术"
+events_dark_alchemy = "仪式祭坛"
 # Nesting portals
-events_nesting_portals = "嵌套传送门"
+events_nesting_portals = "仇敌幻象"
 
 # Enabled##rare_cheats
 rare_cheats_enabled = "启用##rare_cheats"
