@@ -1,4 +1,7 @@
 #include <algorithm>
+#include <cstdarg>
+#include <cstdio>
+#include <cstring>
 
 #include "lib/hook/inline.hpp"
 #include "lib/hook/replace.hpp"
@@ -12,6 +15,134 @@
 #include "d3/types/attributes.hpp"
 
 namespace d3 {
+    namespace {
+        constexpr char k_error_mgr_dump_path[] = "sd:/config/d3hack-nx/error_manager_dump.txt";
+
+        inline void WriteDumpLine(FileReference *tFileRef, const char *fmt, ...) {
+            char buf[512] = {};
+            va_list vl;
+            va_start(vl, fmt);
+            int n = vsnprintf(buf, sizeof(buf), fmt, vl);
+            va_end(vl);
+            if (n <= 0)
+                return;
+            u32 size = (n >= static_cast<int>(sizeof(buf))) ? static_cast<u32>(sizeof(buf) - 1) : static_cast<u32>(n);
+            FileWrite(tFileRef, buf, -1, size, ERROR_FILE_WRITE);
+        }
+
+        inline const char *GetBlzStringPtr(const blz::string &str) {
+            if (str.m_elements)
+                return str.m_elements;
+            return str.m_storage;
+        }
+
+        inline void DumpErrorManagerToFile(const char *reason, const char *message, const char *file, u32 line) {
+            FileReference tFileRef;
+            FileReferenceInit(&tFileRef, k_error_mgr_dump_path);
+            FileCreate(&tFileRef);
+            if (FileOpen(&tFileRef, 2u) == 0)
+                return;
+
+            WriteDumpLine(&tFileRef, "\n--- ErrorManager dump (%s) ---\n", reason ? reason : "unknown");
+            WriteDumpLine(&tFileRef, "message=%s\n", message ? message : "<null>");
+            WriteDumpLine(&tFileRef, "file=%s line=%u\n", file ? file : "<null>", line);
+
+            if (g_tSigmaGlobals.ptEMGlobals == nullptr) {
+                WriteDumpLine(&tFileRef, "ErrorManagerGlobals: <null>\n");
+                FileClose(&tFileRef);
+                return;
+            }
+
+            const auto &em = *g_tSigmaGlobals.ptEMGlobals;
+            WriteDumpLine(
+                &tFileRef,
+                "EM: dump=%d crash_mode=%d crash_num=%d terminate_token=%u\n",
+                em.eDumpType,
+                em.eErrorManagerBlizzardErrorCrashMode,
+                em.nCrashNumber,
+                em.dwShouldTerminateToken
+            );
+            WriteDumpLine(
+                &tFileRef,
+                "EM: flags handling=%d in_handler=%d suppress_ui=%d suppress_stack=%d suppress_mods=%d suppress_trace=%d\n",
+                em.fSigmaCurrentlyHandlingError,
+                em.fSigmaCurrentlyInExceptionHandler,
+                em.fSuppressUserInteraction,
+                em.fSuppressStackCrawls,
+                em.fSuppressModuleEnumeration,
+                em.fSuppressTracingToScreen
+            );
+            WriteDumpLine(
+                &tFileRef,
+                "EM: inspector=%u trace_thresh=%u last_trace=%.3f hwnd=0x%x\n",
+                em.dwInspectorProjectID,
+                em.dwTraceHesitationThreshhold,
+                em.flLastTraceTime,
+                em.hwnd
+            );
+            WriteDumpLine(
+                &tFileRef,
+                "EM: app=%s hero=%s parent_len=%zu parent=%.*s\n",
+                em.szApplicationName,
+                em.szHeroFile,
+                static_cast<size_t>(em.szParentProcess.m_size),
+                static_cast<int>(em.szParentProcess.m_size),
+                GetBlzStringPtr(em.szParentProcess)
+            );
+
+            const auto &sys = em.tSystemInfo;
+            WriteDumpLine(
+                &tFileRef,
+                "OS: type=%d 64bit=%d ver=%u.%u build=%u sp=%u mem=%llu\n",
+                sys.eOSType,
+                sys.fOSIs64Bit,
+                sys.uMajorVersion,
+                sys.uMinorVersion,
+                sys.uBuild,
+                sys.uServicePack,
+                static_cast<unsigned long long>(sys.uTotalPhysicalMemory)
+            );
+            WriteDumpLine(&tFileRef, "OS: desc=%s\n", sys.szOSDescription);
+            WriteDumpLine(&tFileRef, "OS: lang=%s\n", sys.szOSLanguage);
+
+            const auto &ed = em.tErrorManagerBlizzardErrorData;
+            WriteDumpLine(
+                &tFileRef,
+                "EMData: mode=%d issue=%d severity=%d attachments=%u\n",
+                ed.eMode,
+                ed.eIssueType,
+                ed.eSeverity,
+                ed.dwNumAttachments
+            );
+            WriteDumpLine(&tFileRef, "EMData: app_dir=%s\n", ed.szApplicationDirectory);
+            WriteDumpLine(&tFileRef, "EMData: summary=%s\n", ed.szSummary);
+            WriteDumpLine(&tFileRef, "EMData: assertion=%s\n", ed.szAssertion);
+            WriteDumpLine(&tFileRef, "EMData: modules=%s\n", ed.szModules);
+            WriteDumpLine(&tFileRef, "EMData: stack_digest=%s\n", ed.szStackDigest);
+            WriteDumpLine(&tFileRef, "EMData: locale=%s\n", ed.szLocale);
+            WriteDumpLine(&tFileRef, "EMData: comments=%s\n", ed.szComments);
+            for (u32 i = 0; i < 8; ++i) {
+                if (i >= ed.dwNumAttachments)
+                    break;
+                WriteDumpLine(&tFileRef, "EMData: attachment[%u]=%s\n", i, ed.aszAttachments[i]);
+            }
+            WriteDumpLine(&tFileRef, "EMData: user_assign=%s\n", ed.szUserAssignment);
+            WriteDumpLine(&tFileRef, "EMData: email=%s\n", ed.szEmailAddress);
+            WriteDumpLine(&tFileRef, "EMData: reopen_cmd=%s\n", ed.szReopenCmdLine);
+            WriteDumpLine(&tFileRef, "EMData: repair_cmd=%s\n", ed.szRepairCmdLine);
+            WriteDumpLine(&tFileRef, "EMData: report_dir=%s\n", ed.szReportDirectory);
+            WriteDumpLine(
+                &tFileRef,
+                "EMData: metadata ptr=%p size=%zu cap_bits=%llu embedded=%llu\n",
+                ed.aMetadata.m_elements,
+                static_cast<size_t>(ed.aMetadata.m_size),
+                static_cast<unsigned long long>(ed.aMetadata.m_capacity),
+                static_cast<unsigned long long>(ed.aMetadata.m_capacity_is_embedded)
+            );
+            WriteDumpLine(&tFileRef, "EMData: branch=%s\n", ed.szBranch);
+            FileClose(&tFileRef);
+        }
+    }  // namespace
 
     HOOK_DEFINE_INLINE(Store_AttribDefs) {
         static void Callback(exl::hook::InlineCtx * /*ctx*/) {
@@ -144,6 +275,7 @@ namespace d3 {
             )
             PRINT_EXPR("eErrorCode: 0x%x | FP: 0x%lx LR: 0x%lx", (u32)ctx->X[3], ctx->X[29], ctx->X[30])
             DumpStackTrace("DisplayInternalError", ctx->X[29]);
+            DumpErrorManagerToFile("DisplayInternalError", pszMessageOut, szFileOut, nLine);
         }
     };
 
@@ -169,6 +301,7 @@ namespace d3 {
         static void Callback(exl::hook::InlineCtx *ctx) {
             PRINT_EXPR("DisplayErrorMessage strfinal: %s", (LPCSTR)ctx->X[0])
             DumpStackTrace("DisplayErrorMessage", ctx->X[29]);
+            DumpErrorManagerToFile("DisplayErrorMessage", (LPCSTR)ctx->X[0], nullptr, 0);
         }
     };
 

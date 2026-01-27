@@ -76,6 +76,7 @@ namespace exl::reloc {
             { util::ModuleIndex::Main, 0x1905610, "app_globals" },
             { util::ModuleIndex::Main, 0x114AC90, "lobby_services_ptr" },
             { util::ModuleIndex::Main, 0x191CA70, "sigma_thread_data" },
+            { util::ModuleIndex::Main, 0x1A5F1B8, "sigma_globals" },
             { util::ModuleIndex::Main, 0x191EAD8, "attrib_defs" },
             { util::ModuleIndex::Main, 0x1154B68, "item_invalid" },
             { util::ModuleIndex::Main, 0x1A39CF0, "world_place_null" },

@@ -15,6 +15,7 @@
 #include "program/gui2/imgui_overlay.hpp"
 #include "program/runtime_apply.hpp"
 #include "idadefs.h"
+#include "program/exception_handler.hpp"
 
 #include <cstring>
 
@@ -36,6 +37,7 @@ namespace d3 {
         }
 
         bool g_configHooksInstalled = false;
+
     }  // namespace
 
     // static auto diablo_rounding(u32 nDamage) {
@@ -97,6 +99,27 @@ namespace d3 {
             auto ret        = Orig(hInstance, hWndParent);
             g_ptMainRWindow = reinterpret_cast<RWindow *const>(GameOffsetFromTable("main_rwindow"));
             PRINT_LINE("ShellInitialized");
+            PRINT(
+                "SigmaGlobals: em=%p emp=%p perf=%p refstr=%p",
+                g_tSigmaGlobals.ptEMGlobals,
+                g_tSigmaGlobals.ptEMPGlobals,
+                g_tSigmaGlobals.ptGamePerfGlobals,
+                g_tSigmaGlobals.ptRefStringGlobals
+            )
+            if (g_tSigmaGlobals.ptEMGlobals != nullptr) {
+                const auto &em = *g_tSigmaGlobals.ptEMGlobals;
+                PRINT(
+                    "ErrorMgr: dump=%d mode=%d issue=%d sev=%d os=%d mem=%llu inspector=%u",
+                    em.eDumpType,
+                    em.eErrorManagerBlizzardErrorCrashMode,
+                    em.tErrorManagerBlizzardErrorData.eIssueType,
+                    em.tErrorManagerBlizzardErrorData.eSeverity,
+                    em.tSystemInfo.eOSType,
+                    static_cast<unsigned long long>(em.tSystemInfo.uTotalPhysicalMemory),
+                    em.dwInspectorProjectID
+                )
+            }
+            LogGraphicsPersistentHeapSizingInfo();
             g_requestSeasonsLoad = true;
 
             return ret;
@@ -192,6 +215,8 @@ namespace d3 {
         /* Setup hooking environment. */
         exl::hook::Initialize();
         PRINT_LINE("Compiled at " __DATE__ " " __TIME__);
+
+        InstallExceptionHandler();
 
         PatchGraphicsPersistentHeapEarly();
 

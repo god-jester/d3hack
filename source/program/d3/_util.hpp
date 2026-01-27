@@ -1,6 +1,7 @@
 #pragma once
 
 #include "d3/types/sno.hpp"
+#include "d3/types/error_manager.hpp"
 #include "d3/setting.hpp"
 #include "../symbols/common.hpp"
 #include "../config.hpp"
@@ -30,6 +31,7 @@ namespace d3 {
     extern AppGlobals              &g_tAppGlobals;
     extern OnlineService::ItemId   &g_itemInvalid;
     extern WorldPlace              &g_cPlaceNull;
+    extern SigmaGlobals            &g_tSigmaGlobals;
     extern ::GFXNX64NVN::Globals   *g_ptGfxNVNGlobals;
     extern GameCommonData          *g_ptGCData;
     extern GfxInternalData         *g_ptGfxData;

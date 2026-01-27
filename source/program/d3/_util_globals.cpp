@@ -12,6 +12,7 @@ namespace d3 {
     AppGlobals              &g_tAppGlobals     = *reinterpret_cast<AppGlobals *const>(GameOffsetFromTable("app_globals"));
     OnlineService::ItemId   &g_itemInvalid     = *reinterpret_cast<OnlineService::ItemId *const>(GameOffsetFromTable("item_invalid"));
     WorldPlace              &g_cPlaceNull      = *reinterpret_cast<WorldPlace *const>(GameOffsetFromTable("world_place_null"));
+    SigmaGlobals            &g_tSigmaGlobals   = *reinterpret_cast<SigmaGlobals *const>(GameOffsetFromTable("sigma_globals"));
     GFXNX64NVN::Globals     *g_ptGfxNVNGlobals = *reinterpret_cast<GFXNX64NVN::Globals *const *>(GameOffsetFromTable("gfx_nvn_globals_ptr"));
 
     GameCommonData         *g_ptGCData               = nullptr;
