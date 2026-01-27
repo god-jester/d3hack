@@ -317,7 +317,7 @@ cmake --build --preset switch-iwyu
 
 - **Target build**: 2.7.6.90885. Offsets and patches are tied to this version.
 - A lightweight signature guard checks known bytes at startup and aborts on mismatch.
-- Use offline; do not take mods into online play.
+- Crash logging writes a register dump + stack trace to `sd:/config/d3hack-nx/user_exception.txt`.
 
 ---
 

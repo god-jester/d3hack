@@ -56,6 +56,23 @@ FUNC_PTR(WeeklyChallengeData_ctor,                void (*)(D3::Leaderboard::Week
 FUNC_PTR(GameRandRangeInt,                       int32 (*)(const int32 nMin, const int32 nMax));
 
 //
+FUNC_PTR(sigma_memory_init,                      void (*)(void));
+FUNC_PTR(nx64_nvn_heap_early_init,               void (*)(void));
+FUNC_PTR(nx64_nvn_heap_add_pool,                 void (*)(void *heap, u64 size, u64 block_size, u64 max_alloc));
+FUNC_PTR(bdMemory_set_allocate,                  void (*)(d3::BdAllocFn));
+FUNC_PTR(bdMemory_set_deallocate,                void (*)(d3::BdFreeFn));
+FUNC_PTR(bdMemory_set_reallocate,                void (*)(d3::BdReallocFn));
+FUNC_PTR(bdMemory_set_aligned_allocate,          void (*)(d3::BdAlignedAllocFn));
+FUNC_PTR(bdMemory_set_aligned_deallocate,        void (*)(d3::BdAlignedFreeFn));
+FUNC_PTR(bdMemory_set_aligned_reallocate,        void (*)(d3::BdAlignedReallocFn));
+FUNC_PTR(bdMemory_alloc,                         d3::BdAllocFn);
+FUNC_PTR(bdMemory_free,                          d3::BdFreeFn);
+FUNC_PTR(bdMemory_realloc,                       d3::BdReallocFn);
+FUNC_PTR(bdMemory_aligned_alloc,                 d3::BdAlignedAllocFn);
+FUNC_PTR(bdMemory_aligned_free,                  d3::BdAlignedFreeFn);
+FUNC_PTR(bdMemory_aligned_realloc,               d3::BdAlignedReallocFn);
+
+//
 FUNC_PTR(rawfree,                                 void (*)(void *));
 FUNC_PTR(SigmaMemoryNew,                         void* (*)(size_t size, size_t align, XMemoryAllocatorInterface *ptMemoryInterface, const BOOL fClear));
 FUNC_PTR(SigmaMemoryFree,                         void (*)(void *lp, XMemoryAllocatorInterface *ptMemoryInterface));

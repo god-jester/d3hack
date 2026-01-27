@@ -121,9 +121,10 @@ namespace d3 {
         // GfxWindowChangeDisplayModeHook::InstallAtOffset(0x29B0E0);
         GetRenderTargetCurrentResolutionHook::InstallAtOffset(0x0EBAC0);
 
-        nvn::NVNTexInfoCreateHook::InstallAtOffset(0xE6B20);
+        // Memory alone + dynamic scale is enough for reshack
+        // nvn::NVNTexInfoCreateHook::InstallAtOffset(0xE6B20);
 
-        if (ClampTexturesEnabled())
-            nvn::TexDefCreateCallHook::InstallAtOffset(0x28365C);
+        // if (ClampTexturesEnabled())
+        //     nvn::TexDefCreateCallHook::InstallAtOffset(0x28365C);
     }
 }  // namespace d3

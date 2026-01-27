@@ -1,6 +1,7 @@
 #pragma once
 
 #include "d3/types/common.hpp"
+#include "d3/types/bd_memory.hpp"
 #include "symbols/refstring.hpp"
 
 #define _FUNC_PREFIX(name) dut::func_ptrs::name
