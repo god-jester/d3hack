@@ -89,11 +89,16 @@ namespace d3 {
         // SigmaMemoryInit (sSigmaMemoryInit, 0xA36A50): gptGraphicsPersistentMemoryHeap size.
         // 0xA36B34: MOV reg::W19, #0x17400000
         u32 gfxPersistentHeapSize = 0x17400000u;
-        gfxPersistentHeapSize += 0xE000000;  // 224 MB seems stable on Switch + Emu
-        PRINT_EXPR("%08X", gfxPersistentHeapSize)
 
         // Bump graphics persistent heap (XRemoteHeap) to reduce alloc failures.
+
+        [[maybe_unused]] constexpr u32 MB32  = 0x02000000u;
+        [[maybe_unused]] constexpr u32 MB64  = 0x04000000u;
+        [[maybe_unused]] constexpr u32 MB128 = 0x08000000u;
         [[maybe_unused]] constexpr u32 MB512 = 0x20000000u;
+
+        gfxPersistentHeapSize += MB32;  // 32MB allows 1080p and stable HOS 20.x operation
+        // gfxPersistentHeapSize += 0xE000000;  // 224 MB seems stable on Switch 17.0.1 + Emu
 
         // if (false) {  // unable to read config early enough to make this dynamic, skip for now
         //     const u32 outH = global_config.resolution_hack.OutputHeightPx();
@@ -101,6 +106,7 @@ namespace d3 {
         //         gfxPersistentHeapSize += MB512;
         // }
         jest.Patch<ins::Movz>(0xA36B34, reg::W19, (gfxPersistentHeapSize >> 16), ins::ShiftValue_16);
+        PRINT_EXPR("Patched to: %08X", gfxPersistentHeapSize)
     }
 
     /* String swap and formatting for APP_DRAW_FPS_BIT */
@@ -185,7 +191,7 @@ namespace d3 {
         if (outH > 1280) {
             u32 heapSize = 0x59C00000;  // +0x10000000 (256 MB)
             u32 maxAlloc = 0x10000000;  // +0x08000000 (128 MB)
-            if (outH >= 2160) {
+            if (outH >= 1800) {
                 heapSize = 0x69C00000;  // +0x20000000 (512 MB)
                 maxAlloc = 0x20000000;  // +0x18000000 (384 MB)
             }

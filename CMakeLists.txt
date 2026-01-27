@@ -242,6 +242,10 @@ add_custom_target(deploy-yuzu
     COMMAND ${CMAKE_COMMAND} -E env ${EXL_SCRIPT_ENV} ${CMAKE_SOURCE_DIR}/misc/scripts/deploy-yuzu.sh
     USES_TERMINAL
 )
+add_custom_target(ts
+    COMMAND ${CMAKE_COMMAND} -E env ${EXL_SCRIPT_ENV} BUILD_DIR=${CMAKE_BINARY_DIR} bash ${CMAKE_SOURCE_DIR}/misc/scripts/refresh-ts.sh
+    USES_TERMINAL
+)
 add_custom_target(ryu-launch-log
     COMMAND ${CMAKE_COMMAND} -E env ${EXL_SCRIPT_ENV} ${CMAKE_SOURCE_DIR}/misc/scripts/ryu-launch-log.sh
     USES_TERMINAL
