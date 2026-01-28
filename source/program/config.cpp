@@ -2,8 +2,9 @@
 #include "d3/setting.hpp"
 #include "lib/diag/assert.hpp"
 #include "nn/fs.hpp"  // IWYU pragma: keep
+#include "program/system_allocator.hpp"
 
-#include <sstream>
+#include <ostream>
 #include <string_view>
 #include <utility>
 
@@ -79,6 +80,10 @@ namespace {
             return static_cast<float>(clamped);
         }
         return fallback;
+    }
+
+    auto Round1Decimal(double value) -> double {
+        return std::round(value * 10.0) / 10.0;
     }
 
     auto ReadString(const toml::table &table, std::initializer_list<std::string_view> keys, std::string fallback) -> std::string {
@@ -382,9 +387,15 @@ namespace {
         return R_SUCCEEDED(rc) && type == nn::fs::DirectoryEntryType_File;
     }
 
-    auto ReadAll(const char *path, std::string &out) -> bool {
+    auto ReadAll(const char *path, d3::system_allocator::Buffer &buffer, std::string_view &out, std::string &error_out)
+        -> bool {
         if (!DoesFileExist(path))
             return false;
+        auto *allocator = d3::system_allocator::GetSystemAllocator();
+        if (allocator == nullptr) {
+            error_out = "System allocator unavailable";
+            return false;
+        }
         nn::fs::FileHandle fh {};
         auto               rc = nn::fs::OpenFile(&fh, path, nn::fs::OpenMode_Read);
         EXL_ASSERT(R_SUCCEEDED(rc), "Failed to open file: %s", path);
@@ -396,16 +407,22 @@ namespace {
             return false;
         }
 
-        out.resize(static_cast<size_t>(size));
-        rc = nn::fs::ReadFile(fh, 0, out.data(), static_cast<u64>(size));
+        if (!buffer.Resize(static_cast<size_t>(size))) {
+            nn::fs::CloseFile(fh);
+            error_out = "Failed to allocate config buffer";
+            return false;
+        }
+        rc = nn::fs::ReadFile(fh, 0, buffer.data(), static_cast<u64>(size));
         EXL_ASSERT(R_SUCCEEDED(rc), "Failed to read file: %s", path);
         nn::fs::CloseFile(fh);
+        out = buffer.view();
         return true;
     }
 
     auto LoadFromPath(const char *path, PatchConfig &out, std::string &error_out) -> bool {
-        std::string text;
-        if (!ReadAll(path, text))
+        std::string_view               text;
+        d3::system_allocator::Buffer   buffer(d3::system_allocator::GetSystemAllocator());
+        if (!ReadAll(path, buffer, text, error_out))
             return false;
         auto result = toml::parse(text, std::string_view {path});
         if (!result) {
@@ -444,10 +461,13 @@ namespace {
             toml::table t;
             t.insert("SectionEnabled", config.resolution_hack.active);
             t.insert("OutputTarget", static_cast<s64>(config.resolution_hack.target_resolution));
-            t.insert("OutputHandheldScale", static_cast<double>(config.resolution_hack.output_handheld_scale));
+            t.insert(
+                "OutputHandheldScale",
+                Round1Decimal(static_cast<double>(config.resolution_hack.output_handheld_scale))
+            );
             t.insert("SpoofDocked", config.resolution_hack.spoof_docked);
-            t.insert("MinResScale", static_cast<double>(config.resolution_hack.min_res_scale));
-            t.insert("MaxResScale", static_cast<double>(config.resolution_hack.max_res_scale));
+            t.insert("MinResScale", Round1Decimal(static_cast<double>(config.resolution_hack.min_res_scale)));
+            t.insert("MaxResScale", Round1Decimal(static_cast<double>(config.resolution_hack.max_res_scale)));
             t.insert("ClampTextureResolution", static_cast<s64>(config.resolution_hack.clamp_texture_resolution));
             t.insert("ExperimentalScheduler", config.resolution_hack.exp_scheduler);
             toml::table extra;
@@ -515,8 +535,8 @@ namespace {
         {
             toml::table t;
             t.insert("SectionEnabled", config.rare_cheats.active);
-            t.insert("MovementSpeedMultiplier", config.rare_cheats.move_speed);
-            t.insert("AttackSpeedMultiplier", config.rare_cheats.attack_speed);
+            t.insert("MovementSpeedMultiplier", Round1Decimal(config.rare_cheats.move_speed));
+            t.insert("AttackSpeedMultiplier", Round1Decimal(config.rare_cheats.attack_speed));
             t.insert("FloatingDamageColor", config.rare_cheats.floating_damage_color);
             t.insert("GuaranteedLegendaryChance", config.rare_cheats.guaranteed_legendaries);
             t.insert("DropAnyItems", config.rare_cheats.drop_anything);
@@ -603,7 +623,7 @@ namespace {
         return true;
     }
 
-    auto WriteAllAtomic(const char *path, const std::string &text, std::string &error_out) -> bool {
+    auto WriteAllAtomic(const char *path, std::string_view text, std::string &error_out) -> bool {
         if (!EnsureConfigDirectories(path, error_out)) {
             return false;
         }
@@ -921,14 +941,25 @@ auto LoadPatchConfigFromPath(const char *path, PatchConfig &out, std::string &er
     return false;
 }
 
-auto SavePatchConfigToPath(const char *path, const PatchConfig &config, std::string &error_out) -> bool {
-    const PatchConfig normalized = NormalizePatchConfig(config);
-    const toml::table root       = BuildPatchConfigTable(normalized);
+    auto SavePatchConfigToPath(const char *path, const PatchConfig &config, std::string &error_out) -> bool {
+        const PatchConfig normalized = NormalizePatchConfig(config);
+        const toml::table root       = BuildPatchConfigTable(normalized);
+        auto *allocator = d3::system_allocator::GetSystemAllocator();
+        if (allocator == nullptr) {
+            error_out = "System allocator unavailable";
+            return false;
+        }
 
-    std::stringstream ss;
-    ss << toml::toml_formatter {root};
-    return WriteAllAtomic(path, ss.str(), error_out);
-}
+        d3::system_allocator::Buffer         buffer(allocator);
+        d3::system_allocator::BufferStreamBuf streambuf(&buffer);
+        std::ostream                         out(&streambuf);
+        out << toml::toml_formatter {root};
+        if (!buffer.ok()) {
+            error_out = "Failed to allocate config buffer";
+            return false;
+        }
+        return WriteAllAtomic(path, buffer.view(), error_out);
+    }
 
 auto SavePatchConfig(const PatchConfig &config) -> bool {
     const char *path = "sd:/config/d3hack-nx/config.toml";

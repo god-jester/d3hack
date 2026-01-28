@@ -11,6 +11,7 @@
 #include "program/d3/setting.hpp"
 #include "program/d3/types/common.hpp"
 #include "program/d3/types/enums.hpp"
+#include "program/system_allocator.hpp"
 #include "nn/fs.hpp"  // IWYU pragma: keep
 #include "symbols/common.hpp"
 #include "tomlplusplus/toml.hpp"
@@ -296,18 +297,32 @@ namespace d3::gui2::ui {
             theme = ThemeFromString(value, theme);
         }
 
-        static auto BuildLayoutText(GuiTheme theme, const char *ini_data, size_t ini_size) -> std::string {
-            std::string out;
-            out.reserve(ini_size + 64);
-            out.append(kGuiLayoutThemePrefix);
-            out.append(ThemeToString(theme));
-            out.push_back('\n');
-
-            if (ini_data != nullptr && ini_size > 0) {
-                out.append(ini_data, ini_size);
+        static auto BuildLayoutText(
+            GuiTheme theme,
+            const char *ini_data,
+            size_t ini_size,
+            d3::system_allocator::Buffer &out
+        ) -> bool {
+            out.Clear();
+            if (!out.Append(kGuiLayoutThemePrefix, std::strlen(kGuiLayoutThemePrefix))) {
+                return false;
+            }
+            const char *theme_str = ThemeToString(theme);
+            if (!out.Append(theme_str, std::strlen(theme_str))) {
+                return false;
+            }
+            const char newline = '\n';
+            if (!out.Append(&newline, 1)) {
+                return false;
             }
 
-            return out;
+            if (ini_data != nullptr && ini_size > 0) {
+                if (!out.Append(ini_data, ini_size)) {
+                    return false;
+                }
+            }
+
+            return out.ok();
         }
 
         static auto DoesFileExist(const char *path) -> bool {
@@ -335,7 +350,7 @@ namespace d3::gui2::ui {
             return true;
         }
 
-        static auto WriteAllAtomic(const char *path, const std::string &text, std::string &error_out) -> bool {
+        static auto WriteAllAtomic(const char *path, std::string_view text, std::string &error_out) -> bool {
             if (!EnsureConfigDirectories(error_out)) {
                 return false;
             }
@@ -898,10 +913,20 @@ namespace d3::gui2::ui {
 
         size_t      ini_size = 0;
         const char *ini_data = ImGui::SaveIniSettingsToMemory(&ini_size);
-        const auto  text     = BuildLayoutText(theme_, ini_data, ini_size);
-
         std::string error;
-        if (!WriteAllAtomic(kGuiLayoutPath, text, error)) {
+        auto *allocator = d3::system_allocator::GetSystemAllocator();
+        if (allocator == nullptr) {
+            PRINT_LINE("[gui] layout save failed: system allocator unavailable");
+            return;
+        }
+
+        d3::system_allocator::Buffer buffer(allocator);
+        if (!BuildLayoutText(theme_, ini_data, ini_size, buffer)) {
+            PRINT_LINE("[gui] layout save failed: unable to build layout buffer");
+            return;
+        }
+
+        if (!WriteAllAtomic(kGuiLayoutPath, buffer.view(), error)) {
             PRINT("[gui] layout save failed: %s", error.c_str());
             return;
         }

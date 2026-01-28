@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <cmath>
+#include <limits>
 #include <string>
 
 #include "lib/hook/trampoline.hpp"
@@ -144,12 +145,31 @@ namespace d3::imgui_overlay {
             return *allocator_ptr;
         }
 
+        constexpr size_t kImGuiAllocAlignment = 0x20;
+
         auto ImGuiAlloc(size_t size, void *user_data) -> void * {
             auto *allocator = static_cast<nn::mem::StandardAllocator *>(user_data);
-            if (allocator == nullptr) {
+            EXL_ABORT_UNLESS(allocator != nullptr, "[imgui_overlay] ImGuiAlloc missing allocator");
+
+            const size_t alignment = kImGuiAllocAlignment;
+            EXL_ABORT_UNLESS((alignment & (alignment - 1)) == 0, "[imgui_overlay] ImGuiAlloc alignment invalid");
+
+            const size_t header_size = sizeof(void *);
+            const size_t max_size    = std::numeric_limits<size_t>::max();
+            if (size > max_size - alignment - header_size) {
                 return nullptr;
             }
-            return allocator->Allocate(size);
+            const size_t total = size + alignment + header_size;
+            void        *raw   = allocator->Allocate(total);
+            if (raw == nullptr) {
+                return nullptr;
+            }
+
+            const uintptr_t start   = reinterpret_cast<uintptr_t>(raw) + header_size;
+            const uintptr_t aligned = (start + alignment - 1) & ~(alignment - 1);
+            auto         **storage = reinterpret_cast<void **>(aligned - header_size);
+            *storage               = raw;
+            return reinterpret_cast<void *>(aligned);
         }
 
         void ImGuiFree(void *ptr, void *user_data) {
@@ -157,11 +177,11 @@ namespace d3::imgui_overlay {
                 return;
             }
             auto *allocator = static_cast<nn::mem::StandardAllocator *>(user_data);
-            if (allocator == nullptr) {
-                PRINT_LINE("allocator is NULL");
-                return;
-            }
-            allocator->Free(ptr);
+            EXL_ABORT_UNLESS(allocator != nullptr, "[imgui_overlay] ImGuiFree missing allocator");
+
+            const uintptr_t aligned = reinterpret_cast<uintptr_t>(ptr);
+            auto         **storage = reinterpret_cast<void **>(aligned - sizeof(void *));
+            allocator->Free(*storage);
         }
 
         bool    g_imgui_ctx_initialized = false;
