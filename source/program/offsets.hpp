@@ -144,6 +144,7 @@ namespace exl::reloc {
             { util::ModuleIndex::Main, 0x000C30, "sym_bdMemory_alloc" },
             { util::ModuleIndex::Main, 0x000C40, "sym_bdMemory_free" },
             { util::ModuleIndex::Main, 0x000C50, "sym_bdMemory_realloc" },
+            { util::ModuleIndex::Main, 0xC22930, "sym_bdMemory_calloc" },
             { util::ModuleIndex::Main, 0x000C60, "sym_bdMemory_aligned_alloc" },
             { util::ModuleIndex::Main, 0x000C70, "sym_bdMemory_aligned_free" },
             { util::ModuleIndex::Main, 0x000C80, "sym_bdMemory_aligned_realloc" },

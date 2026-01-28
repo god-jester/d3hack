@@ -68,6 +68,7 @@ FUNC_PTR(bdMemory_set_aligned_reallocate,        void (*)(d3::BdAlignedReallocFn
 FUNC_PTR(bdMemory_alloc,                         d3::BdAllocFn);
 FUNC_PTR(bdMemory_free,                          d3::BdFreeFn);
 FUNC_PTR(bdMemory_realloc,                       d3::BdReallocFn);
+FUNC_PTR(bdMemory_calloc,                        d3::BdCallocFn);
 FUNC_PTR(bdMemory_aligned_alloc,                 d3::BdAlignedAllocFn);
 FUNC_PTR(bdMemory_aligned_free,                  d3::BdAlignedFreeFn);
 FUNC_PTR(bdMemory_aligned_realloc,               d3::BdAlignedReallocFn);

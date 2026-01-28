@@ -707,10 +707,9 @@ namespace d3::imgui_overlay {
                 return false;
             }
 
-            static s32  s_prev_touch_count = 0;
-            static s32  s_last_touch_x     = 0;
-            static s32  s_last_touch_y     = 0;
-            static bool s_clear_hover_next = false;
+            static bool s_prev_down   = false;
+            static s32  s_last_touch_x = 0;
+            static s32  s_last_touch_y = 0;
 
             ImGuiIO &io = ImGui::GetIO();
 
@@ -722,24 +721,20 @@ namespace d3::imgui_overlay {
             nn::hid::TouchScreenState<nn::hid::TouchStateCountMax> st {};
             nn::hid::GetTouchScreenState(&st);
 
-            const bool down        = st.count > 0;
-            const bool released    = !down && s_prev_touch_count > 0;
-            const bool active      = down || released;
-            const bool clear_hover = s_clear_hover_next && !down;
+            const bool down     = st.count > 0;
+            const bool pressed  = down && !s_prev_down;
+            const bool released = !down && s_prev_down;
+            const bool active   = down || released;
 
             const auto op_mode = nn::oe::GetOperationMode();
             if (op_mode != nn::oe::OperationMode_Handheld && !active) {
-                if (clear_hover) {
-                    io.AddMousePosEvent(-FLT_MAX, -FLT_MAX);
-                    s_clear_hover_next = false;
-                }
+                s_prev_down = down;
                 return false;
             }
 
             if (down) {
                 s_last_touch_x     = st.touches[0].x;
                 s_last_touch_y     = st.touches[0].y;
-                s_clear_hover_next = false;
             }
 
             if (active) {
@@ -752,20 +747,15 @@ namespace d3::imgui_overlay {
                 y       = std::clamp(y, 0.0f, viewport_size.y);
 
                 io.AddMousePosEvent(x, y);
-                io.AddMouseButtonEvent(ImGuiMouseButton_Left, down);
-                io.MouseDrawCursor = (x >= 1.0f && y >= 1.0f);
-
-                if (released) {
-                    s_clear_hover_next = true;
+                if (pressed) {
+                    io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+                } else if (released) {
+                    io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+                    io.AddMousePosEvent(-FLT_MAX, -FLT_MAX);
                 }
             }
 
-            if (clear_hover) {
-                io.AddMousePosEvent(-FLT_MAX, -FLT_MAX);
-                s_clear_hover_next = false;
-            }
-
-            s_prev_touch_count = st.count;
+            s_prev_down = down;
 
             return active;
         }

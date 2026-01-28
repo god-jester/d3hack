@@ -97,6 +97,7 @@ SETUP_FUNC_PTR(bdMemory_set_aligned_reallocate);
 SETUP_FUNC_PTR(bdMemory_alloc);
 SETUP_FUNC_PTR(bdMemory_free);
 SETUP_FUNC_PTR(bdMemory_realloc);
+SETUP_FUNC_PTR(bdMemory_calloc);
 SETUP_FUNC_PTR(bdMemory_aligned_alloc);
 SETUP_FUNC_PTR(bdMemory_aligned_free);
 SETUP_FUNC_PTR(bdMemory_aligned_realloc);
