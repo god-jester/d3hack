@@ -119,7 +119,6 @@ namespace d3 {
                     em.dwInspectorProjectID
                 )
             }
-            LogGraphicsPersistentHeapSizingInfo();
             g_requestSeasonsLoad = true;
 
             return ret;
@@ -218,7 +217,7 @@ namespace d3 {
 
         InstallExceptionHandler();
 
-        PatchGraphicsPersistentHeapEarly();
+        // PatchGraphicsPersistentHeapEarly();
 
         MainInit::InstallAtFuncPtr(main_init);
         GfxInit::InstallAtFuncPtr(gfx_init);

@@ -14,6 +14,7 @@
 #include "lib/reloc/reloc.hpp"
 #include "lib/util/sys/mem_layout.hpp"
 #include "nn/hid.hpp"  // IWYU pragma: keep
+#include "nn/mem.hpp"
 #include "nn/oe.hpp"   // IWYU pragma: keep
 #include "nn/os.hpp"   // IWYU pragma: keep
 #include "program/romfs_assets.hpp"
@@ -116,29 +117,51 @@ namespace d3::imgui_overlay {
             }
         }
 
-        auto ImGuiAlloc(size_t size, void *user_data) -> void * {
-            (void)user_data;
+        auto LookupOffsetAddress(const char *name) -> uintptr_t {
+            const auto *entry = exl::reloc::GetLookupTable().FindByName(name);
+            EXL_ABORT_UNLESS(entry != nullptr, "Missing lookup entry: %s", name);
+            const auto &module = exl::util::GetModuleInfo(entry->m_ModuleIndex);
+            return module.m_Total.m_Start + entry->m_Offset;
+        }
 
-            if (SigmaMemoryNew != nullptr) {
-                // PRINT("Using SigmaMemoryNew for ImGuiAlloc(%zu)", size);
-                return SigmaMemoryNew(size, 0x20, nullptr, false);
+        auto GetSystemAllocator() -> nn::mem::StandardAllocator * {
+            static nn::mem::StandardAllocator **s_allocator_ptr = nullptr;
+            if (s_allocator_ptr == nullptr) {
+                s_allocator_ptr = reinterpret_cast<nn::mem::StandardAllocator **>(
+                    LookupOffsetAddress("system_allocator_ptr")
+                );
             }
+            auto *allocator_ptr = s_allocator_ptr;
+            if (allocator_ptr == nullptr || *allocator_ptr == nullptr) {
+                static bool s_logged_allocator_missing = false;
+                if (!s_logged_allocator_missing) {
+                    s_logged_allocator_missing = true;
+                    PRINT_LINE("[imgui_overlay] system allocator pointer missing; delaying ImGui init");
+                }
+                return nullptr;
+            }
+            PRINT_EXPR("%p", *allocator_ptr);
+            return *allocator_ptr;
+        }
 
-            return std::malloc(size);
+        auto ImGuiAlloc(size_t size, void *user_data) -> void * {
+            auto *allocator = static_cast<nn::mem::StandardAllocator *>(user_data);
+            if (allocator == nullptr) {
+                return nullptr;
+            }
+            return allocator->Allocate(size);
         }
 
         void ImGuiFree(void *ptr, void *user_data) {
-            (void)user_data;
             if (ptr == nullptr) {
                 return;
             }
-
-            if (SigmaMemoryFree != nullptr) {
-                SigmaMemoryFree(ptr, nullptr);
+            auto *allocator = static_cast<nn::mem::StandardAllocator *>(user_data);
+            if (allocator == nullptr) {
+                PRINT_LINE("allocator is NULL");
                 return;
             }
-
-            std::free(ptr);
+            allocator->Free(ptr);
         }
 
         bool    g_imgui_ctx_initialized = false;
@@ -1161,8 +1184,18 @@ namespace d3::imgui_overlay {
             if (!g_imgui_ctx_initialized) {
                 IMGUI_CHECKVERSION();
                 if (!g_imgui_allocators_set) {
-                    ImGui::SetAllocatorFunctions(ImGuiAlloc, ImGuiFree);
-                    g_imgui_allocators_set = true;
+                    auto *allocator = GetSystemAllocator();
+                    if (allocator != nullptr) {
+                        ImGui::SetAllocatorFunctions(ImGuiAlloc, ImGuiFree, allocator);
+                        g_imgui_allocators_set = true;
+                    }
+                }
+                if (!g_imgui_allocators_set) {
+                    // Don't create the context until the allocator is ready.
+                    if (g_orig_present != nullptr) {
+                        g_orig_present(queue, window, texture_index);
+                    }
+                    return;
                 }
                 ImGui::CreateContext();
                 g_imgui_ctx_initialized = true;

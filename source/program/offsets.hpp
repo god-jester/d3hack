@@ -83,6 +83,7 @@ namespace exl::reloc {
             { util::ModuleIndex::Main, 0x1A5F108, "refstring_data_buffer_nil" },
             { util::ModuleIndex::Main, 0x1A63CEC, "unicode_text_current_locale" },
             { util::ModuleIndex::Main, 0x114A5A0, "gb_dev_mem_mode_ptr" },
+            { util::ModuleIndex::Main, 0x114A5A8, "system_allocator_ptr" },
             { util::ModuleIndex::Main, 0x115A560, "sigma_local_heap_ptr" },
             { util::ModuleIndex::Main, 0x1150E08, "sigma_heap_limit_ptr" },
             { util::ModuleIndex::Main, 0x1150E10, "sigma_heap_ptr_0" },
