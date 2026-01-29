@@ -15,7 +15,6 @@
 #include "lib/reloc/reloc.hpp"
 #include "lib/util/sys/mem_layout.hpp"
 #include "nn/hid.hpp"  // IWYU pragma: keep
-#include "nn/mem.hpp"
 #include "nn/oe.hpp"   // IWYU pragma: keep
 #include "nn/os.hpp"   // IWYU pragma: keep
 #include "program/romfs_assets.hpp"
@@ -64,6 +63,10 @@ namespace nn::pl {
         void *;
     auto GetSharedFontSize(SharedFontType sharedFontType) noexcept -> size_t;
 }  // namespace nn::pl
+
+namespace nn::ro {
+    auto LookupSymbol(uintptr_t *pOutAddress, const char *name) noexcept -> int;
+}  // namespace nn::ro
 
 namespace d3::imgui_overlay {
     namespace {
@@ -118,70 +121,54 @@ namespace d3::imgui_overlay {
             }
         }
 
-        auto LookupOffsetAddress(const char *name) -> uintptr_t {
-            const auto *entry = exl::reloc::GetLookupTable().FindByName(name);
-            EXL_ABORT_UNLESS(entry != nullptr, "Missing lookup entry: %s", name);
-            const auto &module = exl::util::GetModuleInfo(entry->m_ModuleIndex);
-            return module.m_Total.m_Start + entry->m_Offset;
-        }
+        using ImGuiMallocFn = void *(*)(size_t);
+        using ImGuiFreeFn   = void (*)(void *);
 
-        auto GetSystemAllocator() -> nn::mem::StandardAllocator * {
-            static nn::mem::StandardAllocator **s_allocator_ptr = nullptr;
-            if (s_allocator_ptr == nullptr) {
-                s_allocator_ptr = reinterpret_cast<nn::mem::StandardAllocator **>(
-                    LookupOffsetAddress("system_allocator_ptr")
-                );
-            }
-            auto *allocator_ptr = s_allocator_ptr;
-            if (allocator_ptr == nullptr || *allocator_ptr == nullptr) {
-                static bool s_logged_allocator_missing = false;
-                if (!s_logged_allocator_missing) {
-                    s_logged_allocator_missing = true;
-                    PRINT_LINE("[imgui_overlay] system allocator pointer missing; delaying ImGui init");
+        ImGuiMallocFn g_imgui_malloc = nullptr;
+        ImGuiFreeFn   g_imgui_free   = nullptr;
+
+        void ResolveImGuiAllocators() {
+            if (g_imgui_malloc == nullptr) {
+                uintptr_t addr = 0;
+                nn::ro::LookupSymbol(&addr, "malloc");
+                if (addr != 0) {
+                    g_imgui_malloc = reinterpret_cast<ImGuiMallocFn>(addr);
+                } else {
+                    static bool s_logged_malloc_missing = false;
+                    if (!s_logged_malloc_missing) {
+                        s_logged_malloc_missing = true;
+                        PRINT_LINE("[imgui_overlay] ERROR: nn::ro::LookupSymbol failed for malloc");
+                    }
                 }
-                return nullptr;
             }
-            PRINT_EXPR("%p", *allocator_ptr);
-            return *allocator_ptr;
+            if (g_imgui_free == nullptr) {
+                uintptr_t addr = 0;
+                nn::ro::LookupSymbol(&addr, "free");
+                if (addr != 0) {
+                    g_imgui_free = reinterpret_cast<ImGuiFreeFn>(addr);
+                } else {
+                    static bool s_logged_free_missing = false;
+                    if (!s_logged_free_missing) {
+                        s_logged_free_missing = true;
+                        PRINT_LINE("[imgui_overlay] ERROR: nn::ro::LookupSymbol failed for free");
+                    }
+                }
+            }
         }
-
-        constexpr size_t kImGuiAllocAlignment = 0x20;
 
         auto ImGuiAlloc(size_t size, void *user_data) -> void * {
-            auto *allocator = static_cast<nn::mem::StandardAllocator *>(user_data);
-            EXL_ABORT_UNLESS(allocator != nullptr, "[imgui_overlay] ImGuiAlloc missing allocator");
-
-            const size_t alignment = kImGuiAllocAlignment;
-            EXL_ABORT_UNLESS((alignment & (alignment - 1)) == 0, "[imgui_overlay] ImGuiAlloc alignment invalid");
-
-            const size_t header_size = sizeof(void *);
-            const size_t max_size    = std::numeric_limits<size_t>::max();
-            if (size > max_size - alignment - header_size) {
-                return nullptr;
-            }
-            const size_t total = size + alignment + header_size;
-            void        *raw   = allocator->Allocate(total);
-            if (raw == nullptr) {
-                return nullptr;
-            }
-
-            const uintptr_t start   = reinterpret_cast<uintptr_t>(raw) + header_size;
-            const uintptr_t aligned = (start + alignment - 1) & ~(alignment - 1);
-            auto         **storage = reinterpret_cast<void **>(aligned - header_size);
-            *storage               = raw;
-            return reinterpret_cast<void *>(aligned);
+            (void)user_data;
+            EXL_ABORT_UNLESS(g_imgui_malloc != nullptr, "[imgui_overlay] ImGuiAlloc missing malloc");
+            return g_imgui_malloc(size);
         }
 
         void ImGuiFree(void *ptr, void *user_data) {
+            (void)user_data;
             if (ptr == nullptr) {
                 return;
             }
-            auto *allocator = static_cast<nn::mem::StandardAllocator *>(user_data);
-            EXL_ABORT_UNLESS(allocator != nullptr, "[imgui_overlay] ImGuiFree missing allocator");
-
-            const uintptr_t aligned = reinterpret_cast<uintptr_t>(ptr);
-            auto         **storage = reinterpret_cast<void **>(aligned - sizeof(void *));
-            allocator->Free(*storage);
+            EXL_ABORT_UNLESS(g_imgui_free != nullptr, "[imgui_overlay] ImGuiFree missing free");
+            g_imgui_free(ptr);
         }
 
         bool    g_imgui_ctx_initialized = false;
@@ -1204,9 +1191,9 @@ namespace d3::imgui_overlay {
             if (!g_imgui_ctx_initialized) {
                 IMGUI_CHECKVERSION();
                 if (!g_imgui_allocators_set) {
-                    auto *allocator = GetSystemAllocator();
-                    if (allocator != nullptr) {
-                        ImGui::SetAllocatorFunctions(ImGuiAlloc, ImGuiFree, allocator);
+                    ResolveImGuiAllocators();
+                    if (g_imgui_malloc != nullptr && g_imgui_free != nullptr) {
+                        ImGui::SetAllocatorFunctions(ImGuiAlloc, ImGuiFree, nullptr);
                         g_imgui_allocators_set = true;
                     }
                 }
@@ -1534,13 +1521,13 @@ namespace d3::imgui_overlay {
         }
 
         PRINT_LINE("[imgui_overlay] Preparing ImGui font atlas...");
-        io.Fonts->Flags |= ImFontAtlasFlags_NoPowerOfTwoHeight;
+        // Keep power-of-two atlas sizes so ImGui debug "compact" does not assert.
+        io.Fonts->Flags &= ~ImFontAtlasFlags_NoPowerOfTwoHeight;
         ImFontConfig font_cfg {};
         font_cfg.Name[0]               = 'd';
         font_cfg.Name[1]               = '3';
         font_cfg.Name[2]               = '\0';
         constexpr float kFontSizeBody  = 16.0f;
-        constexpr float kFontSizeTitle = 18.0f;
         // Build for docked readability (we apply a runtime scale for 720p).
         font_cfg.SizePixels  = kFontSizeBody;
         font_cfg.OversampleH = 2;
@@ -1565,28 +1552,50 @@ namespace d3::imgui_overlay {
         font_cfg.GlyphRanges = s_font_ranges.Data;
 
         ImFont const *font_body        = nullptr;
-        ImFont const *font_title       = nullptr;
         bool          used_shared_font = false;
 
         const std::array<ImWchar, 3> nvn_ext_ranges = {0xE000, 0xE152, 0};
 
         const bool is_chinese = (desired_lang == "zh");
 
+        auto WaitForSharedFontLoad = [](nn::pl::SharedFontType type) -> bool {
+            if (nn::pl::GetSharedFontSize(type) != 1) {
+                bool load_started = false;
+                while (true) {
+                    if (load_started) {
+                        nn::os::SleepThread(nn::TimeSpan::FromNanoSeconds(1000000000ULL / 60));
+                    }
+                    const auto state = nn::pl::GetSharedFontLoadState(type);
+                    if (state == nn::pl::SharedFontLoadState_Loaded) {
+                        break;
+                    }
+                    if (!load_started) {
+                        nn::pl::RequestSharedFontLoad(type);
+                        load_started = true;
+                    }
+                }
+            }
+
+            const void  *shared_font = nn::pl::GetSharedFontAddress(type);
+            const size_t shared_size = nn::pl::GetSharedFontSize(type);
+            return (shared_font != nullptr && shared_size > 0);
+        };
+
         const nn::pl::SharedFontType shared_base =
             is_chinese ? nn::pl::SharedFontType_ChineseSimple : nn::pl::SharedFontType_Standard;
         const nn::pl::SharedFontType shared_ext =
             is_chinese ? nn::pl::SharedFontType_ChineseSimpleExtension : nn::pl::SharedFontType_NintendoExtension;
 
-        nn::pl::RequestSharedFontLoad(shared_base);
+        const bool shared_base_ready = WaitForSharedFontLoad(shared_base);
+
         nn::pl::RequestSharedFontLoad(shared_ext);
         nn::pl::RequestSharedFontLoad(nn::pl::SharedFontType_NintendoExtension);
 
-        const bool shared_base_ready =
-            nn::pl::GetSharedFontLoadState(shared_base) == nn::pl::SharedFontLoadState_Loaded;
         const bool shared_ext_ready =
             nn::pl::GetSharedFontLoadState(shared_ext) == nn::pl::SharedFontLoadState_Loaded;
         const bool shared_nvn_ext_ready =
-            nn::pl::GetSharedFontLoadState(nn::pl::SharedFontType_NintendoExtension) == nn::pl::SharedFontLoadState_Loaded;
+            nn::pl::GetSharedFontLoadState(nn::pl::SharedFontType_NintendoExtension) ==
+            nn::pl::SharedFontLoadState_Loaded;
 
         if (shared_base_ready) {
             const void  *shared_font = nn::pl::GetSharedFontAddress(shared_base);
@@ -1641,51 +1650,14 @@ namespace d3::imgui_overlay {
             }
         }
 
-        if (used_shared_font) {
-            ImFontConfig title_cfg         = font_cfg;
-            title_cfg.SizePixels           = kFontSizeTitle;
-            title_cfg.FontDataOwnedByAtlas = false;
-            font_title                     = io.Fonts->AddFontFromMemoryTTF(const_cast<void *>(nn::pl::GetSharedFontAddress(shared_base)), static_cast<int>(nn::pl::GetSharedFontSize(shared_base)), title_cfg.SizePixels, &title_cfg);
-            if (font_title == nullptr) {
-                PRINT_LINE("[imgui_overlay] ERROR: AddFontFromMemoryTTF failed for shared title font");
-            }
-
-            if (font_title != nullptr && shared_ext_ready) {
-                const void  *shared_ext_font = nn::pl::GetSharedFontAddress(shared_ext);
-                const size_t shared_ext_size = nn::pl::GetSharedFontSize(shared_ext);
-                if (shared_ext_font != nullptr && shared_ext_size > 0) {
-                    ImFontConfig ext_cfg         = title_cfg;
-                    ext_cfg.MergeMode            = true;
-                    ext_cfg.FontDataOwnedByAtlas = false;
-                    ext_cfg.GlyphRanges          = is_chinese ? s_font_ranges.Data : nvn_ext_ranges.data();
-                    (void)io.Fonts->AddFontFromMemoryTTF(const_cast<void *>(shared_ext_font), static_cast<int>(shared_ext_size), ext_cfg.SizePixels, &ext_cfg);
-                }
-            }
-
-            if (font_title != nullptr && shared_nvn_ext_ready) {
-                const void  *nvn_ext_font = nn::pl::GetSharedFontAddress(nn::pl::SharedFontType_NintendoExtension);
-                const size_t nvn_ext_size = nn::pl::GetSharedFontSize(nn::pl::SharedFontType_NintendoExtension);
-                if (nvn_ext_font != nullptr && nvn_ext_size > 0) {
-                    ImFontConfig ext_cfg         = title_cfg;
-                    ext_cfg.MergeMode            = true;
-                    ext_cfg.FontDataOwnedByAtlas = false;
-                    ext_cfg.GlyphRanges          = nvn_ext_ranges.data();
-                    (void)io.Fonts->AddFontFromMemoryTTF(const_cast<void *>(nvn_ext_font), static_cast<int>(nvn_ext_size), ext_cfg.SizePixels, &ext_cfg);
-                }
-            }
-        }
-
         if (!used_shared_font) {
             ImFontConfig body_cfg  = font_cfg;
             body_cfg.SizePixels    = kFontSizeBody;
             font_body              = io.Fonts->AddFontDefault(&body_cfg);
-            ImFontConfig title_cfg = font_cfg;
-            title_cfg.SizePixels   = kFontSizeTitle;
-            font_title             = io.Fonts->AddFontDefault(&title_cfg);
         }
 
         g_font_body  = const_cast<ImFont *>(font_body);
-        g_font_title = const_cast<ImFont *>(font_title != nullptr ? font_title : font_body);
+        g_font_title = g_font_body;
 
         g_font_atlas_built = true;
         s_font_lang        = desired_lang;

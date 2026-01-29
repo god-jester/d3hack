@@ -215,7 +215,7 @@ namespace d3 {
         exl::hook::Initialize();
         PRINT_LINE("Compiled at " __DATE__ " " __TIME__);
 
-        InstallExceptionHandler();
+        // InstallExceptionHandler();
 
         // PatchGraphicsPersistentHeapEarly();
 
@@ -223,7 +223,7 @@ namespace d3 {
         GfxInit::InstallAtFuncPtr(gfx_init);
         ShellInitialize::InstallAtFuncPtr(shell_initialize);
         GameCommonDataInit::InstallAtFuncPtr(game_common_data_init);
-        SGameInitialize::InstallAtFuncPtr(sgame_initialize);
+        // SGameInitialize::InstallAtFuncPtr(sgame_initialize);
         sInitializeWorld::InstallAtFuncPtr(sinitialize_world);
         // PostFXInitClampDims::InstallAtOffset(0x12F218);
         // GfxSetRenderAndDepthTargetSwapchainFix::InstallAtOffset(0x29C670);

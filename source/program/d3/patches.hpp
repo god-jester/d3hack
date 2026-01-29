@@ -92,12 +92,13 @@ namespace d3 {
 
         // Bump graphics persistent heap (XRemoteHeap) to reduce alloc failures.
 
+        [[maybe_unused]] constexpr u32 MB16  = 0x01000000u;
         [[maybe_unused]] constexpr u32 MB32  = 0x02000000u;
         [[maybe_unused]] constexpr u32 MB64  = 0x04000000u;
         [[maybe_unused]] constexpr u32 MB128 = 0x08000000u;
         [[maybe_unused]] constexpr u32 MB512 = 0x20000000u;
 
-        gfxPersistentHeapSize += MB32;  // 32MB allows 1080p and stable HOS 20.x operation (sometimes?)
+        // gfxPersistentHeapSize += MB16;  // 32MB allows 1080p and stable HOS 20.x operation (sometimes?)
         // gfxPersistentHeapSize += 0xE000000;  // 224 MB seems stable on Switch 17.0.1 + Emu
 
         // if (false) {  // unable to read config early enough to make this dynamic, skip for now

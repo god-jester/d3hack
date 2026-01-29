@@ -14,12 +14,10 @@ OutputTarget = 1080
 OutputHandheldScale = 75
 # Spoof docked mode (forces docked mode when docked/handheld checks occur).
 SpoofDocked = false
-# Minimum resolution scale (percentage) to apply. 100% = locked resolution.
-MinResScale = 85
+# Minimum resolution scale (percentage) to apply. 70% = default target // 100% = locked resolution.
+MinResScale = 80
 # Maximum resolution scale (percentage) to apply. 100% = default target.
-MaxResScale = 100
-# Clamp internal texture height (0=off, 100-9999)
-ClampTextureResolution = 0
+MaxResScale = 95
 # Use Blizzard's experimental scheduler; can improve performance.
 ExperimentalScheduler = true
 
@@ -157,7 +155,7 @@ FPSLabel = false
 # Show variable resolution label.
 VariableResLabel = true
 # Show D3Hack build version label.
-DDMLabels = false
+DDMLabels = true
 
 [loot_modifiers]
 # Loot drop overrides.
