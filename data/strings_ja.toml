@@ -281,6 +281,10 @@ rare_cheats_gem_upgrade_speed = "宝石強化速度"
 rare_cheats_gem_upgrade_lvl150 = "宝石強化レベル150"
 # Equip multi legendary
 rare_cheats_equip_multi_legendary = "複数レジェンダリー装備"
+# Super god mode
+rare_cheats_super_god_mode = "スーパー神モード"
+# Extra GR orbs on elite kill
+rare_cheats_extra_gr_orbs_elites = "エリート撃破でGRオーブ追加"
 
 # Enabled##cr
 challenge_rifts_enabled = "有効##cr"

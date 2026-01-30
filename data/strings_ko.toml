@@ -281,6 +281,10 @@ rare_cheats_gem_upgrade_speed = "보석 강화 속도"
 rare_cheats_gem_upgrade_lvl150 = "보석 강화 150레벨"
 # Equip multi legendary
 rare_cheats_equip_multi_legendary = "전설 여러 개 장착"
+# Super god mode
+rare_cheats_super_god_mode = "슈퍼 신 모드"
+# Extra GR orbs on elite kill
+rare_cheats_extra_gr_orbs_elites = "엘리트 처치 시 GR 오브 추가"
 
 # Enabled##cr
 challenge_rifts_enabled = "활성화##cr"

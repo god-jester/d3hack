@@ -281,6 +281,10 @@ rare_cheats_gem_upgrade_speed = "Gem upgrade speed"
 rare_cheats_gem_upgrade_lvl150 = "Gem upgrade lvl150"
 # Equip multi legendary
 rare_cheats_equip_multi_legendary = "Equip multi legendary"
+# Super god mode
+rare_cheats_super_god_mode = "Super god mode"
+# Extra GR orbs on elite kill
+rare_cheats_extra_gr_orbs_elites = "Extra GR orbs on elite kill"
 
 # Enabled##cr
 challenge_rifts_enabled = "Enabled##cr"

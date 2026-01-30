@@ -30,29 +30,29 @@ enum ErrorManagerJiraSeverity : int32 {
 };
 
 enum OS_Type : int32 {
-    OSTYPE_UNKNOWN           = 0x0,
-    OSTYPE_WINDOWS95         = 0x1,
-    OSTYPE_WINDOWS98         = 0x2,
-    OSTYPE_WINDOWSME         = 0x3,
-    OSTYPE_WINDOWSNT         = 0x4,
-    OSTYPE_WINDOWS2000       = 0x5,
-    OSTYPE_WINDOWSXP         = 0x6,
-    OSTYPE_WINDOWSSERVER2003 = 0x7,
-    OSTYPE_WINDOWSVISTA      = 0x8,
-    OSTYPE_WINDOWSSERVER2008 = 0x9,
-    OSTYPE_WINDOWS7          = 0xA,
+    OSTYPE_UNKNOWN             = 0x0,
+    OSTYPE_WINDOWS95           = 0x1,
+    OSTYPE_WINDOWS98           = 0x2,
+    OSTYPE_WINDOWSME           = 0x3,
+    OSTYPE_WINDOWSNT           = 0x4,
+    OSTYPE_WINDOWS2000         = 0x5,
+    OSTYPE_WINDOWSXP           = 0x6,
+    OSTYPE_WINDOWSSERVER2003   = 0x7,
+    OSTYPE_WINDOWSVISTA        = 0x8,
+    OSTYPE_WINDOWSSERVER2008   = 0x9,
+    OSTYPE_WINDOWS7            = 0xA,
     OSTYPE_WINDOWSSERVER2008R2 = 0xB,
     OSTYPE_WINDOWS8            = 0xC,
     OSTYPE_WINDOWSSERVER2012   = 0xD,
-    OSTYPE_WINDOWS8_1           = 0xE,
-    OSTYPE_WINDOWSSERVER2012R2  = 0xF,
-    OSTYPE_WINDOWS10            = 0x10,
-    OSTYPE_WINDOWS10SERVER      = 0x11,
-    OSTYPE_MACOSX                = 0x12,
-    OSTYPE_XBOXONE               = 0x13,
-    OSTYPE_LINUX                 = 0x14,
-    OSTYPE_PS4                   = 0x15,
-    OSTYPE_NX64                  = 0x16,
+    OSTYPE_WINDOWS8_1          = 0xE,
+    OSTYPE_WINDOWSSERVER2012R2 = 0xF,
+    OSTYPE_WINDOWS10           = 0x10,
+    OSTYPE_WINDOWS10SERVER     = 0x11,
+    OSTYPE_MACOSX              = 0x12,
+    OSTYPE_XBOXONE             = 0x13,
+    OSTYPE_LINUX               = 0x14,
+    OSTYPE_PS4                 = 0x15,
+    OSTYPE_NX64                = 0x16,
 };
 
 enum ErrorManagerDumpType : int32 {
@@ -79,7 +79,7 @@ struct OSInfo {
 using PFNERRORPREPCALLBACK             = void (*)(void);
 using PFNCRASHREPORTCALLBACK           = void (*)(void);
 using PFNENDOFCRASHCALLBACK            = void (*)(void);
-using PFNGETGAMEID                      = BOOL (*)(uint32 *);
+using PFNGETGAMEID                     = BOOL (*)(uint32 *);
 using PFNTERMINATECALLBACK             = void (*)(ErrorCode, uint32);
 using PFNUITRACECALLBACK               = void (*)(LPCSTR, const uint32);
 using PFNREMOVEAPPTEXTENCODINGCALLBACK = void (*)(LPCSTR, char *, int32);
@@ -88,25 +88,25 @@ using PFNAPPDUMPCALLBACK               = void (*)(void);
 using PFNCAPSDEPRESSEDCALLBACK         = BOOL (*)(void);
 
 struct ErrorManagerBlizzardErrorData {
-    ErrorManagerBlizzardErrorMode                                                          eMode;
-    ErrorManagerBlizzardErrorIssueType                                                     eIssueType;
-    char                                                                                   szApplicationDirectory[4096];
-    char                                                                                   szSummary[1024];
-    char                                                                                   szAssertion[8192];
-    char                                                                                   szModules[16384];
-    char                                                                                   szStackDigest[8192];
-    char                                                                                   szLocale[128];
-    char                                                                                   szComments[1024];
-    char                                                                                   aszAttachments[8][4096];
-    uint32                                                                                 dwNumAttachments;
-    char                                                                                   szUserAssignment[128];
-    char                                                                                   szEmailAddress[1024];
-    char                                                                                   szReopenCmdLine[4096];
-    char                                                                                   szRepairCmdLine[4096];
-    ErrorManagerJiraSeverity                                                               eSeverity;
-    char                                                                                   szReportDirectory[4096];
+    ErrorManagerBlizzardErrorMode      eMode;
+    ErrorManagerBlizzardErrorIssueType eIssueType;
+    char                               szApplicationDirectory[4096];
+    char                               szSummary[1024];
+    char                               szAssertion[8192];
+    char                               szModules[16384];
+    char                               szStackDigest[8192];
+    char                               szLocale[128];
+    char                               szComments[1024];
+    char                               aszAttachments[8][4096];
+    uint32                             dwNumAttachments;
+    char                               szUserAssignment[128];
+    char                               szEmailAddress[1024];
+    char                               szReopenCmdLine[4096];
+    char                               szRepairCmdLine[4096];
+    ErrorManagerJiraSeverity           eSeverity;
+    char                               szReportDirectory[4096];
     blz::vector<ErrorManagerBlizzardErrorMetaData, blz::allocator<ErrorManagerBlizzardErrorMetaData>>
-        aMetadata;
+         aMetadata;
     char szBranch[32];
 };
 
@@ -147,11 +147,11 @@ struct ALIGNED(8) ErrorManagerGlobals {
 };
 
 struct SigmaGlobals {
-    MemoryPools                *ptMemoryPools;
-    ErrorManagerGlobals        *ptEMGlobals;
+    MemoryPools                 *ptMemoryPools;
+    ErrorManagerGlobals         *ptEMGlobals;
     ErrorManagerPlatformGlobals *ptEMPGlobals;
-    GamePerfGlobals            *ptGamePerfGlobals;
-    RefStringGlobals           *ptRefStringGlobals;
+    GamePerfGlobals             *ptGamePerfGlobals;
+    RefStringGlobals            *ptRefStringGlobals;
 };
 
 // static_assert(sizeof(ErrorManagerBlizzardErrorData) == 0x14D48);

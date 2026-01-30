@@ -281,6 +281,10 @@ rare_cheats_gem_upgrade_speed = "Velocita upgrade gemma"
 rare_cheats_gem_upgrade_lvl150 = "Upgrade gemma livello 150"
 # Equip multi legendary
 rare_cheats_equip_multi_legendary = "Equipaggia piu leggendari"
+# Super god mode
+rare_cheats_super_god_mode = "Modalita super dio"
+# Extra GR orbs on elite kill
+rare_cheats_extra_gr_orbs_elites = "Orbi GR extra uccidendo elite"
 
 # Enabled##cr
 challenge_rifts_enabled = "Abilitato##cr"

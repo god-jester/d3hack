@@ -10,29 +10,29 @@
 
 namespace d3 {
     namespace {
-        constexpr char k_user_exception_dump_path[] = "sd:/config/d3hack-nx/user_exception.txt";
+        constexpr char   k_user_exception_dump_path[]       = "sd:/config/d3hack-nx/user_exception.txt";
         constexpr size_t k_user_exception_stack_trace_depth = 64;
-        constexpr size_t k_dying_message_size = 0x1000;
+        constexpr size_t k_dying_message_size               = 0x1000;
 
         alignas(nn::os::HandlerStackAlignment) u8 g_user_exception_stack[0x8000] = {};
-        nn::os::UserExceptionInfo g_user_exception_info = {};
-        alignas(0x1000) char g_dying_message[k_dying_message_size] = {};
+        nn::os::UserExceptionInfo g_user_exception_info                          = {};
+        alignas(0x1000) char g_dying_message[k_dying_message_size]               = {};
 
         struct FileWriter {
             FileReference *ref;
-            u32 offset;
+            u32            offset;
 
             void WriteRaw(const void *data, size_t size) {
                 if (ref == nullptr || data == nullptr || size == 0)
                     return;
-                const u8 *bytes = reinterpret_cast<const u8 *>(data);
+                const u8 *bytes      = reinterpret_cast<const u8 *>(data);
                 const u32 write_size = static_cast<u32>(size);
                 FileWrite(ref, bytes, offset, write_size, ERROR_FILE_WRITE);
                 offset += write_size;
             }
 
             void Write(const char *fmt, ...) {
-                char buf[512] = {};
+                char    buf[512] = {};
                 va_list vl;
                 va_start(vl, fmt);
                 int n = vsnprintf(buf, sizeof(buf), fmt, vl);
@@ -47,17 +47,28 @@ namespace d3 {
 
         const char *UserExceptionTypeName(u32 type) {
             switch (type) {
-                case nn::os::UserExceptionType_None: return "None";
-                case nn::os::UserExceptionType_InvalidInstructionAccess: return "InvalidInstructionAccess";
-                case nn::os::UserExceptionType_InvalidDataAccess: return "InvalidDataAccess";
-                case nn::os::UserExceptionType_UnalignedInstructionAccess: return "UnalignedInstructionAccess";
-                case nn::os::UserExceptionType_UnalignedDataAccess: return "UnalignedDataAccess";
-                case nn::os::UserExceptionType_UndefinedInstruction: return "UndefinedInstruction";
-                case nn::os::UserExceptionType_ExceptionalInstruction: return "ExceptionalInstruction";
-                case nn::os::UserExceptionType_MemorySystemError: return "MemorySystemError";
-                case nn::os::UserExceptionType_FloatingPointException: return "FloatingPointException";
-                case nn::os::UserExceptionType_InvalidSystemCall: return "InvalidSystemCall";
-                default: return "Unknown";
+            case nn::os::UserExceptionType_None:
+                return "None";
+            case nn::os::UserExceptionType_InvalidInstructionAccess:
+                return "InvalidInstructionAccess";
+            case nn::os::UserExceptionType_InvalidDataAccess:
+                return "InvalidDataAccess";
+            case nn::os::UserExceptionType_UnalignedInstructionAccess:
+                return "UnalignedInstructionAccess";
+            case nn::os::UserExceptionType_UnalignedDataAccess:
+                return "UnalignedDataAccess";
+            case nn::os::UserExceptionType_UndefinedInstruction:
+                return "UndefinedInstruction";
+            case nn::os::UserExceptionType_ExceptionalInstruction:
+                return "ExceptionalInstruction";
+            case nn::os::UserExceptionType_MemorySystemError:
+                return "MemorySystemError";
+            case nn::os::UserExceptionType_FloatingPointException:
+                return "FloatingPointException";
+            case nn::os::UserExceptionType_InvalidSystemCall:
+                return "InvalidSystemCall";
+            default:
+                return "Unknown";
             }
         }
 
@@ -81,7 +92,7 @@ namespace d3 {
             if (writer == nullptr || label == nullptr)
                 return;
             writer->WriteRaw(label, std::strlen(label));
-            const char *ptr = GetBlzStringPtr(str);
+            const char  *ptr = GetBlzStringPtr(str);
             const size_t len = str.m_size;
             if (ptr != nullptr && len > 0)
                 writer->WriteRaw(ptr, len);
@@ -96,7 +107,7 @@ namespace d3 {
                 writer->Write("%s: 0x%016llx\n", label, static_cast<unsigned long long>(address));
                 return;
             }
-            const auto name = module->GetModuleName();
+            const auto name   = module->GetModuleName();
             const auto offset = address - module->m_Total.m_Start;
             writer->Write("%s: 0x%016llx (", label, static_cast<unsigned long long>(address));
             writer->WriteRaw(name.data(), name.size());
@@ -145,7 +156,7 @@ namespace d3 {
                 return;
             }
 
-            auto it = exl::util::stack_trace::Iterator(fp, exl::util::mem_layout::s_Stack);
+            auto   it    = exl::util::stack_trace::Iterator(fp, exl::util::mem_layout::s_Stack);
             size_t depth = 0;
             while (it.Step() && depth < k_user_exception_stack_trace_depth) {
                 char label[24];
@@ -166,7 +177,7 @@ namespace d3 {
                 if (!exl::util::HasModule(index))
                     continue;
                 const auto &module = exl::util::GetModuleInfo(index);
-                const auto name = module.GetModuleName();
+                const auto  name   = module.GetModuleName();
                 writer->Write(
                     "  %02d: 0x%016llx-0x%016llx ",
                     i,
@@ -187,8 +198,8 @@ namespace d3 {
                 writer->Write("mem: QueryMemoryInfo unavailable\n");
                 return;
             }
-            const u64 total_available = mem_info.totalAvailableMemorySize;
-            const u64 total_used = static_cast<u64>(mem_info.totalUsedMemorySize);
+            const u64 total_available      = mem_info.totalAvailableMemorySize;
+            const u64 total_used           = static_cast<u64>(mem_info.totalUsedMemorySize);
             const u64 available_after_used = (total_available > total_used) ? (total_available - total_used) : 0ull;
             writer->Write(
                 "mem: total=%llu used=%llu avail=%llu heap_total=%llu heap_alloc=%llu program=%llu stack_total=%llu threads=%d\n",

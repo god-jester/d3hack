@@ -281,6 +281,10 @@ rare_cheats_gem_upgrade_speed = "宝石升级加速"
 rare_cheats_gem_upgrade_lvl150 = "宝石升级至 150"
 # Equip multi legendary
 rare_cheats_equip_multi_legendary = "可装备多个传奇"
+# Super god mode
+rare_cheats_super_god_mode = "超级神模式"
+# Extra GR orbs on elite kill
+rare_cheats_extra_gr_orbs_elites = "击杀精英时额外GR宝珠"
 
 # Enabled##cr
 challenge_rifts_enabled = "挑战秘境##cr"

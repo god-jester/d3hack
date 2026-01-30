@@ -773,7 +773,7 @@ namespace d3::imgui_overlay {
                 return false;
             }
 
-            static bool s_prev_down   = false;
+            static bool s_prev_down    = false;
             static s32  s_last_touch_x = 0;
             static s32  s_last_touch_y = 0;
 
@@ -799,8 +799,8 @@ namespace d3::imgui_overlay {
             }
 
             if (down) {
-                s_last_touch_x     = st.touches[0].x;
-                s_last_touch_y     = st.touches[0].y;
+                s_last_touch_x = st.touches[0].x;
+                s_last_touch_y = st.touches[0].y;
             }
 
             if (active) {
@@ -1568,18 +1568,18 @@ namespace d3::imgui_overlay {
         // Prefer smaller atlas allocations on real hardware.
         // Non-power-of-two height can significantly reduce waste for large (CJK) atlases.
         io.Fonts->Flags |= ImFontAtlasFlags_NoPowerOfTwoHeight;
-        io.Fonts->TexDesiredFormat  = ImTextureFormat_Alpha8;
+        io.Fonts->TexDesiredFormat   = ImTextureFormat_Alpha8;
         io.Fonts->TexPixelsUseColors = false;
         ImFontConfig font_cfg {};
-        font_cfg.Name[0]               = 'd';
-        font_cfg.Name[1]               = '3';
-        font_cfg.Name[2]               = '\0';
-        constexpr float kFontSizeBody  = 15.0f;
+        font_cfg.Name[0]              = 'd';
+        font_cfg.Name[1]              = '3';
+        font_cfg.Name[2]              = '\0';
+        constexpr float kFontSizeBody = 15.0f;
         // Build for docked readability (we apply a runtime scale for 720p).
-        font_cfg.SizePixels  = kFontSizeBody;
+        font_cfg.SizePixels = kFontSizeBody;
         // Keep the atlas smaller on real hardware (especially for CJK).
-        font_cfg.OversampleH = (desired_lang == "zh") ? 1 : 2;
-        font_cfg.OversampleV = (desired_lang == "zh") ? 1 : 2;
+        font_cfg.OversampleH                        = (desired_lang == "zh") ? 1 : 2;
+        font_cfg.OversampleV                        = (desired_lang == "zh") ? 1 : 2;
         const std::array<ImWchar, 3> nvn_ext_ranges = {0xE000, 0xE152, 0};
 
         static ImVector<ImWchar> s_font_ranges;
@@ -1688,7 +1688,7 @@ namespace d3::imgui_overlay {
                 ImFontConfig ext_cfg         = font_cfg;
                 ext_cfg.MergeMode            = true;
                 ext_cfg.FontDataOwnedByAtlas = false;
-                ext_cfg.GlyphRanges          =
+                ext_cfg.GlyphRanges =
                     (shared_ext == nn::pl::SharedFontType_NintendoExtension) ? nvn_ext_ranges.data() : s_font_ranges.Data;
                 if (io.Fonts->AddFontFromMemoryTTF(const_cast<void *>(shared_ext_font), static_cast<int>(shared_ext_size), ext_cfg.SizePixels, &ext_cfg) == nullptr) {
                     PRINT_LINE("[imgui_overlay] ERROR: AddFontFromMemoryTTF failed for shared extension font");
@@ -1717,9 +1717,9 @@ namespace d3::imgui_overlay {
         }
 
         if (!used_shared_font) {
-            ImFontConfig body_cfg  = font_cfg;
-            body_cfg.SizePixels    = kFontSizeBody;
-            font_body              = io.Fonts->AddFontDefault(&body_cfg);
+            ImFontConfig body_cfg = font_cfg;
+            body_cfg.SizePixels   = kFontSizeBody;
+            font_body             = io.Fonts->AddFontDefault(&body_cfg);
         }
 
         g_font_body  = const_cast<ImFont *>(font_body);

@@ -281,6 +281,10 @@ rare_cheats_gem_upgrade_speed = "Edelstein-Upgrade-Geschwindigkeit"
 rare_cheats_gem_upgrade_lvl150 = "Edelstein-Upgrade Stufe 150"
 # Equip multi legendary
 rare_cheats_equip_multi_legendary = "Mehrere Legendaere ausruesten"
+# Super god mode
+rare_cheats_super_god_mode = "Super-Gottmodus"
+# Extra GR orbs on elite kill
+rare_cheats_extra_gr_orbs_elites = "Extra GR-Kugeln bei Elite-Kills"
 
 # Enabled##cr
 challenge_rifts_enabled = "Aktiviert##cr"

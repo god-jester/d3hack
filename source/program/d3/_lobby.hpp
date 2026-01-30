@@ -127,7 +127,11 @@ namespace d3 {
             if (ptSPlayer->idPlayerACD != ACDID_INVALID) {
                 idCurPlayer    = ptSPlayer->idPlayerACD;
                 ptACDCurPlayer = ACDTryToGet(idCurPlayer);
+                if (ptACDCurPlayer == nullptr)
+                    continue;
                 ptActorPlayer  = ActorGet(ptACDCurPlayer->idOwner);
+                if (ptActorPlayer == nullptr)
+                    continue;
 
                 ActorFlagSet(ptActorPlayer->id, ACTOR_GOD_MODE_BIT, 1);      // Just for fun
                 ActorFlagSet(ptActorPlayer->id, ACTOR_EASYKILL_BIT, 1);      // Just for fun

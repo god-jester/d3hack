@@ -11,7 +11,7 @@
 PatchConfig global_config {};
 
 namespace d3 {
-    float g_rt_scale = PatchConfig::ResolutionHackConfig::kHandheldScaleDefault * 0.01f;
+    float g_rt_scale             = PatchConfig::ResolutionHackConfig::kHandheldScaleDefault * 0.01f;
     bool  g_rt_scale_initialized = false;
 }  // namespace d3
 
@@ -421,8 +421,8 @@ namespace {
     }
 
     auto LoadFromPath(const char *path, PatchConfig &out, std::string &error_out) -> bool {
-        std::string_view               text;
-        d3::system_allocator::Buffer   buffer(d3::system_allocator::GetSystemAllocator());
+        std::string_view             text;
+        d3::system_allocator::Buffer buffer(d3::system_allocator::GetSystemAllocator());
         if (!ReadAll(path, buffer, text, error_out))
             return false;
         auto result = toml::parse(text, std::string_view {path});
@@ -922,7 +922,7 @@ void LoadPatchConfig() {
         global_config.initialized   = true;
         global_config.defaults_only = false;
         if (!d3::g_rt_scale_initialized) {
-            d3::g_rt_scale = global_config.resolution_hack.HandheldScaleFraction();
+            d3::g_rt_scale             = global_config.resolution_hack.HandheldScaleFraction();
             d3::g_rt_scale_initialized = true;
         }
         return;
@@ -933,7 +933,7 @@ void LoadPatchConfig() {
     global_config.defaults_only = true;
     PRINT("Config not found; using built-in defaults%s", ".");
     if (!d3::g_rt_scale_initialized) {
-        d3::g_rt_scale = global_config.resolution_hack.HandheldScaleFraction();
+        d3::g_rt_scale             = global_config.resolution_hack.HandheldScaleFraction();
         d3::g_rt_scale_initialized = true;
     }
 }
@@ -953,25 +953,25 @@ auto LoadPatchConfigFromPath(const char *path, PatchConfig &out, std::string &er
     return false;
 }
 
-    auto SavePatchConfigToPath(const char *path, const PatchConfig &config, std::string &error_out) -> bool {
-        const PatchConfig normalized = NormalizePatchConfig(config);
-        const toml::table root       = BuildPatchConfigTable(normalized);
-        auto *allocator = d3::system_allocator::GetSystemAllocator();
-        if (allocator == nullptr) {
-            error_out = "System allocator unavailable";
-            return false;
-        }
-
-        d3::system_allocator::Buffer         buffer(allocator);
-        d3::system_allocator::BufferStreamBuf streambuf(&buffer);
-        std::ostream                         out(&streambuf);
-        out << toml::toml_formatter {root};
-        if (!buffer.ok()) {
-            error_out = "Failed to allocate config buffer";
-            return false;
-        }
-        return WriteAllAtomic(path, buffer.view(), error_out);
+auto SavePatchConfigToPath(const char *path, const PatchConfig &config, std::string &error_out) -> bool {
+    const PatchConfig normalized = NormalizePatchConfig(config);
+    const toml::table root       = BuildPatchConfigTable(normalized);
+    auto             *allocator  = d3::system_allocator::GetSystemAllocator();
+    if (allocator == nullptr) {
+        error_out = "System allocator unavailable";
+        return false;
     }
+
+    d3::system_allocator::Buffer          buffer(allocator);
+    d3::system_allocator::BufferStreamBuf streambuf(&buffer);
+    std::ostream                          out(&streambuf);
+    out << toml::toml_formatter {root};
+    if (!buffer.ok()) {
+        error_out = "Failed to allocate config buffer";
+        return false;
+    }
+    return WriteAllAtomic(path, buffer.view(), error_out);
+}
 
 auto SavePatchConfig(const PatchConfig &config) -> bool {
     const char *path = "sd:/config/d3hack-nx/config.toml";

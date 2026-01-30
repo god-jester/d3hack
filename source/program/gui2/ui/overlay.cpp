@@ -300,9 +300,9 @@ namespace d3::gui2::ui {
         }
 
         static auto BuildLayoutText(
-            GuiTheme theme,
-            const char *ini_data,
-            size_t ini_size,
+            GuiTheme                      theme,
+            const char                   *ini_data,
+            size_t                        ini_size,
             d3::system_allocator::Buffer &out
         ) -> bool {
             out.Clear();
@@ -928,7 +928,7 @@ namespace d3::gui2::ui {
         size_t      ini_size = 0;
         const char *ini_data = ImGui::SaveIniSettingsToMemory(&ini_size);
         std::string error;
-        auto *allocator = d3::system_allocator::GetSystemAllocator();
+        auto       *allocator = d3::system_allocator::GetSystemAllocator();
         if (allocator == nullptr) {
             PRINT_LINE("[gui] layout save failed: system allocator unavailable");
             return;

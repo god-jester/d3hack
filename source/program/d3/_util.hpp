@@ -32,7 +32,7 @@ namespace d3 {
     extern OnlineService::ItemId   &g_itemInvalid;
     extern WorldPlace              &g_cPlaceNull;
     extern SigmaGlobals            &g_tSigmaGlobals;
-    extern u32                      *g_ptDevMemMode;
+    extern u32                     *g_ptDevMemMode;
     extern ::GFXNX64NVN::Globals   *g_ptGfxNVNGlobals;
     extern GameCommonData          *g_ptGCData;
     extern GfxInternalData         *g_ptGfxData;

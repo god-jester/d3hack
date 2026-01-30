@@ -34,9 +34,8 @@ namespace d3::system_allocator {
     }
 
     class Buffer {
-    public:
-        explicit Buffer(nn::mem::StandardAllocator *allocator)
-            : allocator_(allocator) {}
+       public:
+        explicit Buffer(nn::mem::StandardAllocator *allocator) : allocator_(allocator) {}
 
         ~Buffer() {
             if (allocator_ != nullptr && data_ != nullptr) {
@@ -44,7 +43,7 @@ namespace d3::system_allocator {
             }
         }
 
-        Buffer(const Buffer &) = delete;
+        Buffer(const Buffer &)            = delete;
         Buffer &operator=(const Buffer &) = delete;
 
         auto ok() const -> bool { return ok_; }
@@ -84,7 +83,7 @@ namespace d3::system_allocator {
             return true;
         }
 
-    private:
+       private:
         auto Reserve(size_t size) -> bool {
             if (allocator_ == nullptr) {
                 return false;
@@ -119,11 +118,10 @@ namespace d3::system_allocator {
     };
 
     class BufferStreamBuf final : public std::streambuf {
-    public:
-        explicit BufferStreamBuf(Buffer *buffer)
-            : buffer_(buffer) {}
+       public:
+        explicit BufferStreamBuf(Buffer *buffer) : buffer_(buffer) {}
 
-    protected:
+       protected:
         auto overflow(int ch) -> int override {
             if (buffer_ == nullptr || !buffer_->ok()) {
                 return traits_type::eof();
@@ -151,7 +149,7 @@ namespace d3::system_allocator {
             return count;
         }
 
-    private:
+       private:
         Buffer *buffer_;
     };
 }  // namespace d3::system_allocator

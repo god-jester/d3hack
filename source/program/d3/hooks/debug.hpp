@@ -19,7 +19,7 @@ namespace d3 {
         constexpr char k_error_mgr_dump_path[] = "sd:/config/d3hack-nx/error_manager_dump.txt";
 
         inline void WriteDumpLine(FileReference *tFileRef, const char *fmt, ...) {
-            char buf[512] = {};
+            char    buf[512] = {};
             va_list vl;
             va_start(vl, fmt);
             int n = vsnprintf(buf, sizeof(buf), fmt, vl);
