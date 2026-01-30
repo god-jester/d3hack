@@ -15,8 +15,10 @@
 
 namespace ImguiNvnBackend {
 
-    static constexpr int MaxTexDescriptors = 256 + 100;
-    static constexpr int MaxSampDescriptors = 256 + 100;
+    // Keep these conservative: each descriptor consumes pool memory and we rarely need many
+    // ImGui textures on d3hack (usually just the font atlas).
+    static constexpr int MaxTexDescriptors = 128;
+    static constexpr int MaxSampDescriptors = 128;
 
     struct NvnBackendInitInfo {
         nvn::Device *device;

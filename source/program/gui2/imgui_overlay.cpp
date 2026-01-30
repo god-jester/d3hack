@@ -22,6 +22,7 @@
 #include "program/gui2/ui/windows/notifications_window.hpp"
 #include "program/gui2/imgui_glyph_ranges.hpp"
 #include "program/d3/setting.hpp"
+#include "program/system_allocator.hpp"
 #include "symbols/common.hpp"
 
 #include "imgui/imgui.h"
@@ -80,6 +81,9 @@ namespace d3::imgui_overlay {
 
         constexpr bool kImGuiBringup_DrawText                = true;
         constexpr bool kImGuiBringup_AlwaysSubmitProofOfLife = false;
+        // Docking is convenient, but it is also one of the bigger memory users in ImGui. On real
+        // hardware we want stability first.
+        constexpr bool kImGui_EnableDocking                 = false;
 
         NvnDeviceGetProcAddressFn    g_orig_get_proc           = nullptr;
         NvnQueuePresentTextureFn     g_orig_present            = nullptr;
@@ -129,29 +133,23 @@ namespace d3::imgui_overlay {
         ImGuiFreeFn   g_imgui_free   = nullptr;
 
         auto EnsureRoInitialized() -> bool {
-            static bool s_ro_initialized     = false;
-            static bool s_ro_init_attempted  = false;
-            static bool s_ro_init_failed_log = false;
+            static bool s_ro_initialized    = false;
+            static bool s_ro_init_attempted = false;
 
             if (!s_ro_initialized && !s_ro_init_attempted) {
                 s_ro_init_attempted = true;
-                const int rc        = nn::ro::Initialize();
-                if (rc == 0) {
-                    s_ro_initialized = true;
-                } else if (!s_ro_init_failed_log) {
-                    s_ro_init_failed_log = true;
-                    PRINT("[imgui_overlay] ERROR: nn::ro::Initialize failed: 0x%x", rc);
-                }
+                nn::ro::Initialize();
+                s_ro_initialized = true;
             }
 
             return s_ro_initialized;
         }
 
         void ResolveImGuiAllocators() {
-            if (!EnsureRoInitialized()) {
-                return;
-            }
             if (g_imgui_malloc == nullptr) {
+                if (!EnsureRoInitialized()) {
+                    return;
+                }
                 uintptr_t addr = 0;
                 nn::ro::LookupSymbol(&addr, "malloc");
                 if (addr != 0) {
@@ -165,6 +163,9 @@ namespace d3::imgui_overlay {
                 }
             }
             if (g_imgui_free == nullptr) {
+                if (!EnsureRoInitialized()) {
+                    return;
+                }
                 uintptr_t addr = 0;
                 nn::ro::LookupSymbol(&addr, "free");
                 if (addr != 0) {
@@ -180,14 +181,23 @@ namespace d3::imgui_overlay {
         }
 
         auto ImGuiAlloc(size_t size, void *user_data) -> void * {
-            (void)user_data;
+            if (user_data != nullptr) {
+                auto *alloc = static_cast<nn::mem::StandardAllocator *>(user_data);
+                void *ptr   = alloc->Allocate(size);
+                EXL_ABORT_UNLESS(ptr != nullptr, "[imgui_overlay] ImGuiAlloc system allocator OOM (size=0x%zx)", size);
+                return ptr;
+            }
             EXL_ABORT_UNLESS(g_imgui_malloc != nullptr, "[imgui_overlay] ImGuiAlloc missing malloc");
             return g_imgui_malloc(size);
         }
 
         void ImGuiFree(void *ptr, void *user_data) {
-            (void)user_data;
             if (ptr == nullptr) {
+                return;
+            }
+            if (user_data != nullptr) {
+                auto *alloc = static_cast<nn::mem::StandardAllocator *>(user_data);
+                alloc->Free(ptr);
                 return;
             }
             EXL_ABORT_UNLESS(g_imgui_free != nullptr, "[imgui_overlay] ImGuiFree missing free");
@@ -600,6 +610,11 @@ namespace d3::imgui_overlay {
             if (style.WindowBorderHoverPadding < 1.0f) {
                 style.WindowBorderHoverPadding = 1.0f;
             }
+
+            // Slightly lower CPU/GPU cost and atlas complexity.
+            style.AntiAliasedLines       = false;
+            style.AntiAliasedLinesUseTex = false;
+            style.AntiAliasedFill        = false;
 
             style.FontScaleMain = font_scale;
             g_last_gui_scale    = font_scale;
@@ -1214,10 +1229,18 @@ namespace d3::imgui_overlay {
             if (!g_imgui_ctx_initialized) {
                 IMGUI_CHECKVERSION();
                 if (!g_imgui_allocators_set) {
-                    ResolveImGuiAllocators();
-                    if (g_imgui_malloc != nullptr && g_imgui_free != nullptr) {
-                        ImGui::SetAllocatorFunctions(ImGuiAlloc, ImGuiFree, nullptr);
+                    // Prefer the game's system allocator to reduce fragmentation and isolate ImGui
+                    // from libc malloc quirks on different HOS versions.
+                    auto *sys_alloc = d3::system_allocator::GetSystemAllocator();
+                    if (sys_alloc != nullptr) {
+                        ImGui::SetAllocatorFunctions(ImGuiAlloc, ImGuiFree, sys_alloc);
                         g_imgui_allocators_set = true;
+                    } else {
+                        ResolveImGuiAllocators();
+                        if (g_imgui_malloc != nullptr && g_imgui_free != nullptr) {
+                            ImGui::SetAllocatorFunctions(ImGuiAlloc, ImGuiFree, nullptr);
+                            g_imgui_allocators_set = true;
+                        }
                     }
                 }
                 if (!g_imgui_allocators_set) {
@@ -1236,7 +1259,11 @@ namespace d3::imgui_overlay {
                 io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
                 io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
                 io.ConfigFlags |= ImGuiConfigFlags_IsTouchScreen;
-                io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+                if (kImGui_EnableDocking) {
+                    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+                } else {
+                    io.ConfigFlags &= ~ImGuiConfigFlags_DockingEnable;
+                }
                 io.BackendFlags |= ImGuiBackendFlags_HasGamepad;
                 io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
                 io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
@@ -1544,13 +1571,16 @@ namespace d3::imgui_overlay {
         }
 
         PRINT_LINE("[imgui_overlay] Preparing ImGui font atlas...");
-        // Keep power-of-two atlas sizes so ImGui debug "compact" does not assert.
-        io.Fonts->Flags &= ~ImFontAtlasFlags_NoPowerOfTwoHeight;
+        // Prefer smaller atlas allocations on real hardware.
+        // Non-power-of-two height can significantly reduce waste for large (CJK) atlases.
+        io.Fonts->Flags |= ImFontAtlasFlags_NoPowerOfTwoHeight;
+        io.Fonts->TexDesiredFormat  = ImTextureFormat_Alpha8;
+        io.Fonts->TexPixelsUseColors = false;
         ImFontConfig font_cfg {};
         font_cfg.Name[0]               = 'd';
         font_cfg.Name[1]               = '3';
         font_cfg.Name[2]               = '\0';
-        constexpr float kFontSizeBody  = 16.0f;
+        constexpr float kFontSizeBody  = 15.0f;
         // Build for docked readability (we apply a runtime scale for 720p).
         font_cfg.SizePixels  = kFontSizeBody;
         // Keep the atlas smaller on real hardware (especially for CJK).
@@ -1571,8 +1601,9 @@ namespace d3::imgui_overlay {
             builder.AddRanges(glyph_ranges::GetDefault());
 
             if (desired_lang == "zh") {
-                // Keep this in the "common" set. Full (0x4E00-0x9FAF) explodes atlas size.
-                builder.AddRanges(glyph_ranges::GetChineseSimplifiedCommon());
+                // Ultra-low-memory path: build ranges from the actual translated UI strings.
+                // This is typically far smaller than even the "common" CJK ranges.
+                g_overlay.AppendTranslationGlyphs(builder);
             } else if (desired_lang == "ko") {
                 builder.AddRanges(glyph_ranges::GetKorean());
             } else if (desired_lang == "ja") {

@@ -16,10 +16,10 @@
 #define D3HACK_FULLFPS D3HACK_VER D3HACK_BUILD
 #define D3HACK_FULLWWW D3HACK_VER D3HACK_BUILD CRLF CRLF D3HACK_DESC
 
-#ifdef EXL_DEBUG
+// #ifdef EXL_DEBUG
 #define DBGLOG
 #define DBGPRINT
-#endif
+// #endif
 
 #ifndef DBGLOG
 #define LOG(...) (static_cast<void>(sizeof(__VA_ARGS__)));

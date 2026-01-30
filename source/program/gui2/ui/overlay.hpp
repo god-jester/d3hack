@@ -8,6 +8,8 @@
 #include "program/config.hpp"
 #include "program/gui2/ui/window.hpp"
 
+struct ImFontGlyphRangesBuilder;
+
 namespace d3::gui2::ui {
 
     struct GuiFocusState {
@@ -62,6 +64,7 @@ namespace d3::gui2::ui {
         // Translation helper: returns a localized string when available, otherwise returns fallback.
         const char        *tr(const char *key, const char *fallback);
         const std::string &translations_lang() const { return translations_lang_; }
+        void               AppendTranslationGlyphs(ImFontGlyphRangesBuilder &builder) const;
 
         PatchConfig       &ui_config() { return ui_config_; }
         const PatchConfig &ui_config() const { return ui_config_; }

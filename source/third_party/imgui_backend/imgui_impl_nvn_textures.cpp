@@ -7,11 +7,17 @@
 #include "imgui_backend/imgui_impl_nvn.hpp"
 #include "imgui/imgui.h"
 #include "lib/diag/assert.hpp"
+#include "program/logging.hpp"
 
 namespace ImguiNvnBackend {
 namespace TextureSupport {
 
 namespace {
+    constexpr bool kLowMem_LogFontTexCreate           = true;
+    // Disabled for now: ImGui may queue texture updates after initial creation (e.g. font atlas
+    // rebuild/updates). Freeing Pixels triggers ImTextureData::GetPixelsAt asserts in those paths.
+    constexpr bool kLowMem_FreeFontPixelsAfterUpload  = false;
+
     struct NvnImGuiTexture {
         nvn::Texture texture;
         nvn::Sampler sampler;
@@ -242,6 +248,24 @@ namespace {
 
         const size_t storage_size = tex_builder.GetStorageSize();
         const size_t storage_align = tex_builder.GetStorageAlignment();
+        if (ImGui::GetCurrentContext() != nullptr) {
+            const ImGuiIO &io = ImGui::GetIO();
+            if (io.Fonts != nullptr && io.Fonts->TexData == tex) {
+                static bool s_logged_font_alloc = false;
+                if (kLowMem_LogFontTexCreate && !s_logged_font_alloc) {
+                    s_logged_font_alloc = true;
+                    exl::log::PrintFmt(
+                        "[D3Hack|exlaunch] [imgui_backend] Font tex create: w=%d h=%d fmt=%d bpp=%d storage=0x%zx align=0x%zx\n",
+                        tex->Width,
+                        tex->Height,
+                        static_cast<int>(tex->Format),
+                        tex->BytesPerPixel,
+                        storage_size,
+                        storage_align
+                    );
+                }
+            }
+        }
         if (!MemoryPoolMaker::createPoolAligned(&backend->storage_pool, storage_size, storage_align,
                                          nvn::MemoryPoolFlags::CPU_UNCACHED |
                                              nvn::MemoryPoolFlags::GPU_CACHED)) {
@@ -296,6 +320,9 @@ namespace {
         }
 
         tex->SetStatus(ImTextureStatus_OK);
+
+        // NOTE: Do not free tex->Pixels here. ImGui may request updates later and will expect
+        // Pixels to be valid for GetPixelsAt() during those uploads.
         return true;
     }
 

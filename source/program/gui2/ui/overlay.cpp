@@ -6,6 +6,8 @@
 #include <cstring>
 #include <string_view>
 
+#include "imgui/imgui.h"
+
 #include "program/romfs_assets.hpp"
 #include "program/d3/_util.hpp"
 #include "program/d3/setting.hpp"
@@ -436,12 +438,23 @@ namespace d3::gui2::ui {
         layout_default_applied_ = false;
         layout_reset_pending_   = false;
 
+        // When docking is disabled (low-memory mode), avoid loading a full ImGui ini layout.
+        // It allocates settings/state we don't need and can contribute to heap pressure.
+        const bool docking_enabled = (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable) != 0;
+
         std::string text;
         if (d3::romfs::ReadFileToString(kGuiLayoutPath, text, 512 * 1024)) {
             ParseLayoutMeta(text, theme_);
-            ImGui::LoadIniSettingsFromMemory(text.c_str(), text.size());
-            layout_loaded_ = true;
-            PRINT("[gui] layout loaded: %s (theme=%s)", kGuiLayoutPath, ThemeToString(theme_));
+            if (docking_enabled) {
+                ImGui::LoadIniSettingsFromMemory(text.c_str(), text.size());
+                layout_loaded_ = true;
+                PRINT("[gui] layout loaded: %s (theme=%s)", kGuiLayoutPath, ThemeToString(theme_));
+            } else {
+                // Still treat layout as "present" (for theme parsing), but don't apply it.
+                layout_loaded_          = true;
+                layout_default_applied_ = true;
+                PRINT("[gui] layout skipped (docking disabled): %s (theme=%s)", kGuiLayoutPath, ThemeToString(theme_));
+            }
         } else {
             PRINT("[gui] layout missing: %s", kGuiLayoutPath);
         }
@@ -464,6 +477,18 @@ namespace d3::gui2::ui {
         }
 
         return it->second.c_str();
+    }
+
+    void Overlay::AppendTranslationGlyphs(ImFontGlyphRangesBuilder &builder) const {
+        if (!translations_loaded_) {
+            return;
+        }
+        for (auto const &[k, v] : translations_) {
+            (void)k;
+            if (!v.empty()) {
+                builder.AddText(v.c_str());
+            }
+        }
     }
 
     void Overlay::EnsureWindowsCreated() {

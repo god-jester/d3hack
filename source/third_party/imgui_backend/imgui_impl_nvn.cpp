@@ -472,8 +472,21 @@ namespace ImguiNvnBackend {
             return;
         }
 
+        // Guardrail: avoid allocating unbounded GPU buffers from UI spikes (docking/layout churn, etc).
+        // Better to skip a frame than to trip an nnSdk assert on real hardware.
+        constexpr size_t kMaxVtxBytes = 4u * 1024u * 1024u;
+        constexpr size_t kMaxIdxBytes = 2u * 1024u * 1024u;
+
         // initializes/resizes buffer used for all vertex data created by ImGui
         size_t totalVtxSize = drawData->TotalVtxCount * sizeof(ImDrawVert);
+        if (totalVtxSize > kMaxVtxBytes) {
+            static bool s_logged_vtx_cap = false;
+            if (!s_logged_vtx_cap) {
+                s_logged_vtx_cap = true;
+                PRINT("[imgui_backend] ERROR: TotalVtxSize too large (0x%zx); skipping draw", totalVtxSize);
+            }
+            return;
+        }
         if (!bd->vtxBuffer || bd->vtxBuffer->GetPoolSize() < totalVtxSize) {
             if (bd->vtxBuffer) {
                 bd->vtxBuffer->Finalize();
@@ -488,6 +501,14 @@ namespace ImguiNvnBackend {
 
         // initializes/resizes buffer used for all index data created by ImGui
         size_t totalIdxSize = drawData->TotalIdxCount * sizeof(ImDrawIdx);
+        if (totalIdxSize > kMaxIdxBytes) {
+            static bool s_logged_idx_cap = false;
+            if (!s_logged_idx_cap) {
+                s_logged_idx_cap = true;
+                PRINT("[imgui_backend] ERROR: TotalIdxSize too large (0x%zx); skipping draw", totalIdxSize);
+            }
+            return;
+        }
         if (!bd->idxBuffer || bd->idxBuffer->GetPoolSize() < totalIdxSize) {
             if (bd->idxBuffer) {
 
