@@ -22,7 +22,6 @@ namespace {
         int width = 0;
         int height = 0;
         ImTextureFormat format = ImTextureFormat_RGBA32;
-        bool expanded_alpha = false;
     };
 
     struct DescriptorPair {
@@ -177,40 +176,16 @@ namespace {
         return true;
     }
 
-    nvn::Format MapFormat(ImTextureFormat format, bool *out_expand_alpha) {
-        EXL_ABORT_UNLESS(out_expand_alpha != nullptr, "expand_alpha pointer is null");
-
+    nvn::Format MapFormat(ImTextureFormat format) {
         switch (format) {
         case ImTextureFormat_RGBA32:
-            *out_expand_alpha = false;
             return nvn::Format::RGBA8;
         case ImTextureFormat_Alpha8:
-            *out_expand_alpha = true;
-            return nvn::Format::RGBA8;
+            // Keep the font atlas in a single-channel texture to avoid 4x GPU memory expansion.
+            // Use swizzle (set at texture creation) so shaders see (1,1,1,alpha).
+            return nvn::Format::R8;
         default:
-            *out_expand_alpha = false;
             return nvn::Format::RGBA8;
-        }
-    }
-
-    void ExpandAlphaToRgba(const unsigned char *src, int src_pitch, int width, int height,
-                           std::vector<unsigned char> *out_rgba) {
-        EXL_ABORT_UNLESS(src != nullptr, "Alpha source is null");
-        EXL_ABORT_UNLESS(out_rgba != nullptr, "RGBA buffer is null");
-
-        const size_t out_size = static_cast<size_t>(width) * static_cast<size_t>(height) * 4u;
-        out_rgba->assign(out_size, 0);
-
-        for (int y = 0; y < height; ++y) {
-            const unsigned char *row_src = src + y * src_pitch;
-            unsigned char *row_dst = out_rgba->data() + (static_cast<size_t>(y) * width * 4u);
-            for (int x = 0; x < width; ++x) {
-                const unsigned char alpha = row_src[x];
-                row_dst[x * 4 + 0] = 0xFF;
-                row_dst[x * 4 + 1] = 0xFF;
-                row_dst[x * 4 + 2] = 0xFF;
-                row_dst[x * 4 + 3] = alpha;
-            }
         }
     }
 
@@ -233,16 +208,7 @@ namespace {
             static_cast<const unsigned char *>(tex->GetPixelsAt(rect.x, rect.y));
         const int src_pitch = tex->GetPitch();
 
-        if (!backend->expanded_alpha) {
-            backend->texture.WriteTexelsStrided(nullptr, &region, src, src_pitch, 0);
-            backend->texture.FlushTexels(nullptr, &region);
-            return true;
-        }
-
-        std::vector<unsigned char> rgba;
-        ExpandAlphaToRgba(src, src_pitch, rect.w, rect.h, &rgba);
-        const ptrdiff_t rgba_pitch = static_cast<ptrdiff_t>(rect.w) * 4;
-        backend->texture.WriteTexelsStrided(nullptr, &region, rgba.data(), rgba_pitch, 0);
+        backend->texture.WriteTexelsStrided(nullptr, &region, src, src_pitch, 0);
         backend->texture.FlushTexels(nullptr, &region);
         return true;
     }
@@ -252,14 +218,12 @@ namespace {
             return false;
         }
 
-        bool expand_alpha = false;
-        const nvn::Format format = MapFormat(tex->Format, &expand_alpha);
+        const nvn::Format format = MapFormat(tex->Format);
 
         NvnImGuiTexture *backend = IM_NEW(NvnImGuiTexture)();
         backend->width = tex->Width;
         backend->height = tex->Height;
         backend->format = tex->Format;
-        backend->expanded_alpha = expand_alpha;
 
         nvn::TextureBuilder tex_builder;
         tex_builder.SetDefaults()
@@ -267,6 +231,14 @@ namespace {
             .SetTarget(nvn::TextureTarget::TARGET_2D)
             .SetFormat(format)
             .SetSize2D(tex->Width, tex->Height);
+        if (tex->Format == ImTextureFormat_Alpha8) {
+            tex_builder.SetSwizzle(
+                nvn::TextureSwizzle::ONE,
+                nvn::TextureSwizzle::ONE,
+                nvn::TextureSwizzle::ONE,
+                nvn::TextureSwizzle::R
+            );
+        }
 
         const size_t storage_size = tex_builder.GetStorageSize();
         const size_t storage_align = tex_builder.GetStorageAlignment();

@@ -65,6 +65,7 @@ namespace nn::pl {
 }  // namespace nn::pl
 
 namespace nn::ro {
+    auto Initialize() noexcept -> int;
     auto LookupSymbol(uintptr_t *pOutAddress, const char *name) noexcept -> int;
 }  // namespace nn::ro
 
@@ -127,7 +128,29 @@ namespace d3::imgui_overlay {
         ImGuiMallocFn g_imgui_malloc = nullptr;
         ImGuiFreeFn   g_imgui_free   = nullptr;
 
+        auto EnsureRoInitialized() -> bool {
+            static bool s_ro_initialized     = false;
+            static bool s_ro_init_attempted  = false;
+            static bool s_ro_init_failed_log = false;
+
+            if (!s_ro_initialized && !s_ro_init_attempted) {
+                s_ro_init_attempted = true;
+                const int rc        = nn::ro::Initialize();
+                if (rc == 0) {
+                    s_ro_initialized = true;
+                } else if (!s_ro_init_failed_log) {
+                    s_ro_init_failed_log = true;
+                    PRINT("[imgui_overlay] ERROR: nn::ro::Initialize failed: 0x%x", rc);
+                }
+            }
+
+            return s_ro_initialized;
+        }
+
         void ResolveImGuiAllocators() {
+            if (!EnsureRoInitialized()) {
+                return;
+            }
             if (g_imgui_malloc == nullptr) {
                 uintptr_t addr = 0;
                 nn::ro::LookupSymbol(&addr, "malloc");
@@ -1530,21 +1553,38 @@ namespace d3::imgui_overlay {
         constexpr float kFontSizeBody  = 16.0f;
         // Build for docked readability (we apply a runtime scale for 720p).
         font_cfg.SizePixels  = kFontSizeBody;
-        font_cfg.OversampleH = 2;
-        font_cfg.OversampleV = 2;
+        // Keep the atlas smaller on real hardware (especially for CJK).
+        font_cfg.OversampleH = (desired_lang == "zh") ? 1 : 2;
+        font_cfg.OversampleV = (desired_lang == "zh") ? 1 : 2;
+        const std::array<ImWchar, 3> nvn_ext_ranges = {0xE000, 0xE152, 0};
+
         static ImVector<ImWchar> s_font_ranges;
         static bool              s_font_ranges_built = false;
         if (!s_font_ranges_built || s_ranges_lang != desired_lang) {
+            // Keep the atlas small/stable: build a language-focused range set and rely on the
+            // Nintendo shared system fonts for coverage, rather than importing every CJK block.
+            //
+            // This is intentionally closer to lunakit's behavior (explicit, limited ranges) than
+            // a "load everything" approach, because overly-large ranges can fail/stall atlas build
+            // and make font upload feel flaky.
             ImFontGlyphRangesBuilder builder;
             builder.AddRanges(glyph_ranges::GetDefault());
-            builder.AddRanges(glyph_ranges::GetKorean());
+
             if (desired_lang == "zh") {
-                builder.AddRanges(glyph_ranges::GetChineseFull());
-            } else {
+                // Keep this in the "common" set. Full (0x4E00-0x9FAF) explodes atlas size.
                 builder.AddRanges(glyph_ranges::GetChineseSimplifiedCommon());
+            } else if (desired_lang == "ko") {
+                builder.AddRanges(glyph_ranges::GetKorean());
+            } else if (desired_lang == "ja") {
+                builder.AddRanges(glyph_ranges::GetJapanese());
+            } else {
+                // "Good enough" default: support Cyrillic for RU users without pulling in all CJK.
+                builder.AddRanges(glyph_ranges::GetCyrillic());
             }
-            builder.AddRanges(glyph_ranges::GetJapanese());
-            builder.AddRanges(glyph_ranges::GetCyrillic());
+
+            // Private-use glyphs used by Nintendo's extension fonts.
+            builder.AddRanges(nvn_ext_ranges.data());
+
             builder.BuildRanges(&s_font_ranges);
             s_font_ranges_built = true;
             s_ranges_lang       = desired_lang;
@@ -1554,26 +1594,23 @@ namespace d3::imgui_overlay {
         ImFont const *font_body        = nullptr;
         bool          used_shared_font = false;
 
-        const std::array<ImWchar, 3> nvn_ext_ranges = {0xE000, 0xE152, 0};
-
         const bool is_chinese = (desired_lang == "zh");
 
         auto WaitForSharedFontLoad = [](nn::pl::SharedFontType type) -> bool {
-            if (nn::pl::GetSharedFontSize(type) != 1) {
-                bool load_started = false;
-                while (true) {
-                    if (load_started) {
-                        nn::os::SleepThread(nn::TimeSpan::FromNanoSeconds(1000000000ULL / 60));
-                    }
-                    const auto state = nn::pl::GetSharedFontLoadState(type);
-                    if (state == nn::pl::SharedFontLoadState_Loaded) {
-                        break;
-                    }
-                    if (!load_started) {
-                        nn::pl::RequestSharedFontLoad(type);
-                        load_started = true;
-                    }
+            nn::pl::RequestSharedFontLoad(type);
+
+            // Don't block forever: shared font loading should be fast, but hooks run on real game threads.
+            constexpr int kMaxFrames = 180;  // ~3 seconds @ 60Hz
+            for (int i = 0; i < kMaxFrames; ++i) {
+                const auto state = nn::pl::GetSharedFontLoadState(type);
+                if (state == nn::pl::SharedFontLoadState_Loaded) {
+                    break;
                 }
+                nn::os::SleepThread(nn::TimeSpan::FromNanoSeconds(1000000000ULL / 60));
+            }
+
+            if (nn::pl::GetSharedFontLoadState(type) != nn::pl::SharedFontLoadState_Loaded) {
+                return false;
             }
 
             const void  *shared_font = nn::pl::GetSharedFontAddress(type);
@@ -1589,13 +1626,16 @@ namespace d3::imgui_overlay {
         const bool shared_base_ready = WaitForSharedFontLoad(shared_base);
 
         nn::pl::RequestSharedFontLoad(shared_ext);
-        nn::pl::RequestSharedFontLoad(nn::pl::SharedFontType_NintendoExtension);
+        if (shared_ext != nn::pl::SharedFontType_NintendoExtension) {
+            nn::pl::RequestSharedFontLoad(nn::pl::SharedFontType_NintendoExtension);
+        }
 
         const bool shared_ext_ready =
             nn::pl::GetSharedFontLoadState(shared_ext) == nn::pl::SharedFontLoadState_Loaded;
         const bool shared_nvn_ext_ready =
-            nn::pl::GetSharedFontLoadState(nn::pl::SharedFontType_NintendoExtension) ==
-            nn::pl::SharedFontLoadState_Loaded;
+            (shared_ext == nn::pl::SharedFontType_NintendoExtension) ||
+            (nn::pl::GetSharedFontLoadState(nn::pl::SharedFontType_NintendoExtension) ==
+             nn::pl::SharedFontLoadState_Loaded);
 
         if (shared_base_ready) {
             const void  *shared_font = nn::pl::GetSharedFontAddress(shared_base);
@@ -1623,7 +1663,8 @@ namespace d3::imgui_overlay {
                 ImFontConfig ext_cfg         = font_cfg;
                 ext_cfg.MergeMode            = true;
                 ext_cfg.FontDataOwnedByAtlas = false;
-                ext_cfg.GlyphRanges          = is_chinese ? s_font_ranges.Data : nvn_ext_ranges.data();
+                ext_cfg.GlyphRanges          =
+                    (shared_ext == nn::pl::SharedFontType_NintendoExtension) ? nvn_ext_ranges.data() : s_font_ranges.Data;
                 if (io.Fonts->AddFontFromMemoryTTF(const_cast<void *>(shared_ext_font), static_cast<int>(shared_ext_size), ext_cfg.SizePixels, &ext_cfg) == nullptr) {
                     PRINT_LINE("[imgui_overlay] ERROR: AddFontFromMemoryTTF failed for shared extension font");
                 } else {
@@ -1634,7 +1675,7 @@ namespace d3::imgui_overlay {
             }
         }
 
-        if (used_shared_font && shared_nvn_ext_ready) {
+        if (used_shared_font && shared_nvn_ext_ready && shared_ext != nn::pl::SharedFontType_NintendoExtension) {
             const void  *nvn_ext_font = nn::pl::GetSharedFontAddress(nn::pl::SharedFontType_NintendoExtension);
             const size_t nvn_ext_size = nn::pl::GetSharedFontSize(nn::pl::SharedFontType_NintendoExtension);
             if (nvn_ext_font != nullptr && nvn_ext_size > 0) {
