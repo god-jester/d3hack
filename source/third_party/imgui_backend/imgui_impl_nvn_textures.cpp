@@ -306,7 +306,9 @@ namespace {
         backend->handle = bd->device->GetTextureHandle(backend->texture_id, backend->sampler_id);
 
         tex->BackendUserData = backend;
-        tex->SetTexID(static_cast<ImTextureID>(reinterpret_cast<uintptr_t>(&backend->handle)));
+        // ImTextureID is ImU64 by default (ImGui 1.91.4+), so we can store the native handle value directly.
+        // This avoids pointer lifetime issues when textures are destroyed/recycled.
+        tex->SetTexID(static_cast<ImTextureID>(backend->handle));
 
         const ImTextureRect full_rect = {
             static_cast<unsigned short>(0),
@@ -383,7 +385,9 @@ void ProcessTextures(ImDrawData *draw_data) {
             UpdateTextureFromImGui(tex);
             break;
         case ImTextureStatus_WantDestroy:
-            if (tex->UnusedFrames > 0) {
+            // The game/driver can have multiple frames in flight. Delay destruction to avoid
+            // destroying textures still referenced by in-flight GPU work.
+            if (tex->UnusedFrames > (NvnBackendData::FramesInFlight - 1)) {
                 DestroyTextureFromImGui(tex);
             }
             break;

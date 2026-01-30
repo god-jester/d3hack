@@ -43,7 +43,13 @@ namespace ImguiNvnBackend {
         nvn::Program shaderProgram;
 
         MemoryBuffer *shaderMemory;
-        MemoryBuffer *uniformMemory;
+
+        // The game and Ryujinx can keep multiple frames in flight.
+        // Using a small ring avoids overwriting GPU-visible buffers while the GPU is still consuming them.
+        static constexpr int FramesInFlight = 3;
+        int frame_index = 0;
+
+        MemoryBuffer *uniformMemory[FramesInFlight];
 
         nvn::ShaderData shaderDatas[2]; // 0 - Vert 1 - Frag
 
@@ -59,8 +65,8 @@ namespace ImguiNvnBackend {
 
         // render data
 
-        MemoryBuffer *vtxBuffer;
-        MemoryBuffer *idxBuffer;
+        MemoryBuffer *vtxBuffer[FramesInFlight];
+        MemoryBuffer *idxBuffer[FramesInFlight];
         ImVec2 viewportSize;
 
         // misc data

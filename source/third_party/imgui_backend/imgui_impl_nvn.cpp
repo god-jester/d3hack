@@ -171,9 +171,15 @@ namespace ImguiNvnBackend {
 
     // this function is mainly what I used to debug the rendering of ImGui, so code is a bit messier
     void renderTestShader(ImDrawData *drawData) {
+        (void)drawData;
 
         auto bd = getBackendData();
         auto io = ImGui::GetIO();
+
+        const int frame_index = bd->frame_index % NvnBackendData::FramesInFlight;
+        bd->frame_index++;
+        MemoryBuffer *vtx_buffer = bd->vtxBuffer[frame_index];
+        MemoryBuffer *ubo_buffer = bd->uniformMemory[frame_index];
 
         constexpr int triVertCount = 3;
         constexpr int quadVertCount = triVertCount * 2;
@@ -183,21 +189,22 @@ namespace ImguiNvnBackend {
         int pointCount = quadVertCount * quadCount;
 
         size_t totalVtxSize = pointCount * sizeof(ImDrawVert);
-        if (!bd->vtxBuffer || bd->vtxBuffer->GetPoolSize() < totalVtxSize) {
-            if (bd->vtxBuffer) {
-                bd->vtxBuffer->Finalize();
-                IM_FREE(bd->vtxBuffer);
+        if (!vtx_buffer || vtx_buffer->GetPoolSize() < totalVtxSize) {
+            if (vtx_buffer) {
+                vtx_buffer->Finalize();
+                IM_FREE(vtx_buffer);
             }
-            bd->vtxBuffer = IM_NEW(MemoryBuffer)(totalVtxSize);
+            vtx_buffer = IM_NEW(MemoryBuffer)(totalVtxSize);
+            bd->vtxBuffer[frame_index] = vtx_buffer;
             PRINT("[imgui_backend] (Re)sized Vertex Buffer to Size: %ld", static_cast<long>(totalVtxSize));
         }
 
-        if (!bd->vtxBuffer->IsBufferReady()) {
+        if (!vtx_buffer || !vtx_buffer->IsBufferReady() || !ubo_buffer || !ubo_buffer->IsBufferReady()) {
             PRINT_LINE("[imgui_backend] Cannot Draw Data! Buffers are not Ready.");
             return;
         }
 
-        ImDrawVert *verts = (ImDrawVert *) bd->vtxBuffer->GetMemPtr();
+        ImDrawVert *verts = reinterpret_cast<ImDrawVert *>(vtx_buffer->GetMemPtr());
 
         float scale = 3.0f;
 
@@ -210,12 +217,12 @@ namespace ImguiNvnBackend {
         bd->cmdBuf->BeginRecording();
         bd->cmdBuf->BindProgram(&bd->shaderProgram, nvn::ShaderStageBits::VERTEX | nvn::ShaderStageBits::FRAGMENT);
 
-        bd->cmdBuf->BindUniformBuffer(nvn::ShaderStage::VERTEX, 0, *bd->uniformMemory, UBOSIZE);
+        bd->cmdBuf->BindUniformBuffer(nvn::ShaderStage::VERTEX, 0, *ubo_buffer, UBOSIZE);
         Matrix44f proj_matrix{};
         BuildOrthoMatrix(proj_matrix, ImVec2(0.0f, 0.0f), io.DisplaySize);
-        bd->cmdBuf->UpdateUniformBuffer(*bd->uniformMemory, UBOSIZE, 0, sizeof(proj_matrix), &proj_matrix);
+        bd->cmdBuf->UpdateUniformBuffer(*ubo_buffer, UBOSIZE, 0, sizeof(proj_matrix), &proj_matrix);
 
-        bd->cmdBuf->BindVertexBuffer(0, (*bd->vtxBuffer), bd->vtxBuffer->GetPoolSize());
+        bd->cmdBuf->BindVertexBuffer(0, (*vtx_buffer), vtx_buffer->GetPoolSize());
 
         setRenderStates();
 
@@ -306,11 +313,12 @@ namespace ImguiNvnBackend {
 
         // Uniform Block _Object Memory Setup
 
-        bd->uniformMemory = IM_NEW(MemoryBuffer)(UBOSIZE);
-
-        if (!bd->uniformMemory->IsBufferReady()) {
-            PRINT_LINE("[imgui_backend] Uniform Memory Pool not Ready! Unable to continue.");
-            return false;
+        for (int i = 0; i < NvnBackendData::FramesInFlight; ++i) {
+            bd->uniformMemory[i] = IM_NEW(MemoryBuffer)(UBOSIZE);
+            if (!bd->uniformMemory[i] || !bd->uniformMemory[i]->IsBufferReady()) {
+                PRINT_LINE("[imgui_backend] Uniform Memory Pool not Ready! Unable to continue.");
+                return false;
+            }
         }
 
         // setup vertex attrib & stream
@@ -349,6 +357,22 @@ namespace ImguiNvnBackend {
         bd->cmdBuf = initInfo.cmdBuf;
         bd->viewportSize = io.DisplaySize;
         bd->isInitialized = false;
+
+        // Let ImGui know the maximum texture size supported by NVN to help the atlas packer
+        // pick reasonable dimensions.
+        ImGuiPlatformIO &platform_io = ImGui::GetPlatformIO();
+        int max_texture_size = 0;
+        if (bd->device != nullptr) {
+            bd->device->GetInteger(nvn::DeviceInfo::MAX_TEXTURE_SIZE, &max_texture_size);
+        }
+        if (max_texture_size > 0) {
+            // Prefer a conservative limit for font atlases. Larger textures get very expensive
+            // on Switch once you factor in both GPU storage and CPU-side pixel retention.
+            constexpr int kMaxImGuiTexDim = 4096;
+            const int dim = std::min(max_texture_size, kMaxImGuiTexDim);
+            platform_io.Renderer_TextureMaxWidth  = dim;
+            platform_io.Renderer_TextureMaxHeight = dim;
+        }
 
         // Fonts are uploaded via ImGui's texture API (see TextureSupport::ProcessTextures).
 
@@ -472,6 +496,13 @@ namespace ImguiNvnBackend {
             return;
         }
 
+        const int frame_index = bd->frame_index % NvnBackendData::FramesInFlight;
+        bd->frame_index++;
+
+        MemoryBuffer *vtx_buffer = bd->vtxBuffer[frame_index];
+        MemoryBuffer *idx_buffer = bd->idxBuffer[frame_index];
+        MemoryBuffer *ubo_buffer = bd->uniformMemory[frame_index];
+
         // Guardrail: avoid allocating unbounded GPU buffers from UI spikes (docking/layout churn, etc).
         // Better to skip a frame than to trip an nnSdk assert on real hardware.
         constexpr size_t kMaxVtxBytes = 4u * 1024u * 1024u;
@@ -487,16 +518,17 @@ namespace ImguiNvnBackend {
             }
             return;
         }
-        if (!bd->vtxBuffer || bd->vtxBuffer->GetPoolSize() < totalVtxSize) {
-            if (bd->vtxBuffer) {
-                bd->vtxBuffer->Finalize();
-                IM_FREE(bd->vtxBuffer);
+        if (!vtx_buffer || vtx_buffer->GetPoolSize() < totalVtxSize) {
+            if (vtx_buffer) {
+                vtx_buffer->Finalize();
+                IM_FREE(vtx_buffer);
                 PRINT("[imgui_backend] Resizing Vertex Buffer to Size: %ld", static_cast<long>(totalVtxSize));
             } else {
                 PRINT("[imgui_backend] Initializing Vertex Buffer to Size: %ld", static_cast<long>(totalVtxSize));
             }
 
-            bd->vtxBuffer = IM_NEW(MemoryBuffer)(totalVtxSize);
+            vtx_buffer = IM_NEW(MemoryBuffer)(totalVtxSize);
+            bd->vtxBuffer[frame_index] = vtx_buffer;
         }
 
         // initializes/resizes buffer used for all index data created by ImGui
@@ -509,23 +541,25 @@ namespace ImguiNvnBackend {
             }
             return;
         }
-        if (!bd->idxBuffer || bd->idxBuffer->GetPoolSize() < totalIdxSize) {
-            if (bd->idxBuffer) {
+        if (!idx_buffer || idx_buffer->GetPoolSize() < totalIdxSize) {
+            if (idx_buffer) {
 
-                bd->idxBuffer->Finalize();
-                IM_FREE(bd->idxBuffer);
+                idx_buffer->Finalize();
+                IM_FREE(idx_buffer);
 
                 PRINT("[imgui_backend] Resizing Index Buffer to Size: %ld", static_cast<long>(totalIdxSize));
             } else {
                 PRINT("[imgui_backend] Initializing Index Buffer to Size: %ld", static_cast<long>(totalIdxSize));
             }
 
-            bd->idxBuffer = IM_NEW(MemoryBuffer)(totalIdxSize);
+            idx_buffer = IM_NEW(MemoryBuffer)(totalIdxSize);
+            bd->idxBuffer[frame_index] = idx_buffer;
 
         }
 
         // if we fail to resize/init either buffers, end execution before we try to use said invalid buffer(s)
-        if (!(bd->vtxBuffer->IsBufferReady() && bd->idxBuffer->IsBufferReady())) {
+        if (!(vtx_buffer && vtx_buffer->IsBufferReady() && idx_buffer && idx_buffer->IsBufferReady() &&
+              ubo_buffer && ubo_buffer->IsBufferReady())) {
             PRINT_LINE("[imgui_backend] Cannot Draw Data! Buffers are not Ready.");
             return;
         }
@@ -540,11 +574,11 @@ namespace ImguiNvnBackend {
         bd->cmdBuf->BindProgram(&bd->shaderProgram, nvn::ShaderStageBits::VERTEX |
                                                     nvn::ShaderStageBits::FRAGMENT); // bind main imgui shader
 
-        bd->cmdBuf->BindUniformBuffer(nvn::ShaderStage::VERTEX, 0, *bd->uniformMemory,
+        bd->cmdBuf->BindUniformBuffer(nvn::ShaderStage::VERTEX, 0, *ubo_buffer,
                                       UBOSIZE); // bind uniform block ptr
         Matrix44f proj_matrix{};
         BuildOrthoMatrix(proj_matrix, drawData->DisplayPos, drawData->DisplaySize);
-        bd->cmdBuf->UpdateUniformBuffer(*bd->uniformMemory, UBOSIZE, 0, sizeof(proj_matrix),
+        bd->cmdBuf->UpdateUniformBuffer(*ubo_buffer, UBOSIZE, 0, sizeof(proj_matrix),
                                         &proj_matrix); // add projection matrix data to uniform data
 
         setRenderStates(); // sets up the rest of the render state, required so that our shader properly gets drawn to the screen
@@ -569,13 +603,13 @@ namespace ImguiNvnBackend {
             size_t idxSize = cmdList->IdxBuffer.Size * sizeof(ImDrawIdx);
 
             // bind vtx buffer at the current offset
-            bd->cmdBuf->BindVertexBuffer(0, (*bd->vtxBuffer) + vtxOffset, vtxSize);
+            bd->cmdBuf->BindVertexBuffer(0, (*vtx_buffer) + vtxOffset, vtxSize);
 
             // copy data from imgui command list into our gpu dedicated memory
-            memcpy(bd->vtxBuffer->GetMemPtr() + vtxOffset, cmdList->VtxBuffer.Data, vtxSize);
-            memcpy(bd->idxBuffer->GetMemPtr() + idxOffset, cmdList->IdxBuffer.Data, idxSize);
-            bd->vtxBuffer->FlushRange(vtxOffset, vtxSize);
-            bd->idxBuffer->FlushRange(idxOffset, idxSize);
+            memcpy(vtx_buffer->GetMemPtr() + vtxOffset, cmdList->VtxBuffer.Data, vtxSize);
+            memcpy(idx_buffer->GetMemPtr() + idxOffset, cmdList->IdxBuffer.Data, idxSize);
+            vtx_buffer->FlushRange(vtxOffset, vtxSize);
+            idx_buffer->FlushRange(idxOffset, idxSize);
 
             for (const ImDrawCmd &cmd: cmdList->CmdBuffer) {
                 if (cmd.UserCallback != nullptr) {
@@ -612,8 +646,7 @@ namespace ImguiNvnBackend {
                 if (tex_id == ImTextureID_Invalid) {
                     continue;
                 }
-                auto *handle = reinterpret_cast<nvn::TextureHandle *>(static_cast<uintptr_t>(tex_id));
-                const nvn::TextureHandle tex_handle = *handle;
+                const nvn::TextureHandle tex_handle = static_cast<nvn::TextureHandle>(tex_id);
 
                 if (!has_bound_texture || boundTextureHandle != tex_handle) {
                     boundTextureHandle = tex_handle;
@@ -624,7 +657,7 @@ namespace ImguiNvnBackend {
                 // as well as the current offset into our buffer.
                 bd->cmdBuf->DrawElementsBaseVertex(nvn::DrawPrimitive::TRIANGLES,
                                                    nvn::IndexType::UNSIGNED_SHORT, cmd.ElemCount,
-                                                   (*bd->idxBuffer) + (cmd.IdxOffset * sizeof(ImDrawIdx)) + idxOffset,
+                                                   (*idx_buffer) + (cmd.IdxOffset * sizeof(ImDrawIdx)) + idxOffset,
                                                    cmd.VtxOffset);
             }
 

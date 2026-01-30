@@ -81,9 +81,7 @@ namespace d3::imgui_overlay {
 
         constexpr bool kImGuiBringup_DrawText                = true;
         constexpr bool kImGuiBringup_AlwaysSubmitProofOfLife = false;
-        // Docking is convenient, but it is also one of the bigger memory users in ImGui. On real
-        // hardware we want stability first.
-        constexpr bool kImGui_EnableDocking                 = false;
+        // Docking is required for the main overlay layout/dockspace.
 
         NvnDeviceGetProcAddressFn    g_orig_get_proc           = nullptr;
         NvnQueuePresentTextureFn     g_orig_present            = nullptr;
@@ -1259,11 +1257,7 @@ namespace d3::imgui_overlay {
                 io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
                 io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
                 io.ConfigFlags |= ImGuiConfigFlags_IsTouchScreen;
-                if (kImGui_EnableDocking) {
-                    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-                } else {
-                    io.ConfigFlags &= ~ImGuiConfigFlags_DockingEnable;
-                }
+                io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
                 io.BackendFlags |= ImGuiBackendFlags_HasGamepad;
                 io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
                 io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
