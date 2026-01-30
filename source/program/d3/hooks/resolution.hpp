@@ -105,11 +105,14 @@ namespace d3 {
             }
 
             const float scale    = (g_rt_scale >= 0.4f) ? std::clamp(g_rt_scale, 0.4f, 1.0f) : 0.8f;
-            const u32   scaled_w = static_cast<u32>(std::lroundf(static_cast<float>(tex_w) * scale));
-            const u32   scaled_h = static_cast<u32>(std::lroundf(static_cast<float>(tex_h) * scale));
+            // const u32   scaled_w = static_cast<u32>(std::lroundf(static_cast<float>(tex_w) * scale));
+            // const u32 scaled_h = static_cast<u32>(std::lroundf(static_cast<float>(tex_h) * scale));
+            const float scaled_h_f = static_cast<float>(tex_h) * scale;
+            const u32   scaled_h   = PatchConfig::ResolutionHackConfig::AlignEven(static_cast<u32>(scaled_h_f));
+            const u32   scaled_w   = PatchConfig::ResolutionHackConfig::WidthForHeight(scaled_h);
 
-            *width  = PatchConfig::ResolutionHackConfig::AlignEven(scaled_w);
-            *height = PatchConfig::ResolutionHackConfig::AlignEven(scaled_h);
+            *width  = PatchConfig::ResolutionHackConfig::AlignDownPow2(scaled_w, 32u);
+            *height = scaled_h;
         }
     };
 

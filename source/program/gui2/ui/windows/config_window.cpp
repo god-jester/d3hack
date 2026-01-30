@@ -576,6 +576,8 @@ namespace d3::gui2::ui::windows {
                 overlay_.set_ui_dirty(true);
             }
 
+            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_super_god_mode", "Super god mode"), &cfg.rare_cheats.super_god_mode));
+            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_extra_gr_orbs_elites", "Extra GR orbs on elite kill"), &cfg.rare_cheats.extra_gr_orbs_elites));
             mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_floating_damage", "Floating damage color"), &cfg.rare_cheats.floating_damage_color));
             mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_guaranteed_legendaries", "Guaranteed legendaries"), &cfg.rare_cheats.guaranteed_legendaries));
             mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_drop_anything", "Drop anything"), &cfg.rare_cheats.drop_anything));

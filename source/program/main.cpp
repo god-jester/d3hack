@@ -140,6 +140,8 @@ namespace d3 {
             auto  sGameCurID     = AppServerGetOnlyGame();
             g_idGameConnection   = ServerGetOnlyGameConnection();
             PRINT("NEW sInitializeWorld! (SGame: %x | Connection: %x | Primary for connection: %p) %s %s", sGameCurID, g_idGameConnection, GetPrimaryPlayerForGameConnection(g_idGameConnection), ptSGameGlobals->uszCreatorAccountName, ptSGameGlobals->uszCreatorHeroName);
+            if (global_config.rare_cheats.active && global_config.rare_cheats.super_god_mode)
+                EnableGod();
             // GfxWindowChangeDisplayModeHook::Callback(&g_ptGfxData->tCurrentMode);
         }
     };
@@ -217,7 +219,7 @@ namespace d3 {
 
         // InstallExceptionHandler();
 
-        // PatchGraphicsPersistentHeapEarly();
+        PatchGraphicsPersistentHeapEarly();
 
         MainInit::InstallAtFuncPtr(main_init);
         GfxInit::InstallAtFuncPtr(gfx_init);

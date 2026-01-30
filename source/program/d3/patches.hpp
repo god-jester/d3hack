@@ -315,6 +315,10 @@ namespace d3 {
         // jest.Patch<ins::MovRegister>(PatchTable("patch_cheat_alloc_errors_02_bytes"), reg::X0, SP);
         jest.Patch<dword>(PatchTable("patch_cheat_alloc_errors_02_bytes"), make_bytes(0xE0, 0x03, 0x00, 0x91));
 
+        /* Spawn extra progress orbs */
+        if (cheats.extra_gr_orbs_elites)
+            jest.Patch<ins::Movz>(0x844BE4, reg::W19, 999);
+
         /* Drop any item (Staff of Herding, etc) */
         if (cheats.drop_anything)
             jest.Patch<ins::Movn>(PatchTable("patch_cheat_drop_anything_01_movn"), reg::W0, 0);

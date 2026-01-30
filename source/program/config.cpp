@@ -12,6 +12,7 @@ PatchConfig global_config {};
 
 namespace d3 {
     float g_rt_scale = PatchConfig::ResolutionHackConfig::kHandheldScaleDefault * 0.01f;
+    bool  g_rt_scale_initialized = false;
 }  // namespace d3
 
 namespace {
@@ -553,6 +554,8 @@ namespace {
             t.insert("LegendaryGemUpgradeSpeed", config.rare_cheats.gem_upgrade_speed);
             t.insert("LegendaryGemLevel150", config.rare_cheats.gem_upgrade_lvl150);
             t.insert("EquipMultipleLegendaries", config.rare_cheats.equip_multi_legendary);
+            t.insert("SuperGodMode", config.rare_cheats.super_god_mode);
+            t.insert("ExtraGreaterRiftOrbsOnEliteKill", config.rare_cheats.extra_gr_orbs_elites);
             root.insert("rare_cheats", std::move(t));
         }
 
@@ -770,7 +773,6 @@ void PatchConfig::ApplyTable(const toml::table &table) {
         resolution_hack.output_handheld_scale = PatchConfig::ResolutionHackConfig::NormalizeHandheldScale(
             resolution_hack.output_handheld_scale
         );
-        d3::g_rt_scale  = resolution_hack.HandheldScaleFraction();
         u32 clamp_value = resolution_hack.clamp_texture_resolution;
         if (auto value = ReadNumber(
                 *resolution_section,
@@ -857,6 +859,8 @@ void PatchConfig::ApplyTable(const toml::table &table) {
         rare_cheats.gem_upgrade_speed       = ReadBool(*section, {"LegendaryGemUpgradeSpeed", "GemUpgradeSpeed", "GemUpgradeFast"}, rare_cheats.gem_upgrade_speed);
         rare_cheats.gem_upgrade_lvl150      = ReadBool(*section, {"LegendaryGemLevel150", "GemUpgradeLevel150", "GemLevel150"}, rare_cheats.gem_upgrade_lvl150);
         rare_cheats.equip_multi_legendary   = ReadBool(*section, {"EquipMultipleLegendaries", "EquipMultipleLegendaryItems", "EquipMultiLegendary"}, rare_cheats.equip_multi_legendary);
+        rare_cheats.super_god_mode          = ReadBool(*section, {"SuperGodMode", "EnableSuperGodMode"}, rare_cheats.super_god_mode);
+        rare_cheats.extra_gr_orbs_elites    = ReadBool(*section, {"ExtraGreaterRiftOrbsOnEliteKill", "ExtraGROrbsOnEliteKill", "ExtraGROrbsElites"}, rare_cheats.extra_gr_orbs_elites);
     }
 
     if (const auto *section = FindTable(table, "overlays")) {
@@ -917,6 +921,10 @@ void LoadPatchConfig() {
         PRINT("Loaded config: %s", path);
         global_config.initialized   = true;
         global_config.defaults_only = false;
+        if (!d3::g_rt_scale_initialized) {
+            d3::g_rt_scale = global_config.resolution_hack.HandheldScaleFraction();
+            d3::g_rt_scale_initialized = true;
+        }
         return;
     }
     if (!error.empty())
@@ -924,6 +932,10 @@ void LoadPatchConfig() {
     global_config.initialized   = true;
     global_config.defaults_only = true;
     PRINT("Config not found; using built-in defaults%s", ".");
+    if (!d3::g_rt_scale_initialized) {
+        d3::g_rt_scale = global_config.resolution_hack.HandheldScaleFraction();
+        d3::g_rt_scale_initialized = true;
+    }
 }
 
 auto NormalizePatchConfig(const PatchConfig &config) -> PatchConfig {

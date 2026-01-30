@@ -84,7 +84,7 @@ namespace d3 {
 
     inline void FlagsAreFun() {
         g_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_ALL_HITS_CRIT_BIT);
-        // g_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_FLYTHROUGH_BIT);
+        g_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_FLYTHROUGH_BIT);
         // g_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_FORCE_SPAWN_ALL_GIZMO_LOCATIONS);
         g_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_DISPLAY_ALL_SKILLS);
         g_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_DISPLAY_ITEM_AFFIXES);
@@ -103,6 +103,54 @@ namespace d3 {
 
         // g_tAppGlobals.dwDebugFlags3 = 0xFFFFFFFF;
     }
+
+    inline void EnableGod() {
+        if (!_HOSTCHK)
+            return;
+        // _SERVERCODE_ON
+        ActorCommonData *ptACDCurPlayer = nullptr;
+        Actor const     *ptActorPlayer  = nullptr;
+        ACDID            idCurPlayer    = ACDID_INVALID;
+        // GameError        errorCode      = GAMEERROR_NONE;
+        // auto             nTimer         = nn::TimeSpan::FromMilliSeconds(10);
+        FlagsAreFun();
+        // auto v_items   = AllGBIDsOfType(GB_ITEMS);
+        // vector<GBID> arItemQualityClasses;
+        // AllGBIDsOfType(GB_ITEM_QUALITY_CLASSES, &arItemQualityClasses);
+        // arItemQualityClasses.clear();
+        // vector<GBID> arGBIDAll;
+        // AllGBIDsOfType(GB_INVALID, &arGBIDAll);
+        // arGBIDAll.clear();
+
+        for (auto *ptSPlayer = PlayerGetFirstAll(); ptSPlayer != nullptr; ptSPlayer = PlayerGetNextAll(ptSPlayer)) {
+            // nn::os::SleepThread(nTimer);
+            if (ptSPlayer->idPlayerACD != ACDID_INVALID) {
+                idCurPlayer    = ptSPlayer->idPlayerACD;
+                ptACDCurPlayer = ACDTryToGet(idCurPlayer);
+                ptActorPlayer  = ActorGet(ptACDCurPlayer->idOwner);
+
+                ActorFlagSet(ptActorPlayer->id, ACTOR_GOD_MODE_BIT, 1);      // Just for fun
+                ActorFlagSet(ptActorPlayer->id, ACTOR_EASYKILL_BIT, 1);      // Just for fun
+                ActorFlagSet(ptActorPlayer->id, ACTOR_NO_COLLISION_BIT, 1);  // Just for fun
+                // ActorFlagSet(ptActorPlayer->id, ACTOR_NO_DAMAGE_RANGE_BIT, 1);  // Just for fun
+
+                IntAttribSet(ptACDCurPlayer, GOD);
+                IntAttribSet(ptACDCurPlayer, INVULNERABLE);
+                IntAttribSet(ptACDCurPlayer, PLAYER_ALL_ITEMS_INDESTRUCTIBLE);
+                // IntAttribSet(ptACDCurPlayer, SHARED_STASH_SLOTS, -1, 789);
+                IntAttribSet(ptACDCurPlayer, IMMUNE_TO_KNOCKBACK);
+                IntAttribSet(ptACDCurPlayer, IMMUNE_TO_BLIND);
+                IntAttribSet(ptACDCurPlayer, IMMUNE_TO_CHARM);
+                IntAttribSet(ptACDCurPlayer, STUN_IMMUNE);
+                IntAttribSet(ptACDCurPlayer, FEAR_IMMUNE);
+                IntAttribSet(ptACDCurPlayer, SLOWDOWN_IMMUNE);
+                IntAttribSet(ptACDCurPlayer, FREEZE_IMMUNE);
+                IntAttribSet(ptACDCurPlayer, GETHIT_IMMUNE);
+                // // IntAttribSet(ptACDCurPlayer, CORE_ATTRIBUTES_FROM_ITEM_BONUS_MULTIPLIER, 5);
+                // // IntAttribSet(ptACDCurPlayer, PARAGONCAPENABLED, 0, 0);
+            }
+        }
+    };
 
     inline void UnlockAll() {
         if (!_HOSTCHK)

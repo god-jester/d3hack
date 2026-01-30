@@ -163,6 +163,8 @@ struct PatchConfig {
         bool   gem_upgrade_speed       = true;
         bool   gem_upgrade_lvl150      = false;
         bool   equip_multi_legendary   = true;
+        bool   super_god_mode          = false;
+        bool   extra_gr_orbs_elites    = false;
     } rare_cheats;
 
     ResolutionHackConfig resolution_hack {};

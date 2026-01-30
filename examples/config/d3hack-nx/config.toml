@@ -9,16 +9,16 @@ SectionEnabled = true
 # - 1080 -> 1920x1080 (aliases "1080p" | "FHD")
 # - 1440 -> 2560x1440 (aliases "1440p" | "QHD")
 # - 2160 -> 3840x2160 (aliases "2160p" | "4K" | "UHD")
-OutputTarget = 900
+OutputTarget = 1080
 # Handheld output scale for render target resolution calc (percent; 0=auto/stock 80%).
-OutputHandheldScale = 90
+OutputHandheldScale = 85
 # Spoof docked mode (forces docked mode when docked/handheld checks occur).
 SpoofDocked = false
 # Minimum resolution scale (percentage) to apply. 70% = default target // 100% = locked resolution.
 MinResScale = 80
 # Maximum resolution scale (percentage) to apply. 100% = default target.
-MaxResScale = 95
-# Use Blizzard's experimental scheduler; can improve performance.
+MaxResScale = 100
+# Use Blizzard's experimental scheduler; may improve performance/stability.
 ExperimentalScheduler = false
 
 [resolution_hack.extra]
@@ -106,6 +106,10 @@ DarkAlchemy = true
 NestingPortals = true
 
 [rare_cheats]
+# Enable super god mode (invulnerable + debug flags).
+SuperGodMode = false
+# Extra Greater Rift orbs when killing elites.
+ExtraGreaterRiftOrbsOnEliteKill = false
 # Master toggle for gameplay-altering cheats/hacks.
 SectionEnabled = true
 # Movement speed multiplier (1.0 = normal).

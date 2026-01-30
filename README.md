@@ -36,44 +36,45 @@ See: [Resolution Hack (ResHack) overview](#resolution-hack-reshack).
 - **Season event map**: one switch to auto-enable the correct seasonal theme flags for Seasons 14-22 and 24-37.
 - **Challenge Rifts offline fix**: SD card protobufs now parse at full size (previous blz::string ctor issue resolved).
 - **Safer offline UX**: hides "Connect to Diablo Servers" and network hints when AllowOnlinePlay = false.
-- **Resolution Hack (ResHack)**: 1080p/1440p/2160p output is stable with internal RT clamping and extra heap headroom.
-- **GUI overlay upgrades**: dockable windows + menu tools, touch swipe open/close, layout persistence, overlay labels rendered by ImGui, optional left-stick passthrough.
+- **Resolution Hack (ResHack)**: output targets with dynamic resolution scaling and extra heap headroom (texture clamp hook currently disabled).
+- **GUI overlay stability**: NVN-backed ImGui textures, triple-buffered draw buffers, and safer texture lifetime to reduce tab/docking artifacts.
+- **Crash diagnostics**: user exception and ErrorManager dumps are written to SD for post-crash triage.
 - **CMake presets**: CMakePresets.json mirrors the Makefile pipeline for devkitA64.
 
 ---
 
 ## Resolution Hack (ResHack)
 
-ResHack keeps the swapchain output at your chosen size while clamping internal render targets (RTs) for stability. It is designed for true high-res output, not UI-only scaling.
+ResHack keeps the swapchain output at your chosen size while relying on dynamic resolution scaling and extra heap headroom for stability. The internal texture clamp path still exists in config but is currently disabled in code.
 
 Terminology
 - OutputTarget and ClampTextureResolution are vertical heights in pixels; width is derived as 16:9.
 - OutputHandheldScale is a percent (0 = auto/stock), and OutputTargetHandheld is derived when set to 0.
 
-Current baseline (validated 2026-01-20)
-- OutputTarget = 2160 (3840x2160).
-- ClampTextureResolution = 1152 (2048x1152 internal).
-- Graphics persistent heap bumped early (+256 MB, always on).
-- NX64NVNHeap EarlyInit headroom and largest pool max_alloc bumped when output height > 1280.
+Current conservative defaults (from examples/config/d3hack-nx/config.toml)
+- OutputTarget = 1080 (1920x1080).
+- OutputHandheldScale = 85.
+- MinResScale = 80, MaxResScale = 100.
+- ExperimentalScheduler = false.
 
 ### How it works
 
-- **Config**: `[resolution_hack]` in `config.toml` sets OutputTarget, OutputHandheldScale (percent; 0=auto/stock), OutputTargetHandheld (derived), SpoofDocked, MinResScale, MaxResScale, ClampTextureResolution (0=off, 100-9999), and ExperimentalScheduler.
+- **Config**: `[resolution_hack]` in `config.toml` sets OutputTarget, OutputHandheldScale (percent; 0=auto/stock), OutputTargetHandheld (derived), SpoofDocked, MinResScale, MaxResScale, ClampTextureResolution (0=off, 100-9999), and ExperimentalScheduler. ClampTextureResolution is currently ignored because the clamp hook is disabled.
 - **Config (extra)**: `[resolution_hack.extra]` can override display mode fields (MSAALevel, BitDepth, RefreshRate, and window/UI/render dimensions).
 - **Patches**: PatchResolutionTargets rewrites the display mode table to match OutputTarget and applies NVN heap headroom when output height > 1280.
-- **Hooks**: NVNTexInfoCreateHook clamps oversized internal textures while keeping swapchain textures output-sized.
+- **Hooks**: variable resolution hooks remain active; the NVN texture clamp hooks are currently disabled.
 - **Early heap**: PatchGraphicsPersistentHeapEarly bumps the graphics persistent heap before NVN init.
 
 ### Recommended settings (ResHack)
 ```toml
 [resolution_hack]
 SectionEnabled = true
-OutputTarget = 2160
-OutputHandheldScale = 80
+OutputTarget = 1080
+OutputHandheldScale = 85
 SpoofDocked = false
-ClampTextureResolution = 1152
-MaxResScale = 100 # Adjust max scale for better performance while keeping native UI
-MinResScale = 85 # Game default min scale is 70
+MinResScale = 80
+MaxResScale = 100
+ExperimentalScheduler = false
 ```
 
 ### Optional display mode overrides
@@ -85,8 +86,9 @@ RefreshRate = -1
 ```
 
 ### Notes
-- 1080 output stays at or below 2048x1152, so the clamp path is usually inactive.
-- If you raise the clamp too high at 1440/2160 output, the old crash signature can return (DisplayInternalError + InvalidMemoryRegionException).
+- ClampTextureResolution is accepted in config but currently ignored (clamp hook disabled).
+- OutputHandheldScale is latched on boot; changing it requires a restart.
+- Higher output targets can still stress NVN heap limits; if you see DisplayInternalError or InvalidMemoryRegionException, reduce OutputTarget or tighten Min/MaxResScale.
 - Overlay labels (FPS/variable-res/DDM) are rendered by the GUI overlay; they require `[gui].Enabled = true` and overlays toggles.
 
 ---
@@ -102,7 +104,7 @@ d3hack-nx is an exlaunch-based module that hooks D3 at runtime. It modifies game
 | **Challenge Rifts** | Hooks the challenge rift callback and injects protobuf blobs from SD (`rift_data`). |
 | **Community Events** | Toggle 20+ flags (Ethereals, Soul Shards, Fourth Cube Slot, etc.) via runtime XVar updates. |
 | **Loot Research** | Control Ancient/Primal drops, GR tier logic, and item level forcing for drop-table experiments. |
-| **QoL Cheats** | Instant portal/crafts, movement speed multiplier, no cooldowns, equip-any-slot, and more. |
+| **QoL Cheats** | Instant portal/crafts, movement speed multiplier, no cooldowns, equip-any-slot, super god mode, extra GR orbs on elite kills, and more. |
 | **Visuals & Performance** | FPS/DDM overlays and resolution targets for 1080p or specific dynamic-res bounds. |
 | **GUI Overlay** | Dockable ImGui windows with menu tools (show/hide/reset layout, notifications), touch swipe open/close, layout saved to `sd:/config/d3hack-nx/gui_layout.ini`, optional left-stick passthrough while the overlay is open, and overlay labels drawn by the GUI. |
 | **Safety & Core** | Patches are gated by a lightweight signature guard for game build 2.7.6.90885. |
@@ -152,12 +154,12 @@ Edit `config.toml` after copying.
 
 Key sections:
 
-- `[resolution_hack]`: OutputTarget, OutputHandheldScale (percent),SpoofDocked, ClampTextureResolution, MinResScale, MaxResScale, ExperimentalScheduler.
+- `[resolution_hack]`: OutputTarget, OutputHandheldScale (percent), SpoofDocked, MinResScale, MaxResScale, ExperimentalScheduler. ClampTextureResolution is accepted but currently ignored.
 - `[resolution_hack.extra]`: display mode overrides (MSAALevel, BitDepth, RefreshRate, window/UI/render dimensions).
 - `[seasons]`: SeasonNumber, AllowOnlinePlay, SpoofPtr.
 - `[events]`: seasonal flags + SeasonMapMode (MapOnly, OverlayConfig, Disabled).
 - `[challenge_rifts]`: enable/disable, randomize, or define a range.
-- `[rare_cheats]`, `[overlays]`, `[debug]`.
+- `[rare_cheats]` (includes SuperGodMode and ExtraGreaterRiftOrbsOnEliteKill), `[overlays]`, `[debug]`.
 - `[gui]`: Enabled, Visible, AllowLeftStickPassthrough, Language (override).
 
 ### 4) (Optional) Challenge Rift data
@@ -294,8 +296,8 @@ cmake --build --preset switch-iwyu
 
 ## Known Limits
 
-- 2160 output is stable with internal RT clamping enabled.
-- Raising the clamp too high at 1440/2160 output can trigger DisplayInternalError + InvalidMemoryRegionException.
+- ClampTextureResolution is currently ignored because the clamp hooks are disabled.
+- Higher output targets can still stress NVN heap limits; reduce OutputTarget or tighten Min/MaxResScale if you see DisplayInternalError or InvalidMemoryRegionException.
 - Overlay labels (FPS/variable-res/DDM) are rendered by the GUI overlay; they require `[gui].Enabled = true` and overlays toggles.
 
 ---
@@ -317,7 +319,7 @@ cmake --build --preset switch-iwyu
 
 - **Target build**: 2.7.6.90885. Offsets and patches are tied to this version.
 - A lightweight signature guard checks known bytes at startup and aborts on mismatch.
-- Crash logging writes a register dump + stack trace to `sd:/config/d3hack-nx/user_exception.txt`.
+- Crash logging writes a user exception dump to `sd:/config/d3hack-nx/user_exception.txt` and an ErrorManager dump to `sd:/config/d3hack-nx/error_manager_dump.txt`.
 
 ---
 
@@ -331,6 +333,7 @@ cmake --build --preset switch-iwyu
 - **Challenge rifts**: `source/program/d3/_util.hpp` (PopulateChallengeRiftData) + `source/program/d3/hooks/debug.hpp` (ChallengeRiftCallback).
 - **Resolution Hack (ResHack)**: `source/program/d3/hooks/resolution.hpp` + `source/program/d3/patches.hpp`.
 - **Overlay labels (FPS/VarRes/DDM)**: `source/program/gui2/ui/overlay.cpp` (RenderOverlayLabels) and overlay toggles in `source/program/config.hpp`.
+- **Crash diagnostics**: `source/program/exception_handler.cpp` (user exception dumps) and `source/program/d3/hooks/debug.hpp` (ErrorManager dump).
 - **Hook gating + boot flow**: `source/program/main.cpp` (MainInit, SetupSeasonEventHooks).
 - **GUI overlay (dockspace/menu/layout)**: `source/program/gui2/ui/overlay.*`, `source/program/gui2/ui/window.*`, `source/program/gui2/ui/windows/*` (layout persisted at `sd:/config/d3hack-nx/gui_layout.ini`).
 - **ImGui romfs assets**: `data/` packaged to `deploy/romfs/d3gui/` by `misc/scripts/post-build.sh`.
@@ -341,6 +344,7 @@ cmake --build --preset switch-iwyu
 
 - **Type Database**: Over 1.2MB of reverse-engineered structs and enums in `source/program/d3/types/` (now split into focused modules with `namespaces.hpp` as the aggregator).
 - **Hooking**: Uses `exl::hook::Trampoline` and `exl::hook::MakeInline` for clean detours.
+- **ImGui NVN backend**: RendererHasTextures path with NVN texture handles and descriptor pools in `source/third_party/imgui_backend/`.
 - **Offsets**: Centralized in a versioned lookup table (DEFAULT pinned to 2.7.6.90885); signature guard + version checks abort on mismatch.
 - **Config**: Runtime TOML parsing via tomlplusplus, mapped directly to the global PatchConfig struct.
 
