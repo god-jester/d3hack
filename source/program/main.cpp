@@ -319,6 +319,10 @@ namespace d3 {
         if (prev.seasons.allow_online != global_config.seasons.allow_online) {
             result.restart_required = true;
         }
+        if (prev.debug.tagnx != global_config.debug.tagnx) {
+            result.restart_required = true;
+            append_note("SpoofNetworkFunctions");
+        }
 
         if (out != nullptr) {
             *out = result;

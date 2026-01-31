@@ -683,6 +683,7 @@ namespace d3::gui2::ui::windows {
             mark_dirty(ImGui::Checkbox(overlay_.tr("gui.debug_pubfile_dump", "Enable pubfile dump"), &cfg.debug.enable_pubfile_dump));
             mark_dirty(ImGui::Checkbox(overlay_.tr("gui.debug_error_traces", "Enable error traces"), &cfg.debug.enable_error_traces));
             mark_dirty(ImGui::Checkbox(overlay_.tr("gui.debug_debug_flags", "Enable debug flags"), &cfg.debug.enable_debug_flags));
+            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.debug_spoof_network", "Spoof Network Functions"), &cfg.debug.tagnx));
             ImGui::EndDisabled();
 
             ImGui::Separator();

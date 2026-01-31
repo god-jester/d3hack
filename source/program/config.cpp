@@ -600,6 +600,7 @@ namespace {
             t.insert("EnablePubFileDump", config.debug.enable_pubfile_dump);
             t.insert("EnableErrorTraces", config.debug.enable_error_traces);
             t.insert("EnableDebugFlags", config.debug.enable_debug_flags);
+            t.insert("SpoofNetworkFunctions", config.debug.tagnx);
             root.insert("debug", std::move(t));
         }
 
@@ -902,6 +903,7 @@ void PatchConfig::ApplyTable(const toml::table &table) {
         debug.enable_pubfile_dump = ReadBool(*section, {"EnablePubFileDump", "PubFileDump"}, debug.enable_pubfile_dump);
         debug.enable_error_traces = ReadBool(*section, {"EnableErrorTraces", "ErrorTraces"}, debug.enable_error_traces);
         debug.enable_debug_flags  = ReadBool(*section, {"EnableDebugFlags", "DebugFlags"}, debug.enable_debug_flags);
+        debug.tagnx               = ReadBool(*section, {"SpoofNetworkFunctions", "SpoofNetwork", "TagNX"}, debug.tagnx);
     }
 
     if (const auto *section = FindTable(table, "gui")) {

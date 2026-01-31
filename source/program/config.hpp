@@ -196,6 +196,7 @@ struct PatchConfig {
         bool enable_pubfile_dump = false;
         bool enable_error_traces = true;
         bool enable_debug_flags  = false;
+        bool tagnx               = false;
     } debug;
 
     struct {

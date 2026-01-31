@@ -334,6 +334,8 @@ debug_pubfile_dump = "启用 pub 文件转储"
 debug_error_traces = "启用错误追踪"
 # Enable debug flags
 debug_debug_flags = "启用调试标志"
+# Spoof network functions
+debug_spoof_network = "伪装网络功能"
 # Show ImGui demo window (not linked)
 debug_show_demo = "显示 ImGui 演示窗口(未链接)"
 # Show ImGui metrics

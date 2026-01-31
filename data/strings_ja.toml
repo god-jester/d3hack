@@ -334,6 +334,8 @@ debug_pubfile_dump = "pubファイルダンプ有効"
 debug_error_traces = "エラートレース有効"
 # Enable debug flags
 debug_debug_flags = "デバッグフラグ有効"
+# Spoof network functions
+debug_spoof_network = "ネットワーク機能を偽装"
 # Show ImGui demo window (not linked)
 debug_show_demo = "ImGuiデモウィンドウ表示(未リンク)"
 # Show ImGui metrics

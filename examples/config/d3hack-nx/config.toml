@@ -190,6 +190,8 @@ EnablePubFileDump = false
 EnableErrorTraces = true
 # Enable additional debug flags.
 EnableDebugFlags = false
+# Spoof network account functions.
+SpoofNetworkFunctions = false
 
 [gui]
 # NVN ImGui overlay configuration UI.

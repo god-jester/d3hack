@@ -334,6 +334,8 @@ debug_pubfile_dump = "pub 파일 덤프 활성화"
 debug_error_traces = "오류 추적 활성화"
 # Enable debug flags
 debug_debug_flags = "디버그 플래그 활성화"
+# Spoof network functions
+debug_spoof_network = "네트워크 기능 위장"
 # Show ImGui demo window (not linked)
 debug_show_demo = "ImGui 데모 창 표시(미연결)"
 # Show ImGui metrics

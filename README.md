@@ -38,6 +38,7 @@ See: [Resolution Hack (ResHack) overview](#resolution-hack-reshack).
 - **Safer offline UX**: hides "Connect to Diablo Servers" and network hints when AllowOnlinePlay = false.
 - **Resolution Hack (ResHack)**: output targets with dynamic resolution scaling and extra heap headroom (texture clamp hook currently disabled).
 - **GUI overlay stability**: NVN-backed ImGui textures, triple-buffered draw buffers, and safer texture lifetime to reduce tab/docking artifacts.
+- **GUI language hot-swap**: translations update immediately; restart recommended for full glyph coverage.
 - **Crash diagnostics**: user exception and ErrorManager dumps are written to SD for post-crash triage.
 - **CMake presets**: CMakePresets.json mirrors the Makefile pipeline for devkitA64.
 
@@ -88,6 +89,7 @@ RefreshRate = -1
 ### Notes
 - ClampTextureResolution is accepted in config but currently ignored (clamp hook disabled).
 - OutputHandheldScale is latched on boot; changing it requires a restart.
+- OutputTarget is capped to 1440p when dev mem mode is off (`g_ptDevMemMode == 0`); 2160p requires dev mem mode.
 - Higher output targets can still stress NVN heap limits; if you see DisplayInternalError or InvalidMemoryRegionException, reduce OutputTarget or tighten Min/MaxResScale.
 - Overlay labels (FPS/variable-res/DDM) are rendered by the GUI overlay; they require `[gui].Enabled = true` and overlays toggles.
 
@@ -106,7 +108,7 @@ d3hack-nx is an exlaunch-based module that hooks D3 at runtime. It modifies game
 | **Loot Research** | Control Ancient/Primal drops, GR tier logic, and item level forcing for drop-table experiments. |
 | **QoL Cheats** | Instant portal/crafts, movement speed multiplier, no cooldowns, equip-any-slot, super god mode, extra GR orbs on elite kills, and more. |
 | **Visuals & Performance** | FPS/DDM overlays and resolution targets for 1080p or specific dynamic-res bounds. |
-| **GUI Overlay** | Dockable ImGui windows with menu tools (show/hide/reset layout, notifications), touch swipe open/close, layout saved to `sd:/config/d3hack-nx/gui_layout.ini`, optional left-stick passthrough while the overlay is open, and overlay labels drawn by the GUI. |
+| **GUI Overlay** | Dockable ImGui windows with menu tools (show/hide/reset layout, notifications), touch swipe open/close, layout saved to `sd:/config/d3hack-nx/gui_layout.ini`, optional left-stick passthrough while the overlay is open, overlay labels drawn by the GUI, boot-latched GUI config toggles (Visible = auto-open), and language override hot-swaps translations (restart recommended for new glyphs). |
 | **Safety & Core** | Patches are gated by a lightweight signature guard for game build 2.7.6.90885. |
 
 ---
@@ -159,8 +161,8 @@ Key sections:
 - `[seasons]`: SeasonNumber, AllowOnlinePlay, SpoofPtr.
 - `[events]`: seasonal flags + SeasonMapMode (MapOnly, OverlayConfig, Disabled).
 - `[challenge_rifts]`: enable/disable, randomize, or define a range.
-- `[rare_cheats]` (includes SuperGodMode and ExtraGreaterRiftOrbsOnEliteKill), `[overlays]`, `[debug]`.
-- `[gui]`: Enabled, Visible, AllowLeftStickPassthrough, Language (override).
+- `[rare_cheats]` (includes SuperGodMode and ExtraGreaterRiftOrbsOnEliteKill), `[overlays]`, `[debug]` (EnableErrorTraces, SpoofNetworkFunctions).
+- `[gui]`: Enabled/Visible/AllowLeftStickPassthrough (boot-latched; Visible = auto-open on boot), Language (override; hot-swap, restart for full glyphs).
 
 ### 4) (Optional) Challenge Rift data
 
@@ -297,8 +299,10 @@ cmake --build --preset switch-iwyu
 ## Known Limits
 
 - ClampTextureResolution is currently ignored because the clamp hooks are disabled.
+- OutputTarget above 1440p requires dev mem mode; otherwise it clamps to 1440p.
 - Higher output targets can still stress NVN heap limits; reduce OutputTarget or tighten Min/MaxResScale if you see DisplayInternalError or InvalidMemoryRegionException.
 - Overlay labels (FPS/variable-res/DDM) are rendered by the GUI overlay; they require `[gui].Enabled = true` and overlays toggles.
+- Language hot-swap updates translations, but a restart is recommended to fully apply new glyphs.
 
 ---
 

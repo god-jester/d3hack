@@ -334,6 +334,8 @@ debug_pubfile_dump = "Enable pubfile dump"
 debug_error_traces = "Enable error traces"
 # Enable debug flags
 debug_debug_flags = "Enable debug flags"
+# Spoof network functions
+debug_spoof_network = "Spoof Network Functions"
 # Show ImGui demo window (not linked)
 debug_show_demo = "Show ImGui demo window (not linked)"
 # Show ImGui metrics

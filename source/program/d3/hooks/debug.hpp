@@ -8,6 +8,7 @@
 #include "lib/hook/trampoline.hpp"
 #include "lib/util/modules.hpp"
 #include "../../config.hpp"
+#include "../../tagnx.hpp"
 #include "d3/_util.hpp"
 #include "nvn.hpp"
 #include "d3/types/common.hpp"
@@ -738,6 +739,10 @@ namespace d3 {
             //     InstallAtOffset(0xA2AE14);
             Print_ErrorStringFinal::
                 InstallAtSymbol("sym_print_error_string_final");
+        }
+
+        if (global_config.debug.active && global_config.debug.tagnx) {
+            tagnx::InstallHooks();
         }
 
         // BDPublish::
