@@ -46,6 +46,10 @@ save = "保存"
 reload = "重新加载"
 # Restart required for some changes.
 restart_required_banner = "部分更改需要重启后生效."
+# Language updated. Restart to fully apply new glyphs.
+lang_restart_banner = "语言已更新。需要重启才能完全应用新字形。"
+# Language updated. Restart to fully apply new glyphs.
+notify_lang_restart = "语言已更新。需要重启才能完全应用新字形。"
 # GUI is disabled (proof-of-life stays on). Enable GUI to edit config.
 disabled_help = "GUI 已禁用(仍显示指示). 启用 GUI 以编辑配置."
 # Config source: %s

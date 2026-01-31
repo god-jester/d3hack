@@ -46,6 +46,10 @@ save = "저장"
 reload = "다시 불러오기"
 # Restart required for some changes.
 restart_required_banner = "일부 변경은 재시작이 필요합니다."
+# Language updated. Restart to fully apply new glyphs.
+lang_restart_banner = "언어가 업데이트되었습니다. 새 글리프를 완전히 적용하려면 재시작이 필요합니다."
+# Language updated. Restart to fully apply new glyphs.
+notify_lang_restart = "언어가 업데이트되었습니다. 새 글리프를 완전히 적용하려면 재시작이 필요합니다."
 # GUI is disabled (proof-of-life stays on). Enable GUI to edit config.
 disabled_help = "GUI가 비활성화되어 있습니다(표시등은 유지됨). GUI를 활성화해 설정을 편집하세요."
 # Config source: %s

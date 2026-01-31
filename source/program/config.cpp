@@ -11,11 +11,21 @@
 PatchConfig global_config {};
 
 namespace d3 {
-    float g_rt_scale             = PatchConfig::ResolutionHackConfig::kHandheldScaleDefault * 0.01f;
-    bool  g_rt_scale_initialized = false;
+    extern u32 *g_ptDevMemMode;
+    float       g_rt_scale             = PatchConfig::ResolutionHackConfig::kHandheldScaleDefault * 0.01f;
+    bool        g_rt_scale_initialized = false;
 }  // namespace d3
 
 namespace {
+    auto MaxResolutionHackOutputTarget() -> u32 {
+        constexpr u32 kMaxDefault = 1440u;
+        constexpr u32 kMaxDevMem  = 2160u;
+        if (d3::g_ptDevMemMode != nullptr && *d3::g_ptDevMemMode != 0u) {
+            return kMaxDevMem;
+        }
+        return kMaxDefault;
+    }
+
     auto FindTable(const toml::table &root, std::string_view key) -> const toml::table * {
         if (auto node = root.get(key); node && node->is_table())
             return node->as_table();
@@ -741,7 +751,8 @@ void PatchConfig::ApplyTable(const toml::table &table) {
             {"OutputTarget", "OutputHeight", "Height", "OutputVertical", "Vertical", "OutputRes", "OutputResolution", "OutputWidth", "Width"},
             resolution_hack.target_resolution
         );
-        resolution_hack.SetTargetRes(target_resolution);
+        const u32 max_target = MaxResolutionHackOutputTarget();
+        resolution_hack.SetTargetRes(std::min(target_resolution, max_target));
         resolution_hack.min_res_scale = ReadFloat(
             *resolution_section,
             {"MinScale", "MinimumScale", "MinResScale", "MinimumResScale", "MinResolutionScale", "MinimumResolutionScale"},

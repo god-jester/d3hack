@@ -29,6 +29,7 @@ namespace d3::gui2::ui::windows {
 
         bool         show_metrics_         = false;
         bool         restart_required_     = false;
+        bool         lang_restart_pending_ = false;
         int          section_index_        = 0;
         bool         dock_swipe_active_    = false;
         bool         dock_swipe_triggered_ = false;

@@ -31,6 +31,15 @@ namespace d3 {
         jest.Patch<ins::AddImmediate>(adrpOffset + 4, registerTarget, registerTarget, diff.m_Offset);
     }
 
+    inline auto MaxResolutionHackOutputTarget() -> u32 {
+        constexpr u32 kMaxDefault = 1440u;
+        constexpr u32 kMaxDevMem  = 2160u;
+        if (g_ptDevMemMode != nullptr && *g_ptDevMemMode != 0u) {
+            return kMaxDevMem;
+        }
+        return kMaxDefault;
+    }
+
     /* String swap and formatting for BuildLockerDrawWatermark() */
     inline void PatchBuildlocker() {
         if (!(global_config.overlays.active && global_config.overlays.buildlocker_watermark))
@@ -90,22 +99,16 @@ namespace d3 {
         // 0xA36B34: MOV reg::W19, #0x17400000
         u32 gfxPersistentHeapSize = 0x17400000u;
 
+        [[maybe_unused]] constexpr u32 MB32 = 0x02000000u;
+        [[maybe_unused]] constexpr u32 MB64 = 0x04000000u;
+
         // Bump graphics persistent heap (XRemoteHeap) to reduce alloc failures.
+        if (*g_ptDevMemMode) {
+            gfxPersistentHeapSize += 0x40000000u;  // extra 1GB if extra RAM detected
+        } else {
+            gfxPersistentHeapSize += MB64;         // 64MB allows 1440p, stable HOS >=20.x operation on hardware
+        }
 
-        [[maybe_unused]] constexpr u32 MB16  = 0x01000000u;
-        [[maybe_unused]] constexpr u32 MB32  = 0x02000000u;
-        [[maybe_unused]] constexpr u32 MB64  = 0x04000000u;
-        [[maybe_unused]] constexpr u32 MB128 = 0x08000000u;
-        [[maybe_unused]] constexpr u32 MB512 = 0x20000000u;
-
-        gfxPersistentHeapSize += MB32;  // 32MB allows 1080p and stable HOS 20.x operation (sometimes?)
-        // gfxPersistentHeapSize += 0xE000000;  // 224 MB seems stable on Switch 17.0.1 + Emu
-
-        // if (false) {  // unable to read config early enough to make this dynamic, skip for now
-        //     const u32 outH = global_config.resolution_hack.OutputHeightPx();
-        //     if (outH >= 2160) {
-        //         gfxPersistentHeapSize += MB512;
-        // }
         jest.Patch<ins::Movz>(0xA36B34, reg::W19, (gfxPersistentHeapSize >> 16), ins::ShiftValue_16);
         PRINT_EXPR("Patched to: %08X", gfxPersistentHeapSize)
     }
@@ -176,10 +179,15 @@ namespace d3 {
         // 0x667B10: B.EQ def_667A20
         // jest.Patch<ins::Nop>(0x667B10);  // always fall through to re-init UI
 
-        const u32 outW      = global_config.resolution_hack.OutputWidthPx();
-        const u32 outH      = global_config.resolution_hack.OutputHeightPx();
-        const u32 handheldH = global_config.resolution_hack.OutputHandheldHeightPx();
-        const u32 fallbackW = handheldH != 0 ? global_config.resolution_hack.WidthForHeight(handheldH) : 1280u;
+        auto      resolution = global_config.resolution_hack;
+        const u32 max_target = MaxResolutionHackOutputTarget();
+        if (resolution.target_resolution > max_target) {
+            resolution.SetTargetRes(max_target);
+        }
+        const u32 outW      = resolution.OutputWidthPx();
+        const u32 outH      = resolution.OutputHeightPx();
+        const u32 handheldH = resolution.OutputHandheldHeightPx();
+        const u32 fallbackW = handheldH != 0 ? resolution.WidthForHeight(handheldH) : 1280u;
         const u32 fallbackH = handheldH != 0 ? handheldH : 720u;
         // const u32 clampW = global_config.resolution_hack.ClampTextureWidthPx();
         // const u32 clampH = global_config.resolution_hack.ClampTextureHeightPx();

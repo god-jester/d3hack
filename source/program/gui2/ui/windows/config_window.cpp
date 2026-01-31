@@ -2,6 +2,7 @@
 
 #include <array>
 #include <algorithm>
+#include <cfloat>
 #include <cmath>
 #include <cstdlib>
 #include <string>
@@ -11,6 +12,11 @@
 #include "program/gui2/ui/overlay.hpp"
 #include "program/gui2/ui/windows/notifications_window.hpp"
 #include "program/runtime_apply.hpp"
+#include "types.h"
+
+namespace d3 {
+    extern u32 *g_ptDevMemMode;
+}
 
 namespace d3::gui2::ui::windows {
     namespace {
@@ -31,6 +37,15 @@ namespace d3::gui2::ui::windows {
                 return best;
             }
             return value;
+        }
+
+        static auto MaxResolutionHackOutputTarget() -> int {
+            constexpr int kMaxDefault = 1440;
+            constexpr int kMaxDevMem  = 2160;
+            if (d3::g_ptDevMemMode != nullptr && *d3::g_ptDevMemMode != 0u) {
+                return kMaxDevMem;
+            }
+            return kMaxDefault;
         }
 
         static auto SeasonMapModeToString(PatchConfig::SeasonEventMapMode mode) -> const char * {
@@ -59,6 +74,7 @@ namespace d3::gui2::ui::windows {
 
     ConfigWindow::ConfigWindow(ui::Overlay &overlay) :
         Window(D3HACK_VER), overlay_(overlay) {
+        SetFlags(ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
     }
 
     void ConfigWindow::BeforeBegin() {
@@ -236,7 +252,7 @@ namespace d3::gui2::ui::windows {
         ImGui::Text(overlay_.tr("gui.config_source", "Config source: %s"), config_source);
         ImGui::Separator();
 
-        if (!cfg.gui.enabled) {
+        if (!global_config.gui.enabled) {
             ImGui::TextUnformatted(overlay_.tr("gui.disabled_help", "GUI is disabled (proof-of-life stays on). Enable GUI to edit config."));
             UpdateDockSwipe(window_pos, window_size);
             return;
@@ -278,20 +294,18 @@ namespace d3::gui2::ui::windows {
 
         auto render_gui = [&]() -> void {
             mark_dirty(ImGui::Checkbox(overlay_.tr("gui.enabled_persist", "Enabled (persist)"), &cfg.gui.enabled));
-            if (ImGui::Checkbox(overlay_.tr("gui.visible_persist", "Visible (persist)"), &cfg.gui.visible)) {
-                overlay_.set_overlay_visible_persist(cfg.gui.visible);
-            }
+            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.visible_persist", "Visible (persist)"), &cfg.gui.visible));
             bool allow_left_stick_passthrough = cfg.gui.allow_left_stick_passthrough;
             if (ImGui::Checkbox(
                     overlay_.tr("gui.left_stick_passthrough", "Allow left stick passthrough"),
                     &allow_left_stick_passthrough
                 )) {
                 cfg.gui.allow_left_stick_passthrough = allow_left_stick_passthrough;
-                overlay_.set_allow_left_stick_passthrough(allow_left_stick_passthrough);
                 overlay_.set_ui_dirty(true);
             }
 
             const char *preview = cfg.gui.language_override.empty() ? overlay_.tr("gui.lang_auto", "Auto (game)") : cfg.gui.language_override.c_str();
+            ImGui::SetNextWindowSizeConstraints(ImVec2(0.0f, 0.0f), ImVec2(FLT_MAX, FLT_MAX));
             if (ImGui::BeginCombo(overlay_.tr("gui.language", "Language"), preview)) {
                 struct Lang {
                     const char *label;
@@ -323,6 +337,13 @@ namespace d3::gui2::ui::windows {
                     if (ImGui::Selectable(lang.label, is_selected)) {
                         cfg.gui.language_override = lang.code;
                         overlay_.set_ui_dirty(true);
+                        if (auto *notifications = overlay_.notifications_window()) {
+                            notifications->AddNotification(
+                                ImVec4(1.0f, 0.75f, 0.2f, 1.0f),
+                                6.0f,
+                                overlay_.tr("gui.notify_lang_restart", "Language updated. Restart to fully apply new glyphs.")
+                            );
+                        }
                     }
                     if (is_selected) {
                         ImGui::SetItemDefaultFocus();
@@ -337,8 +358,14 @@ namespace d3::gui2::ui::windows {
         auto render_resolution = [&]() -> void {
             mark_dirty(ImGui::Checkbox(overlay_.tr("gui.resolution_enabled", "Enabled##res"), &cfg.resolution_hack.active));
             ImGui::BeginDisabled(!cfg.resolution_hack.active);
-            int target = static_cast<int>(cfg.resolution_hack.target_resolution);
-            if (ImGui::SliderInt(overlay_.tr("gui.resolution_output_target", "Output target (vertical)"), &target, 720, 2160, "%dp")) {
+            const int max_target = MaxResolutionHackOutputTarget();
+            int       target     = static_cast<int>(cfg.resolution_hack.target_resolution);
+            if (target > max_target) {
+                target = max_target;
+                cfg.resolution_hack.SetTargetRes(static_cast<u32>(target));
+                overlay_.set_ui_dirty(true);
+            }
+            if (ImGui::SliderInt(overlay_.tr("gui.resolution_output_target", "Output target (vertical)"), &target, 720, max_target, "%dp")) {
                 target = SnapOutputTarget(target);
                 cfg.resolution_hack.SetTargetRes(static_cast<u32>(target));
                 overlay_.set_ui_dirty(true);
@@ -693,17 +720,25 @@ namespace d3::gui2::ui::windows {
         const float action_bar_height = ImGui::GetFrameHeightWithSpacing() + style.WindowPadding.y * 2.0f;
 
         ImGui::BeginChild("cfg_body", ImVec2(0.0f, -action_bar_height), false);
-        ImGui::BeginChild("cfg_nav", ImVec2(nav_width, 0.0f), true);
+        ImGui::BeginChild(
+            "cfg_nav",
+            ImVec2(nav_width, 0.0f),
+            ImGuiChildFlags_Borders | ImGuiChildFlags_NavFlattened
+        );
         ImGui::PushFont(has_nav_font ? nav_font : nullptr, nav_font_size);
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(style.ItemSpacing.x, style.ItemSpacing.y + kNavExtraSpacingY));
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(style.FramePadding.x, style.FramePadding.y + kNavExtraPaddingY));
         ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.0f, 0.5f));
         const float nav_row_height = ImGui::GetTextLineHeightWithSpacing() * kNavRowHeightScale;
+        bool        nav_has_focus  = false;
         for (int i = 0; i < static_cast<int>(kSections.size()); ++i) {
             const bool  selected = (section_index_ == i);
             const char *label    = overlay_.tr(kSections[static_cast<size_t>(i)].key, kSections[static_cast<size_t>(i)].fallback);
             if (ImGui::Selectable(label, selected, 0, ImVec2(0.0f, nav_row_height))) {
                 section_index_ = i;
+            }
+            if (ImGui::IsItemFocused()) {
+                nav_has_focus = true;
             }
             if (selected) {
                 ImGui::SetItemDefaultFocus();
@@ -712,6 +747,10 @@ namespace d3::gui2::ui::windows {
         ImGui::PopStyleVar(3);
         ImGui::PopFont();
         ImGui::EndChild();
+
+        const bool nav_right_requested =
+            nav_has_focus &&
+            (ImGui::IsKeyPressed(ImGuiKey_RightArrow) || ImGui::IsKeyPressed(ImGuiKey_GamepadDpadRight));
 
         ImGui::SameLine();
 
@@ -743,13 +782,15 @@ namespace d3::gui2::ui::windows {
             }
         };
 
-        const ImGuiWindowFlags panel_flags =
-            ImGuiWindowFlags_AlwaysVerticalScrollbar |
-            ImGuiWindowFlags_NoScrollWithMouse;
-        ImGui::BeginChild("cfg_panel", ImVec2(0.0f, 0.0f), false, panel_flags);
+        const ImGuiWindowFlags panel_flags       = ImGuiWindowFlags_NoScrollWithMouse;
+        const ImGuiChildFlags  panel_child_flags = ImGuiChildFlags_NavFlattened;
+        ImGui::BeginChild("cfg_panel", ImVec2(0.0f, 0.0f), panel_child_flags, panel_flags);
         apply_panel_scroll();
         ImGui::TextUnformatted(overlay_.tr(kSections[static_cast<size_t>(section_index_)].key, kSections[static_cast<size_t>(section_index_)].fallback));
         ImGui::Separator();
+        if (nav_right_requested) {
+            ImGui::SetKeyboardFocusHere();
+        }
         switch (section_index_) {
         case 0:
             render_overlays();
@@ -783,7 +824,12 @@ namespace d3::gui2::ui::windows {
         ImGui::EndChild();
         ImGui::EndChild();
 
-        ImGui::BeginChild("cfg_action_bar", ImVec2(0.0f, action_bar_height), true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+        ImGui::BeginChild(
+            "cfg_action_bar",
+            ImVec2(0.0f, action_bar_height),
+            ImGuiChildFlags_Borders | ImGuiChildFlags_NavFlattened,
+            ImGuiWindowFlags_NoScrollbar
+        );
         ImGui::AlignTextToFramePadding();
 
         const char *label_reload = overlay_.tr("gui.reload", "Reload");
@@ -814,6 +860,13 @@ namespace d3::gui2::ui::windows {
             ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.2f, 1.0f), "%s", overlay_.tr("gui.restart_required_banner", "Restart required for some changes."));
             has_state = true;
         }
+        if (lang_restart_pending_) {
+            if (has_state) {
+                ImGui::SameLine();
+            }
+            ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.2f, 1.0f), "%s", overlay_.tr("gui.lang_restart_banner", "Language updated. Restart to fully apply new glyphs."));
+            has_state = true;
+        }
         if (has_state) {
             ImGui::SameLine();
         }
@@ -821,16 +874,33 @@ namespace d3::gui2::ui::windows {
             ImGui::SetCursorPosX(right_x);
         }
 
+        auto build_runtime_apply = [&](const PatchConfig &requested, bool *gui_pending_out) -> PatchConfig {
+            PatchConfig runtime                      = requested;
+            runtime.gui.enabled                      = global_config.gui.enabled;
+            runtime.gui.visible                      = global_config.gui.visible;
+            runtime.gui.allow_left_stick_passthrough = global_config.gui.allow_left_stick_passthrough;
+            runtime.gui.language_override            = global_config.gui.language_override;
+            if (gui_pending_out != nullptr) {
+                *gui_pending_out =
+                    requested.gui.enabled != global_config.gui.enabled ||
+                    requested.gui.visible != global_config.gui.visible ||
+                    requested.gui.allow_left_stick_passthrough != global_config.gui.allow_left_stick_passthrough;
+            }
+            return runtime;
+        };
+
         if (ImGui::Button(label_reload)) {
             PatchConfig loaded {};
             std::string error;
             if (LoadPatchConfigFromPath("sd:/config/d3hack-nx/config.toml", loaded, error)) {
+                const PatchConfig      normalized    = NormalizePatchConfig(loaded);
+                bool                   gui_pending   = false;
+                const PatchConfig      runtime_apply = build_runtime_apply(normalized, &gui_pending);
                 d3::RuntimeApplyResult apply {};
-                d3::ApplyPatchConfigRuntime(loaded, &apply);
-                restart_required_ = apply.restart_required;
-                cfg               = global_config;
-                overlay_.set_overlay_visible(global_config.gui.visible);
-                overlay_.set_allow_left_stick_passthrough(cfg.gui.allow_left_stick_passthrough);
+                d3::ApplyPatchConfigRuntime(runtime_apply, &apply);
+                restart_required_     = apply.restart_required || gui_pending;
+                cfg                   = normalized;
+                lang_restart_pending_ = false;
                 overlay_.set_ui_dirty(false);
                 if (auto *notifications = overlay_.notifications_window())
                     notifications->AddNotification(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), 4.0f, overlay_.tr("gui.notify_reloaded", "Reloaded config.toml"));
@@ -843,26 +913,27 @@ namespace d3::gui2::ui::windows {
         ImGui::SameLine();
         if (ImGui::Button(label_reset)) {
             cfg = global_config;
-            overlay_.set_overlay_visible(global_config.gui.visible);
-            overlay_.set_allow_left_stick_passthrough(cfg.gui.allow_left_stick_passthrough);
             overlay_.set_ui_dirty(false);
-            restart_required_ = false;
+            restart_required_     = false;
+            lang_restart_pending_ = false;
         }
 
         ImGui::SameLine();
         if (ImGui::Button(label_apply)) {
-            const PatchConfig      normalized = NormalizePatchConfig(cfg);
+            const PatchConfig      normalized    = NormalizePatchConfig(cfg);
+            bool                   gui_pending   = false;
+            const PatchConfig      runtime_apply = build_runtime_apply(normalized, &gui_pending);
             d3::RuntimeApplyResult apply {};
-            d3::ApplyPatchConfigRuntime(normalized, &apply);
-            restart_required_ = apply.restart_required;
+            d3::ApplyPatchConfigRuntime(runtime_apply, &apply);
+            const bool restart_needed = apply.restart_required || gui_pending;
+            restart_required_         = restart_needed;
 
-            cfg = global_config;
-            overlay_.set_overlay_visible(global_config.gui.visible);
-            overlay_.set_allow_left_stick_passthrough(cfg.gui.allow_left_stick_passthrough);
+            cfg                   = normalized;
+            lang_restart_pending_ = cfg.gui.language_override != global_config.gui.language_override;
             overlay_.set_ui_dirty(false);
 
             auto *notifications = overlay_.notifications_window();
-            if (apply.restart_required) {
+            if (restart_needed) {
                 if (notifications != nullptr)
                     notifications->AddNotification(ImVec4(1.0f, 0.75f, 0.2f, 1.0f), 6.0f, overlay_.tr("gui.notify_applied_restart", "Applied. Restart required."));
             } else if (apply.applied_enable_only || apply.note[0] != '\0') {
@@ -877,8 +948,8 @@ namespace d3::gui2::ui::windows {
         ImGui::SameLine();
         if (ImGui::Button(label_save)) {
             std::string error;
-            cfg.gui.visible = overlay_.overlay_visible();
             if (SavePatchConfigToPath("sd:/config/d3hack-nx/config.toml", cfg, error)) {
+                lang_restart_pending_ = cfg.gui.language_override != global_config.gui.language_override;
                 if (auto *notifications = overlay_.notifications_window())
                     notifications->AddNotification(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), 4.0f, overlay_.tr("gui.notify_saved", "Saved config.toml"));
             } else {

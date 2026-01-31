@@ -594,11 +594,6 @@ namespace d3::gui2::ui {
                 RequestFocus();
             }
         }
-
-        if (ui_config_initialized_) {
-            ui_config_.gui.visible = overlay_visible_;
-            ui_dirty_              = true;
-        }
     }
 
     void Overlay::ToggleVisibleAndPersist() {

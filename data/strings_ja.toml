@@ -46,6 +46,10 @@ save = "保存"
 reload = "再読み込み"
 # Restart required for some changes.
 restart_required_banner = "一部の変更は再起動が必要です。"
+# Language updated. Restart to fully apply new glyphs.
+lang_restart_banner = "言語が更新されました。新しいグリフを完全に適用するには再起動が必要です。"
+# Language updated. Restart to fully apply new glyphs.
+notify_lang_restart = "言語が更新されました。新しいグリフを完全に適用するには再起動が必要です。"
 # GUI is disabled (proof-of-life stays on). Enable GUI to edit config.
 disabled_help = "GUIは無効です(生存表示は残ります)。GUIを有効にして設定を編集してください。"
 # Config source: %s

@@ -46,6 +46,10 @@ save = "Save"
 reload = "Reload"
 # Restart required for some changes.
 restart_required_banner = "Restart required for some changes."
+# Language updated. Restart to fully apply new glyphs.
+lang_restart_banner = "Language updated. Restart to fully apply new glyphs."
+# Language updated. Restart to fully apply new glyphs.
+notify_lang_restart = "Language updated. Restart to fully apply new glyphs."
 # GUI is disabled (proof-of-life stays on). Enable GUI to edit config.
 disabled_help = "GUI is disabled (proof-of-life stays on). Enable GUI to edit config."
 # Config source: %s
