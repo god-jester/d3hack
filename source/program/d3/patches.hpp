@@ -512,10 +512,10 @@ namespace d3 {
         }
 
         /* Stub logging to RingBuffer */
-        jest.Patch<ins::Ret>(PatchTable("patch_log_ringbuffer_01_ret")); /* void FileOutputStream::LogToRingBuffer(int, char const*, char const*) */
+        // jest.Patch<ins::Ret>(PatchTable("patch_log_ringbuffer_01_ret")); /* void FileOutputStream::LogToRingBuffer(int, char const*, char const*) */
 
         /* Stub net message tracing */
-        jest.Patch<ins::Ret>(PatchTable("patch_trace_message_01_ret")); /* void __fastcall sTraceMessage(const void *pMessage) */
+        // jest.Patch<ins::Ret>(PatchTable("patch_trace_message_01_ret")); /* void __fastcall sTraceMessage(const void *pMessage) */
 
         /* Fix path for stat tracing */
         MakeAdrlPatch(PatchTable("patch_trace_stat_path_01_adrl"), reinterpret_cast<uintptr_t>(&g_szTraceStat), reg::X0);

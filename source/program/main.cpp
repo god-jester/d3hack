@@ -14,6 +14,7 @@
 #include "d3/types/gfx.hpp"
 #include "program/gui2/imgui_overlay.hpp"
 #include "program/runtime_apply.hpp"
+#include "program/logging.hpp"
 #include "idadefs.h"
 #include "program/exception_handler.hpp"
 
@@ -120,6 +121,7 @@ namespace d3 {
                 )
             }
             g_requestSeasonsLoad = true;
+            exl::log::ConfigureGameFileLogging();
 
             return ret;
         }
@@ -155,6 +157,7 @@ namespace d3 {
             // Require our SD to be mounted before running nnMain()
             R_ABORT_UNLESS(nn::fs::MountSdCardForDebug("sd"));
             LoadPatchConfig();
+            exl::log::ConfigureGameFileLogging();
 
             // Needs config to decide heap size, but must run before nnMain()/game init. Cantfix
             // PatchGraphicsPersistentHeapEarly();

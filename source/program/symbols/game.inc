@@ -21,6 +21,10 @@ FUNC_PTR(FileClose,                               void (*)(FileReference *tFileR
 FUNC_PTR(FileWrite,                               BOOL (*)(FileReference *tFileRef, const void *lpBuf, const uint32 dwOffset, const uint32 dwSize, ErrorCode eErrorCodeIfFails));
 FUNC_PTR(sReadFile,                               BOOL (*)(const char *szFileName, unsigned char **pData, uint32 *nDataSize));
 FUNC_PTR(TraceInternal_Log,                       void (*)(const SeverityLevel eLevel, const uint32 dwFlags, const OutputStreamType eStream, LPCSTR szFormat, ...));
+FUNC_PTR(ErrorManagerEnableLocalLogging,          void (*)(int32 bEnabled));
+FUNC_PTR(ErrorManagerSetLogStreamDirectory,       void (*)(const char *pszDirectory));
+FUNC_PTR(ErrorManagerSetLogStreamFilename,        void (*)(const OutputStreamType eStream, const char *pszFileName));
+FUNC_PTR(ErrorManagerLogToStream,                 void (*)(const SeverityLevel eLevel, const OutputStreamType eStream, const char *szMessage, int32 useRingBuffer));
 FUNC_PTR(GetLocalStorage,                        void* (*)(const Blizzard::Thread::TLSSlot *slot));  // Blizz::Thread::GetLocalStorage
 FUNC_PTR(GetGameMessageTypeAndSize,               BOOL (*)(GameMessageType eMessageType, const XTypeDescriptor **pTypeDescriptor, uint32 *dwSize, const char **pszMessageLabel));
 FUNC_PTR(DisplaySeasonEndingMessage,              void (*)(int32 nMin));
