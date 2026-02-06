@@ -138,10 +138,10 @@ namespace d3 {
             }
         }
 
-        constexpr char k_config_cache_name[] = "config.txt";
-        constexpr char k_seasons_cache_fallback[] = "seasons_config.txt";
-        constexpr char k_blacklist_cache_fallback[] = "blacklist_config.txt";
-        constexpr size_t k_cache_path_max = 512;
+        constexpr char   k_config_cache_name[]        = "config.txt";
+        constexpr char   k_seasons_cache_fallback[]   = "seasons_config.txt";
+        constexpr char   k_blacklist_cache_fallback[] = "blacklist_config.txt";
+        constexpr size_t k_cache_path_max             = 512;
 
         const char *GetSeasonsConfigFilename() {
             const auto *params = CmdLineGetParams();
@@ -172,7 +172,7 @@ namespace d3 {
             if (str == nullptr) {
                 return false;
             }
-            const char *data = str->m_elements ? str->m_elements : str->m_storage;
+            const char  *data = str->m_elements ? str->m_elements : str->m_storage;
             const size_t size = static_cast<size_t>(str->m_size);
             if (data == nullptr || size == 0) {
                 return false;
@@ -184,13 +184,13 @@ namespace d3 {
 
         bool HasPubfileData(const blz::shared_ptr<blz::string> *pszFileData) {
             const char *data = nullptr;
-            size_t size = 0;
+            size_t      size = 0;
             return GetBlzStringData(pszFileData, &data, &size);
         }
 
         bool CachePubfile(const char *cache_path, const blz::shared_ptr<blz::string> *pszFileData, const char *log_line) {
             const char *data = nullptr;
-            size_t size = 0;
+            size_t      size = 0;
             if (!GetBlzStringData(pszFileData, &data, &size)) {
                 return false;
             }
@@ -255,8 +255,8 @@ namespace d3 {
                 ClearConfigRequestFlag();
                 return;
             }
-            auto result = eResult;
-            char cache_path[k_cache_path_max] {};
+            auto       result = eResult;
+            char       cache_path[k_cache_path_max] {};
             const bool has_path = BuildPubfileCachePath(cache_path, sizeof(cache_path), k_config_cache_name);
             const bool has_data = HasPubfileData(pszFileData);
             if (has_path && (result == 0 || has_data)) {
@@ -282,8 +282,8 @@ namespace d3 {
                 ClearSeasonsRequestFlag();
                 return;
             }
-            auto result = eResult;
-            char cache_path[k_cache_path_max] {};
+            auto       result = eResult;
+            char       cache_path[k_cache_path_max] {};
             const bool has_path = BuildPubfileCachePath(cache_path, sizeof(cache_path), GetSeasonsConfigFilename());
             const bool has_data = HasPubfileData(pszFileData);
             if (has_path && (result == 0 || has_data)) {
@@ -322,8 +322,8 @@ namespace d3 {
                 # note: SNOGroup is usually Power
                 [SNO]            
             */
-            auto result = eResult;
-            char cache_path[k_cache_path_max] {};
+            auto       result = eResult;
+            char       cache_path[k_cache_path_max] {};
             const bool has_path = BuildPubfileCachePath(cache_path, sizeof(cache_path), GetBlacklistConfigFilename());
             const bool has_data = HasPubfileData(pszFileData);
             if (has_path && (result == 0 || has_data)) {

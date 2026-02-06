@@ -149,8 +149,8 @@ namespace d3::imgui_overlay {
                 if (!EnsureRoInitialized()) {
                     return;
                 }
-                uintptr_t addr = 0;
-                const auto rc = nn::ro::LookupSymbol(&addr, "malloc");
+                uintptr_t  addr = 0;
+                const auto rc   = nn::ro::LookupSymbol(&addr, "malloc");
                 if (R_SUCCEEDED(rc) && addr != 0) {
                     g_imgui_malloc = reinterpret_cast<ImGuiMallocFn>(addr);
                 } else {
@@ -165,8 +165,8 @@ namespace d3::imgui_overlay {
                 if (!EnsureRoInitialized()) {
                     return;
                 }
-                uintptr_t addr = 0;
-                const auto rc = nn::ro::LookupSymbol(&addr, "free");
+                uintptr_t  addr = 0;
+                const auto rc   = nn::ro::LookupSymbol(&addr, "free");
                 if (R_SUCCEEDED(rc) && addr != 0) {
                     g_imgui_free = reinterpret_cast<ImGuiFreeFn>(addr);
                 } else {

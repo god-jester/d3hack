@@ -23,7 +23,7 @@ namespace d3 {
     // NOTE: Keep this header-only and constant-initialized.
     // - Avoids dynamic initialization in a header (clang-tidy warning)
     // - Avoids depending on `std::string` at namespace-scope initialization time
-    inline constexpr char g_szBaseDir[] = "sd:/config/d3hack-nx";
+    inline constexpr char g_szBaseDir[]         = "sd:/config/d3hack-nx";
     inline constexpr char g_szPubfileCacheDir[] = "sd:/config/d3hack-nx/pubfiles";
     // Runtime globals are declared here and defined once in a .cpp file.
     // This prevents ODR/multiple-definition issues when including this header from multiple TUs.
@@ -427,11 +427,11 @@ namespace d3 {
         };
 
         auto PopulateDataWithFallback = [&](google::protobuf::MessageLite *dest,
-                                            const std::string &cache_path,
-                                            const std::string &local_path,
-                                            const char *cache_log,
-                                            const char *local_log,
-                                            bool &used_cache) -> bool {
+                                            const std::string             &cache_path,
+                                            const std::string             &local_path,
+                                            const char                    *cache_log,
+                                            const char                    *local_log,
+                                            bool                          &used_cache) -> bool {
             if (PopulateData(dest, cache_path)) {
                 used_cache = true;
                 PRINT_LINE(cache_log);
@@ -458,8 +458,8 @@ namespace d3 {
         const std::string baseDir  = g_szBaseDir;
         const std::string cacheDir = g_szPubfileCacheDir;
 
-        bool config_from_cache = false;
-        const auto configOk = PopulateDataWithFallback(
+        bool       config_from_cache = false;
+        const auto configOk          = PopulateDataWithFallback(
             &ptChalConf,
             cacheDir + "/challengerift_config.dat",
             baseDir + "/rift_data/challengerift_config.dat",
@@ -480,17 +480,17 @@ namespace d3 {
             // PRINT_EXPR("post: %li", ptChalConf.challenge_end_unix_time_console_);
         }
 
-        char cache_name[64] {};
+        char               cache_name[64] {};
         const unsigned int cache_pick = config_from_cache
-            ? static_cast<unsigned int>(ptChalConf.challenge_number_)
-            : static_cast<unsigned int>(nPick);
+                                            ? static_cast<unsigned int>(ptChalConf.challenge_number_)
+                                            : static_cast<unsigned int>(nPick);
         snprintf(cache_name, sizeof(cache_name), "challengerift_%02u.dat", cache_pick);
 
         char local_name[64] {};
         snprintf(local_name, sizeof(local_name), "challengerift_%02u.dat", static_cast<unsigned int>(nPick));
 
-        bool data_from_cache = false;
-        const auto dataOk = PopulateDataWithFallback(
+        bool       data_from_cache = false;
+        const auto dataOk          = PopulateDataWithFallback(
             &ptChalData,
             cacheDir + "/" + cache_name,
             baseDir + "/rift_data/" + local_name,

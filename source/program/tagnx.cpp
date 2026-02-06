@@ -32,13 +32,13 @@ namespace d3::tagnx {
             "_ZN2nn2ro10LoadModuleEPNS0_6ModuleEPKvPvmi";
 
         struct HookState {
-            bool ensure_account_installed         = false;
-            bool is_account_available_installed   = false;
-            bool async_context_result_installed   = false;
-            bool get_account_id_installed         = false;
-            bool load_token_cache_installed       = false;
-            bool get_license_kind_installed       = false;
-            bool load_module_installed            = false;
+            bool ensure_account_installed       = false;
+            bool is_account_available_installed = false;
+            bool async_context_result_installed = false;
+            bool get_account_id_installed       = false;
+            bool load_token_cache_installed     = false;
+            bool get_license_kind_installed     = false;
+            bool load_module_installed          = false;
 
             bool ensure_account_missing_logged       = false;
             bool is_account_available_missing_logged = false;
@@ -120,8 +120,7 @@ namespace d3::tagnx {
         };
 
         HOOK_DEFINE_REPLACE(LoadNSAIDTokenCache) {
-            static auto Callback(unsigned long *out_size, const char **out_ptr, unsigned long /*buf_size*/,
-                                 std::int64_t /*user_handle*/) -> std::int64_t {
+            static auto Callback(unsigned long *out_size, const char **out_ptr, unsigned long /*buf_size*/, std::int64_t /*user_handle*/) -> std::int64_t {
                 if (out_size != nullptr) {
                     *out_size = static_cast<unsigned long>(std::strlen(kDummyToken));
                 }
@@ -198,13 +197,13 @@ namespace d3::tagnx {
 
 namespace d3::tagnx::curl {
     namespace {
-        static uintptr_t g_curl_easy_init_addr       = 0;
-        static uintptr_t g_curl_easy_setopt_addr     = 0;
-        static uintptr_t g_curl_slist_append_addr    = 0;
-        static uintptr_t g_curl_easy_perform_addr    = 0;
-        static uintptr_t g_curl_multi_init_addr      = 0;
+        static uintptr_t g_curl_easy_init_addr        = 0;
+        static uintptr_t g_curl_easy_setopt_addr      = 0;
+        static uintptr_t g_curl_slist_append_addr     = 0;
+        static uintptr_t g_curl_easy_perform_addr     = 0;
+        static uintptr_t g_curl_multi_init_addr       = 0;
         static uintptr_t g_curl_multi_add_handle_addr = 0;
-        static uintptr_t g_curl_multi_perform_addr   = 0;
+        static uintptr_t g_curl_multi_perform_addr    = 0;
 
         static bool g_curl_easy_init_missing_logged        = false;
         static bool g_curl_easy_setopt_missing_logged      = false;

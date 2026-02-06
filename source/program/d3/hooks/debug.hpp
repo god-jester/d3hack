@@ -390,8 +390,8 @@ namespace d3 {
         if (data == nullptr) {
             return false;
         }
-        const char *bytes = data->m_elements ? data->m_elements : data->m_storage;
-        const size_t size = static_cast<size_t>(data->m_size);
+        const char  *bytes = data->m_elements ? data->m_elements : data->m_storage;
+        const size_t size  = static_cast<size_t>(data->m_size);
         if (bytes == nullptr || size == 0) {
             return false;
         }
@@ -409,12 +409,12 @@ namespace d3 {
 
     HOOK_DEFINE_TRAMPOLINE(ParsePartialFromStringHook) {
         static auto Callback(google::protobuf::MessageLite *msg, const blz::string *data) -> bool {
-            const u32  size = data ? static_cast<u32>(data->m_size) : 0u;
-            const bool ok   = Orig(msg, data);
+            const u32           size                 = data ? static_cast<u32>(data->m_size) : 0u;
+            const bool          ok                   = Orig(msg, data);
             static unsigned int s_last_challenge_num = 0;
-            const void *msg_vptr = GetMessageVptr(msg);
+            const void         *msg_vptr             = GetMessageVptr(msg);
             if (ok && data && msg_vptr == GetChallengeDataVptr()) {
-                const auto *chal = reinterpret_cast<const ChallengeData *>(msg);
+                const auto *chal     = reinterpret_cast<const ChallengeData *>(msg);
                 s_last_challenge_num = static_cast<unsigned int>(chal->challenge_number_);
                 CacheChallengeRiftRaw("challengerift_config.dat", data, "[pubfiles] cached challenge rift config");
             } else if (ok && data && msg_vptr == GetWeeklyChallengeDataVptr()) {

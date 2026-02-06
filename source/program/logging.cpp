@@ -14,19 +14,19 @@ namespace exl::log {
         };
 
         constexpr StreamConfig kLogStreams[] = {
-            { OUTPUTSTREAM_BOOT, "Boot.txt" },
-            { OUTPUTSTREAM_SYNC, "Sync.txt" },
-            { OUTPUTSTREAM_STREAMING, "Streaming.log" },
-            { OUTPUTSTREAM_BATTLENET, "Battlenet.log" },
-            { OUTPUTSTREAM_LOCKS, "locks.log" },
-            { OUTPUTSTREAM_LEADERBOARD, "locks.log" },
-            { OUTPUTSTREAM_NOTIFICATIONS, "Notifications.log" },
-            { OUTPUTSTREAM_TRADE, "Trade.log" },
-            { OUTPUTSTREAM_RIFTSTATS, "RiftStats.log" },
+            {OUTPUTSTREAM_BOOT, "Boot.txt"},
+            {OUTPUTSTREAM_SYNC, "Sync.txt"},
+            {OUTPUTSTREAM_STREAMING, "Streaming.log"},
+            {OUTPUTSTREAM_BATTLENET, "Battlenet.log"},
+            {OUTPUTSTREAM_LOCKS, "locks.log"},
+            {OUTPUTSTREAM_LEADERBOARD, "locks.log"},
+            {OUTPUTSTREAM_NOTIFICATIONS, "Notifications.log"},
+            {OUTPUTSTREAM_TRADE, "Trade.log"},
+            {OUTPUTSTREAM_RIFTSTATS, "RiftStats.log"},
         };
 
-        constexpr size_t kGameLogBufferMaxBytes = 64 * 1024;
-        constexpr const char kGameLogPrefix[]   = ": ";
+        constexpr size_t     kGameLogBufferMaxBytes = 64 * 1024;
+        constexpr const char kGameLogPrefix[]       = ": ";
 
         alignas(d3::system_allocator::Buffer) std::byte s_game_log_storage[sizeof(d3::system_allocator::Buffer)];
         d3::system_allocator::Buffer *s_game_log_buffer = nullptr;
@@ -74,7 +74,7 @@ namespace exl::log {
                 return;
             }
 
-            auto view          = s_game_log_buffer->view();
+            auto        view   = s_game_log_buffer->view();
             const char *cursor = view.data();
             const char *end    = cursor + view.size();
 
@@ -84,8 +84,8 @@ namespace exl::log {
                     EmitGameLogLine(std::string_view(cursor, static_cast<size_t>(end - cursor)));
                     break;
                 }
-                const char *line_end = static_cast<const char *>(newline);
-                const size_t len     = static_cast<size_t>(line_end - cursor + 1);
+                const char  *line_end = static_cast<const char *>(newline);
+                const size_t len      = static_cast<size_t>(line_end - cursor + 1);
                 EmitGameLogLine(std::string_view(cursor, len));
                 cursor = line_end + 1;
             }
