@@ -3,6 +3,7 @@
 #include "lib/hook/trampoline.hpp"
 #include "config.hpp"
 #include "d3/types/common.hpp"
+#include "d3/_util.hpp"
 #include "symbols/common.hpp"
 #include <string>
 // #include <string_view>
@@ -137,6 +138,85 @@ namespace d3 {
             }
         }
 
+        constexpr char k_config_cache_name[] = "config.txt";
+        constexpr char k_seasons_cache_fallback[] = "seasons_config.txt";
+        constexpr char k_blacklist_cache_fallback[] = "blacklist_config.txt";
+        constexpr size_t k_cache_path_max = 512;
+
+        const char *GetSeasonsConfigFilename() {
+            const auto *params = CmdLineGetParams();
+            if (params && params->szSeasonsConfigFilename[0] != '\0') {
+                return params->szSeasonsConfigFilename;
+            }
+            return k_seasons_cache_fallback;
+        }
+
+        const char *GetBlacklistConfigFilename() {
+            const auto *params = CmdLineGetParams();
+            if (params && params->szBlacklistConfigFilename[0] != '\0') {
+                return params->szBlacklistConfigFilename;
+            }
+            return k_blacklist_cache_fallback;
+        }
+
+        bool GetBlzStringData(const blz::shared_ptr<blz::string> *pszFileData, const char **out_data, size_t *out_size) {
+            if (out_data == nullptr || out_size == nullptr) {
+                return false;
+            }
+            *out_data = nullptr;
+            *out_size = 0;
+            if (pszFileData == nullptr || pszFileData->m_pointer == nullptr) {
+                return false;
+            }
+            const blz::string *str = pszFileData->m_pointer;
+            if (str == nullptr) {
+                return false;
+            }
+            const char *data = str->m_elements ? str->m_elements : str->m_storage;
+            const size_t size = static_cast<size_t>(str->m_size);
+            if (data == nullptr || size == 0) {
+                return false;
+            }
+            *out_data = data;
+            *out_size = size;
+            return true;
+        }
+
+        bool HasPubfileData(const blz::shared_ptr<blz::string> *pszFileData) {
+            const char *data = nullptr;
+            size_t size = 0;
+            return GetBlzStringData(pszFileData, &data, &size);
+        }
+
+        bool CachePubfile(const char *cache_path, const blz::shared_ptr<blz::string> *pszFileData, const char *log_line) {
+            const char *data = nullptr;
+            size_t size = 0;
+            if (!GetBlzStringData(pszFileData, &data, &size)) {
+                return false;
+            }
+            EnsurePubfileCacheDir();
+            if (WriteTestFile(cache_path, const_cast<char *>(data), size)) {
+                PRINT_LINE(log_line);
+                return true;
+            }
+            return false;
+        }
+
+        bool LoadCachedPubfile(const char *cache_path, blz::shared_ptr<blz::string> *pszFileData, blz::string &fallback, const char *log_line) {
+            if (pszFileData == nullptr) {
+                return false;
+            }
+            u32 size = 0;
+            if (char *buffer = ReadFileToBuffer(cache_path, &size); buffer) {
+                EnsureSharedPtrData(pszFileData, fallback);
+                ReplaceBlzString(*pszFileData->m_pointer, buffer, size);
+                SigmaMemoryFree(&buffer, nullptr);
+                PRINT_LINE(log_line);
+                return true;
+            }
+            return false;
+        }
+
         void OverrideConfigIfNeeded(blz::shared_ptr<blz::string> *pszFileData) {
             if (!pszFileData || !global_config.events.active)
                 return;
@@ -176,6 +256,18 @@ namespace d3 {
                 return;
             }
             auto result = eResult;
+            char cache_path[k_cache_path_max] {};
+            const bool has_path = BuildPubfileCachePath(cache_path, sizeof(cache_path), k_config_cache_name);
+            const bool has_data = HasPubfileData(pszFileData);
+            if (has_path && (result == 0 || has_data)) {
+                CachePubfile(cache_path, pszFileData, "[pubfiles] cached config file");
+            }
+            if (has_path && (result != 0 || !has_data)) {
+                static blz::string s_cached_config;
+                if (LoadCachedPubfile(cache_path, pszFileData, s_cached_config, "[pubfiles] using cached config file")) {
+                    result = 0;
+                }
+            }
             if (global_config.events.active) {
                 result = 0;
                 OverrideConfigIfNeeded(pszFileData);
@@ -191,6 +283,18 @@ namespace d3 {
                 return;
             }
             auto result = eResult;
+            char cache_path[k_cache_path_max] {};
+            const bool has_path = BuildPubfileCachePath(cache_path, sizeof(cache_path), GetSeasonsConfigFilename());
+            const bool has_data = HasPubfileData(pszFileData);
+            if (has_path && (result == 0 || has_data)) {
+                CachePubfile(cache_path, pszFileData, "[pubfiles] cached seasons file");
+            }
+            if (has_path && (result != 0 || !has_data)) {
+                static blz::string s_cached_seasons;
+                if (LoadCachedPubfile(cache_path, pszFileData, s_cached_seasons, "[pubfiles] using cached seasons file")) {
+                    result = 0;
+                }
+            }
             if (global_config.seasons.active) {
                 result = 0;
                 OverrideSeasonsIfNeeded(pszFileData);
@@ -219,6 +323,18 @@ namespace d3 {
                 [SNO]            
             */
             auto result = eResult;
+            char cache_path[k_cache_path_max] {};
+            const bool has_path = BuildPubfileCachePath(cache_path, sizeof(cache_path), GetBlacklistConfigFilename());
+            const bool has_data = HasPubfileData(pszFileData);
+            if (has_path && (result == 0 || has_data)) {
+                CachePubfile(cache_path, pszFileData, "[pubfiles] cached blacklist file");
+            }
+            if (has_path && (result != 0 || !has_data)) {
+                static blz::string s_cached_blacklist;
+                if (LoadCachedPubfile(cache_path, pszFileData, s_cached_blacklist, "[pubfiles] using cached blacklist file")) {
+                    result = 0;
+                }
+            }
             OverrideBlacklistIfNeeded(pszFileData);
             Orig(self, result, pszFileData);
         }

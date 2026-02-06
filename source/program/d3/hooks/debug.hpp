@@ -369,10 +369,59 @@ namespace d3 {
         return has1 && has2 && has3 && has4;
     }
 
+    inline const void *GetMessageVptr(const google::protobuf::MessageLite *msg) {
+        if (msg == nullptr) {
+            return nullptr;
+        }
+        return *reinterpret_cast<void *const *>(msg);
+    }
+
+    inline const void *GetChallengeDataVptr() {
+        static ChallengeData s_chal;
+        return *reinterpret_cast<void *const *>(&s_chal);
+    }
+
+    inline const void *GetWeeklyChallengeDataVptr() {
+        static WeeklyChallengeData s_weekly;
+        return *reinterpret_cast<void *const *>(&s_weekly);
+    }
+
+    inline bool CacheChallengeRiftRaw(const char *filename, const blz::string *data, const char *log_line) {
+        if (data == nullptr) {
+            return false;
+        }
+        const char *bytes = data->m_elements ? data->m_elements : data->m_storage;
+        const size_t size = static_cast<size_t>(data->m_size);
+        if (bytes == nullptr || size == 0) {
+            return false;
+        }
+        char cache_path[512] {};
+        if (!BuildPubfileCachePath(cache_path, sizeof(cache_path), filename)) {
+            return false;
+        }
+        EnsurePubfileCacheDir();
+        if (WriteTestFile(cache_path, const_cast<char *>(bytes), size)) {
+            PRINT_LINE(log_line);
+            return true;
+        }
+        return false;
+    }
+
     HOOK_DEFINE_TRAMPOLINE(ParsePartialFromStringHook) {
         static auto Callback(google::protobuf::MessageLite *msg, const blz::string *data) -> bool {
             const u32  size = data ? static_cast<u32>(data->m_size) : 0u;
             const bool ok   = Orig(msg, data);
+            static unsigned int s_last_challenge_num = 0;
+            const void *msg_vptr = GetMessageVptr(msg);
+            if (ok && data && msg_vptr == GetChallengeDataVptr()) {
+                const auto *chal = reinterpret_cast<const ChallengeData *>(msg);
+                s_last_challenge_num = static_cast<unsigned int>(chal->challenge_number_);
+                CacheChallengeRiftRaw("challengerift_config.dat", data, "[pubfiles] cached challenge rift config");
+            } else if (ok && data && msg_vptr == GetWeeklyChallengeDataVptr()) {
+                char data_name[64] {};
+                snprintf(data_name, sizeof(data_name), "challengerift_%02u.dat", s_last_challenge_num);
+                CacheChallengeRiftRaw(data_name, data, "[pubfiles] cached challenge rift data");
+            }
             if (data) {
                 if (size >= 3000 && size <= 9000) {
                     u32        f1     = 0;

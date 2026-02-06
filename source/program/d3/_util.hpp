@@ -8,6 +8,7 @@
 #include "lib/util/stack_trace.hpp"
 #include "lib/util/sys/modules.hpp"
 #include "lib/util/strings.hpp"
+#include <nn/fs.hpp>
 #include <cstddef>
 #include <cstdio>
 
@@ -23,6 +24,7 @@ namespace d3 {
     // - Avoids dynamic initialization in a header (clang-tidy warning)
     // - Avoids depending on `std::string` at namespace-scope initialization time
     inline constexpr char g_szBaseDir[] = "sd:/config/d3hack-nx";
+    inline constexpr char g_szPubfileCacheDir[] = "sd:/config/d3hack-nx/pubfiles";
     // Runtime globals are declared here and defined once in a .cpp file.
     // This prevents ODR/multiple-definition issues when including this header from multiple TUs.
     extern bool                     sg_bServerCode;
@@ -319,6 +321,45 @@ namespace d3 {
         return 'A' + (b - 0xA);
     };
 
+    inline const char *GetFilenameTail(const char *path) {
+        if (path == nullptr) {
+            return nullptr;
+        }
+        const char *tail = path;
+        for (const char *it = path; *it != '\0'; ++it) {
+            if (*it == '/' || *it == '\\') {
+                tail = it + 1;
+            }
+        }
+        return tail;
+    }
+
+    inline bool BuildPubfileCachePath(char *out, size_t out_size, const char *filename) {
+        if (out == nullptr || out_size == 0) {
+            return false;
+        }
+        out[0] = '\0';
+        if (filename == nullptr || filename[0] == '\0') {
+            return false;
+        }
+        const char *tail = GetFilenameTail(filename);
+        if (tail == nullptr || tail[0] == '\0') {
+            return false;
+        }
+        const int written = snprintf(out, out_size, "%s/%s", g_szPubfileCacheDir, tail);
+        if (written <= 0 || static_cast<size_t>(written) >= out_size) {
+            out[0] = '\0';
+            return false;
+        }
+        return true;
+    }
+
+    inline void EnsurePubfileCacheDir() {
+        (void)nn::fs::CreateDirectory("sd:/config");
+        (void)nn::fs::CreateDirectory(g_szBaseDir);
+        (void)nn::fs::CreateDirectory(g_szPubfileCacheDir);
+    }
+
     inline auto WriteTestFile(const std::string &szPath, void *ptBuf, size_type dwSize, bool bSuccess = false) -> bool {
         FileReference tFileRef;
         FileReferenceInit(&tFileRef, szPath.c_str());
@@ -375,7 +416,6 @@ namespace d3 {
 
     inline auto PopulateChallengeRiftData(D3::ChallengeRifts::ChallengeData &ptChalConf, D3::Leaderboard::WeeklyChallengeData &ptChalData) -> bool {
         auto PopulateData = [](google::protobuf::MessageLite *dest, const std::string &szPath, u32 dwSize = 0) -> bool {
-            PRINT_EXPR("%s", szPath.c_str())
             if (char *pFileBuffer = ReadFileToBuffer(szPath, &dwSize); pFileBuffer) {
                 blz::string sFileData;
                 ReplaceBlzString(sFileData, pFileBuffer, dwSize);
@@ -383,7 +423,25 @@ namespace d3 {
                 SigmaMemoryFree(&pFileBuffer, nullptr);
                 return true;
             }
-            PRINT("Missing challenge rift file: %s", szPath.c_str());
+            return false;
+        };
+
+        auto PopulateDataWithFallback = [&](google::protobuf::MessageLite *dest,
+                                            const std::string &cache_path,
+                                            const std::string &local_path,
+                                            const char *cache_log,
+                                            const char *local_log,
+                                            bool &used_cache) -> bool {
+            if (PopulateData(dest, cache_path)) {
+                used_cache = true;
+                PRINT_LINE(cache_log);
+                return true;
+            }
+            if (PopulateData(dest, local_path)) {
+                PRINT_LINE(local_log);
+                return true;
+            }
+            PRINT("Missing challenge rift file: %s", local_path.c_str());
             return false;
         };
 
@@ -397,20 +455,49 @@ namespace d3 {
         char           lpBuf[sizeof(szFormat) + 16] {};
         snprintf(lpBuf, sizeof(lpBuf), szFormat, nPick);
 
-        const std::string baseDir = g_szBaseDir;
+        const std::string baseDir  = g_szBaseDir;
+        const std::string cacheDir = g_szPubfileCacheDir;
 
-        const auto configOk = PopulateData(&ptChalConf, baseDir + "/rift_data/challengerift_config.dat");
+        bool config_from_cache = false;
+        const auto configOk = PopulateDataWithFallback(
+            &ptChalConf,
+            cacheDir + "/challengerift_config.dat",
+            baseDir + "/rift_data/challengerift_config.dat",
+            "[pubfiles] challenge rift config cache hit",
+            "[pubfiles] challenge rift config fallback to rift_data",
+            config_from_cache
+        );
         if (configOk) {
             // PRINT_EXPR("%li", ptChalConf.challenge_end_unix_time_console_);
             // Force the challenge window to be "always active" offline.
             // Use 32-bit safe end time in case the game casts to s32.
-            ptChalConf.challenge_number_                   = GameRandRangeInt(0, 900);
+            if (!config_from_cache) {
+                ptChalConf.challenge_number_ = GameRandRangeInt(0, 900);
+            }
             ptChalConf.challenge_start_unix_time_          = 0;
             ptChalConf.challenge_last_broadcast_unix_time_ = 0;
             ptChalConf.challenge_end_unix_time_console_    = 0x7FFFFFFFLL;
             // PRINT_EXPR("post: %li", ptChalConf.challenge_end_unix_time_console_);
         }
-        const auto dataOk = PopulateData(&ptChalData, baseDir + lpBuf);
+
+        char cache_name[64] {};
+        const unsigned int cache_pick = config_from_cache
+            ? static_cast<unsigned int>(ptChalConf.challenge_number_)
+            : static_cast<unsigned int>(nPick);
+        snprintf(cache_name, sizeof(cache_name), "challengerift_%02u.dat", cache_pick);
+
+        char local_name[64] {};
+        snprintf(local_name, sizeof(local_name), "challengerift_%02u.dat", static_cast<unsigned int>(nPick));
+
+        bool data_from_cache = false;
+        const auto dataOk = PopulateDataWithFallback(
+            &ptChalData,
+            cacheDir + "/" + cache_name,
+            baseDir + "/rift_data/" + local_name,
+            "[pubfiles] challenge rift data cache hit",
+            "[pubfiles] challenge rift data fallback to rift_data",
+            data_from_cache
+        );
         // PRINT_EXPR("%u", ptChalData.bnet_account_id_);
         PRINT_EXPR("%d | %d", configOk, dataOk)
         return configOk && dataOk;
