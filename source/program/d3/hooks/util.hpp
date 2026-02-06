@@ -441,8 +441,9 @@ namespace d3 {
             FloatingDmgHook::
                 InstallAtSymbol("sym_floating_dmg");
         }
-        FontStringGetRenderedSizeHook::
-            InstallAtSymbol("sym_font_string_get_rendered_size");
+        // TODO: scale based on output target (res hack).
+        // FontStringGetRenderedSizeHook::
+        //     InstallAtSymbol("sym_font_string_get_rendered_size");
         if (global_config.debug.active) {
             FontStringDrawHook::
                 InstallAtSymbol("sym_font_string_draw_03ff50");

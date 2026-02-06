@@ -17,6 +17,7 @@
 #include "nn/hid.hpp"  // IWYU pragma: keep
 #include "nn/oe.hpp"   // IWYU pragma: keep
 #include "nn/os.hpp"   // IWYU pragma: keep
+#include <nn/nn_common.hpp>
 #include "program/romfs_assets.hpp"
 #include "program/gui2/ui/overlay.hpp"
 #include "program/gui2/ui/windows/notifications_window.hpp"
@@ -66,8 +67,8 @@ namespace nn::pl {
 }  // namespace nn::pl
 
 namespace nn::ro {
-    auto Initialize() noexcept -> int;
-    auto LookupSymbol(uintptr_t *pOutAddress, const char *name) noexcept -> int;
+    void   Initialize() noexcept;
+    Result LookupSymbol(uintptr_t *pOutAddress, const char *name) noexcept;
 }  // namespace nn::ro
 
 namespace d3::imgui_overlay {
@@ -149,14 +150,14 @@ namespace d3::imgui_overlay {
                     return;
                 }
                 uintptr_t addr = 0;
-                nn::ro::LookupSymbol(&addr, "malloc");
-                if (addr != 0) {
+                const auto rc = nn::ro::LookupSymbol(&addr, "malloc");
+                if (R_SUCCEEDED(rc) && addr != 0) {
                     g_imgui_malloc = reinterpret_cast<ImGuiMallocFn>(addr);
                 } else {
                     static bool s_logged_malloc_missing = false;
                     if (!s_logged_malloc_missing) {
                         s_logged_malloc_missing = true;
-                        PRINT_LINE("[imgui_overlay] ERROR: nn::ro::LookupSymbol failed for malloc");
+                        PRINT("[imgui_overlay] ERROR: nn::ro::LookupSymbol(malloc) failed (rc=0x%x addr=0x%lx)", rc, addr);
                     }
                 }
             }
@@ -165,14 +166,14 @@ namespace d3::imgui_overlay {
                     return;
                 }
                 uintptr_t addr = 0;
-                nn::ro::LookupSymbol(&addr, "free");
-                if (addr != 0) {
+                const auto rc = nn::ro::LookupSymbol(&addr, "free");
+                if (R_SUCCEEDED(rc) && addr != 0) {
                     g_imgui_free = reinterpret_cast<ImGuiFreeFn>(addr);
                 } else {
                     static bool s_logged_free_missing = false;
                     if (!s_logged_free_missing) {
                         s_logged_free_missing = true;
-                        PRINT_LINE("[imgui_overlay] ERROR: nn::ro::LookupSymbol failed for free");
+                        PRINT("[imgui_overlay] ERROR: nn::ro::LookupSymbol(free) failed (rc=0x%x addr=0x%lx)", rc, addr);
                     }
                 }
             }

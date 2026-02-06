@@ -29,12 +29,13 @@
 
 namespace d3 {
     namespace {
-        auto VerifySignature() -> bool {
-            return true;
-            if (exl::util::GetUserVersion() == exl::util::UserVersion::DEFAULT)
-                return true;
-            PRINT("Signature guard failed; build string \"%s\" not found", D3CLIENT_VER);
-            return false;
+        constexpr uintptr_t kBuildVersionFullOffset     = 0x0E45863;  // rodata: "C" D3CLIENT_VER (BuildVersionFull)
+        constexpr char      kBuildVersionFullExpected[] = "C" D3CLIENT_VER;
+
+        static auto VerifyBuildVersionFull() -> bool {
+            const auto  base = exl::util::GetMainModuleInfo().m_Total.m_Start;
+            const void *p    = reinterpret_cast<const void *>(base + kBuildVersionFullOffset);
+            return std::memcmp(p, kBuildVersionFullExpected, sizeof(kBuildVersionFullExpected) - 1) == 0;
         }
 
         bool g_configHooksInstalled = false;
@@ -149,11 +150,6 @@ namespace d3 {
     };
     HOOK_DEFINE_TRAMPOLINE(MainInit){
         static void Callback() {
-            if (!VerifySignature()) {
-                PRINT("Signature guard failed; expected build %s", D3CLIENT_VER);
-                EXL_ABORT("Signature guard failed: version string not found!");
-            }
-
             // Require our SD to be mounted before running nnMain()
             R_ABORT_UNLESS(nn::fs::MountSdCardForDebug("sd"));
             LoadPatchConfig();
@@ -218,6 +214,8 @@ namespace d3 {
     extern "C" void exl_main(void * /*x0*/, void * /*x1*/) {
         /* Setup hooking environment. */
         exl::hook::Initialize();
+        // Build guard: validate the expected build string exists at the known rodata offset.
+        EXL_ABORT_UNLESS(VerifyBuildVersionFull(), "Unsupported build; expected %s", kBuildVersionFullExpected);
         PRINT_LINE("Compiled at " __DATE__ " " __TIME__);
 
         // InstallExceptionHandler();

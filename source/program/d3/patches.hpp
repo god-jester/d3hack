@@ -103,7 +103,7 @@ namespace d3 {
         [[maybe_unused]] constexpr u32 MB64 = 0x04000000u;
 
         // Bump graphics persistent heap (XRemoteHeap) to reduce alloc failures.
-        if (*g_ptDevMemMode) {
+        if (g_ptDevMemMode != nullptr && *g_ptDevMemMode != 0u) {
             gfxPersistentHeapSize += 0x40000000u;  // extra 1GB if extra RAM detected
         } else {
             gfxPersistentHeapSize += MB64;         // 64MB allows 1440p, stable HOS >=20.x operation on hardware

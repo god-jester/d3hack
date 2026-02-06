@@ -67,7 +67,14 @@ namespace exl::reloc {
             { util::ModuleIndex::Main, 0x185F70, "sym_challenge_rift_callback" },
             { util::ModuleIndex::Main, 0x06A2A8, "sym_pubfile_data_hex" },
             { util::ModuleIndex::Main, 0xA2AC60, "sym_print_error_display" },
+            { util::ModuleIndex::Main, 0xA2AC70, "sym_print_error" },
+            { util::ModuleIndex::Main, 0xA2AE14, "sym_print_error_string" },
             { util::ModuleIndex::Main, 0xA2AE74, "sym_print_error_string_final" },
+            { util::ModuleIndex::Main, 0x4B104C, "sym_count_cosmetics" },
+            { util::ModuleIndex::Main, 0xBFD8A0, "sym_parse_file" },
+            { util::ModuleIndex::Main, 0x3A73A8, "sym_font_snoop" },
+            { util::ModuleIndex::Main, 0x69B9E0, "sym_store_attrib_defs" },
+            { util::ModuleIndex::Main, 0x6B5384, "sym_print_saved_attribs" },
 
             /* Globals (main module). */
             { util::ModuleIndex::Main, 0x17DE610, "main_rwindow" },

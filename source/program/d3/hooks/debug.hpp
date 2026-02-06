@@ -783,9 +783,9 @@ namespace d3 {
             Print_ErrorDisplay::
                 InstallAtSymbol("sym_print_error_display");
             // Print_Error::
-            //     InstallAtOffset(0xA2AC70);
+            //     InstallAtSymbol("sym_print_error");
             // Print_ErrorString::
-            //     InstallAtOffset(0xA2AE14);
+            //     InstallAtSymbol("sym_print_error_string");
             Print_ErrorStringFinal::
                 InstallAtSymbol("sym_print_error_string_final");
         }
@@ -797,15 +797,15 @@ namespace d3 {
         // BDPublish::
         //     InstallAtFuncPtr(bdLogSubscriber_publish);
         // CountCosmetics::
-        //     InstallAtOffset(0x4B104C);
+        //     InstallAtSymbol("sym_count_cosmetics");
         // ParseFile::
-        //     InstallAtOffset(0xBFD8A0);
+        //     InstallAtSymbol("sym_parse_file");
         // FontSnoop::
-        //     InstallAtOffset(0x3A73A8);
+        //     InstallAtSymbol("sym_font_snoop");
         // Store_AttribDefs::
-        //     InstallAtOffset(0x69B9E0);
+        //     InstallAtSymbol("sym_store_attrib_defs");
         // Print_SavedAttribs::
-        //     InstallAtOffset(0x6B5384);
+        //     InstallAtSymbol("sym_print_saved_attribs");
     }
 
 }  // namespace d3
