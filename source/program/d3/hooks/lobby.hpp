@@ -1,43 +1,13 @@
-#include <d3/_util.hpp>
-#include <d3/_lobby.hpp>
-#include <d3/types/common.hpp>
+#pragma once
+
+#include "program/d3/_lobby.hpp"
+#include "program/d3/_util.hpp"
+#include "program/d3/types/common.hpp"
 #include "lib/hook/inline.hpp"
 #include "lib/hook/replace.hpp"
 #include "lib/hook/trampoline.hpp"
 
 namespace d3 {
-
-    inline void ParagonGBIDTests() {
-        // [[maybe_unused]] FastAttribKey v44;
-        // try setting within normalish 20k bounds and see if it sticks with no codes
-        std::vector<GBID> ids;
-        AllGBIDsOfType(GB_PARAGON_BONUSES, ids);
-        for (GBID bonusGbid : ids) {
-            [[maybe_unused]] auto test = bonusGbid;
-            // auto gbString = GbidStringAll(bonusGbid); //, GB_PARAGON_BONUSES);
-            // v44.nValue = MakeAttribKey(Paragon_Bonus, bonusGbid).nValue;
-            // int ParaValue = ACD_AttributesGetInt(g_tHostPlayer.ptACDPlayer, v44);
-            // if (ParaValue > 0) { PRINT_EXPR("int <%i> %i = %s", ParaValue, bonusGbid, gbString) }
-            // float ParaValueF = ACD_AttributesGetFloat(g_tHostPlayer.ptACDPlayer, v44);
-            // if (ParaValueF > 0.0f) { PRINT_EXPR("float <%f> %i = %s", ParaValueF, bonusGbid, gbString) }
-
-            // [[maybe_unused]] auto _items = StringListFetchLPCSTR(52008, gbString); // GlobalSNOGet(711);
-            // v45.nValue = MakeAttribKey(Paragon_Bonus, bonusGbid).nValue;
-            // v45.nValue = 2147483647;
-            // auto type = KeyGetDataType(v44);
-            // if (type) {
-            //     ACD_AttributesSetInt(g_tHostPlayer.ptACDPlayer, v44, 2147483647);
-            //     ParaValue = ACD_AttributesGetInt(g_tHostPlayer.ptACDPlayer, v44);
-            // }
-            // else {
-            //     ACD_AttributesSetFloat(g_tHostPlayer.ptACDPlayer, v44, 1000000.0f);
-            //     ParaValue = ACD_AttributesGetFloat(g_tHostPlayer.ptACDPlayer, v44);
-            // }
-
-            // PRINT_EXPR("<%i<%i>> %i = %s - %s", (int)type, ParaValue, bonusGbid, gbString, fetched)
-        }
-        ids.clear();
-    }
 
     HOOK_DEFINE_TRAMPOLINE(RequestDropItemHook) {
         static void Callback(ActorCommonData *ptACD, const ACDID idACDOwner) {
@@ -289,25 +259,6 @@ namespace d3 {
             InstallAtFuncPtr(ACD_AttributesGetInt);
         AttributesGetFloat::
             InstallAtFuncPtr(ACD_AttributesGetFloat);
-
-        /* Inside PlayerActorCreate */
-        // Store_Player_Pointers::         /* Save our host ptACDPlayer and ptPlayer at each lobby start */
-        //     InstallAtOffset(0x7EAC18);  // BL ActorCommonData::ResetLifeStats(int,int,int,int,int)
-
-        /* Tail @ void CPlayerNewPlayer(const NewPlayerMessage *tNewPlayerMsg, int32 nControllerIndex) */
-        // CPlayerNewPlayerMsg::
-        //     InstallAtOffset(0xB7DCC);
-
-        // SGameGet::
-        //     InstallAtOffset(0x7B18B8);
-
-        /* Testing Inventory Cap */
-        // Return_True::
-        //     InstallAtOffset(0x488EC0); /* BOOL ActorInventoryIsVariableSizedSlotValid(const InventoryLocation *tInvLoc) */
-        // Return_True::
-        //     InstallAtOffset(0x488BA0); /* BOOL ActorInventoryIsVariableSizedSlotValidForItem(__int64 a1, unsigned int *a2) */
-        // Return_True::
-        //     InstallAtOffset(0x504EE0); /* BOOL ItemIsEquippable(GBID gbidItem) */
     }
 
 }  // namespace d3

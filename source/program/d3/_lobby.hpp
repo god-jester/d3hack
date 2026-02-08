@@ -161,14 +161,12 @@ namespace d3 {
             return;
         // _SERVERCODE_ON
         ActorCommonData *ptACDCurPlayer = nullptr;
-        Actor const     *ptActorPlayer  = nullptr;
         ACDID            idCurPlayer    = ACDID_INVALID;
         for (auto *ptSPlayer = PlayerGetFirstAll(); ptSPlayer != nullptr; ptSPlayer = PlayerGetNextAll(ptSPlayer)) {
             // nn::os::SleepThread(nTimer);
             if (ptSPlayer->idPlayerACD != ACDID_INVALID) {
                 idCurPlayer    = ptSPlayer->idPlayerACD;
                 ptACDCurPlayer = ACDTryToGet(idCurPlayer);
-                ptActorPlayer  = ActorGet(ptACDCurPlayer->idOwner);
 
                 PRINT_EXPR("%s: %x | %x | %x \n", ptSPlayer->tAccount.usName, ptSPlayer->idPlayerACD, ptSPlayer->idGameConnection, ptACDCurPlayer->ann)
                 PRINT_EXPR("g_mapLobby[%x] = %i", idCurPlayer, g_mapLobby[idCurPlayer])

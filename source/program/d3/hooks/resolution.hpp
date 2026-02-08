@@ -1,13 +1,13 @@
 #pragma once
 
-#include <d3/patches.hpp>
-#include <d3/types/gfx.hpp>
-#include <d3/_util.hpp>
+#include "program/config.hpp"
+#include "program/d3/_util.hpp"
+#include "program/d3/patches.hpp"
+#include "program/d3/setting.hpp"
+#include "program/d3/types/gfx.hpp"
+#include "program/symbols/common.hpp"
 #include "lib/hook/replace.hpp"
-#include <hook/trampoline.hpp>
-#include "../../config.hpp"
-#include "d3/setting.hpp"
-#include <symbols/common.hpp>
+#include "lib/hook/trampoline.hpp"
 #include "nvn.hpp"
 
 namespace d3 {
@@ -120,14 +120,6 @@ namespace d3 {
         if (!global_config.resolution_hack.active)
             return;
 
-        // GfxGetDesiredDisplayModeHook::InstallAtFuncPtr(GfxGetDesiredDisplayMode);
-        // GfxWindowChangeDisplayModeHook::InstallAtOffset(0x29B0E0);
-        GetRenderTargetCurrentResolutionHook::InstallAtOffset(0x0EBAC0);
-
-        // Memory alone + dynamic scale is enough for reshack
-        // nvn::NVNTexInfoCreateHook::InstallAtOffset(0xE6B20);
-
-        // if (ClampTexturesEnabled())
-        //     nvn::TexDefCreateCallHook::InstallAtOffset(0x28365C);
+        GetRenderTargetCurrentResolutionHook::InstallAtSymbol("sym_get_render_target_current_resolution");
     }
 }  // namespace d3

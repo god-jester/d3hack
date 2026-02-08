@@ -1,23 +1,73 @@
-#include <algorithm>
-#include <cstdarg>
-#include <cstdio>
-#include <cstring>
+#pragma once
 
+#include "program/config.hpp"
+#include "program/tagnx.hpp"
+#include "program/d3/_util.hpp"
+#include "program/d3/types/attributes.hpp"
+#include "program/d3/types/common.hpp"
+#include "program/d3/types/namespaces.hpp"
 #include "lib/hook/inline.hpp"
 #include "lib/hook/replace.hpp"
 #include "lib/hook/trampoline.hpp"
 #include "lib/util/modules.hpp"
-#include "../../config.hpp"
-#include "../../tagnx.hpp"
-#include "d3/_util.hpp"
+#include "lib/util/sys/mem_layout.hpp"
 #include "nvn.hpp"
-#include "d3/types/common.hpp"
-#include "d3/types/namespaces.hpp"
-#include "d3/types/attributes.hpp"
+
+#include <algorithm>
+#include <cstdarg>
+#include <cstddef>
+#include <cstdio>
+#include <cstring>
 
 namespace d3 {
     namespace {
         constexpr char k_error_mgr_dump_path[] = "sd:/config/d3hack-nx/error_manager_dump.txt";
+
+        static auto InRange(exl::util::Range range, uintptr_t addr) -> bool {
+            return addr >= range.m_Start && addr < range.GetEnd();
+        }
+
+        static auto IsProbablyReadablePtr(uintptr_t addr) -> bool {
+            if (addr == 0) {
+                return false;
+            }
+            if (exl::util::TryGetModule(addr) != nullptr) {
+                return true;
+            }
+            return InRange(exl::util::mem_layout::s_Heap, addr) ||
+                   InRange(exl::util::mem_layout::s_Alias, addr) ||
+                   InRange(exl::util::mem_layout::s_Aslr, addr) ||
+                   InRange(exl::util::mem_layout::s_Stack, addr);
+        }
+
+        static auto ClampReadableLen(uintptr_t addr, size_t len) -> size_t {
+            if (!IsProbablyReadablePtr(addr) || len == 0) {
+                return 0;
+            }
+
+            // Clamp to the end of the containing known range when possible.
+            const auto clamp_to = [&](exl::util::Range range) -> size_t {
+                if (!InRange(range, addr)) {
+                    return len;
+                }
+                const uintptr_t end = range.GetEnd();
+                if (end <= addr) {
+                    return 0;
+                }
+                const size_t remaining = static_cast<size_t>(end - addr);
+                return std::min(len, remaining);
+            };
+
+            if (exl::util::TryGetModule(addr) != nullptr) {
+                return len;
+            }
+            size_t out = len;
+            out        = clamp_to(exl::util::mem_layout::s_Heap);
+            out        = clamp_to(exl::util::mem_layout::s_Alias);
+            out        = clamp_to(exl::util::mem_layout::s_Aslr);
+            out        = clamp_to(exl::util::mem_layout::s_Stack);
+            return out;
+        }
 
         inline void WriteDumpLine(FileReference *tFileRef, const char *fmt, ...) {
             char    buf[512] = {};
@@ -81,15 +131,29 @@ namespace d3 {
                 em.flLastTraceTime,
                 em.hwnd
             );
+            const size_t    parent_len  = static_cast<size_t>(em.szParentProcess.m_size);
+            const char     *parent_ptr  = GetBlzStringPtr(em.szParentProcess);
+            const uintptr_t parent_addr = reinterpret_cast<uintptr_t>(parent_ptr);
             WriteDumpLine(
                 &tFileRef,
-                "EM: app=%s hero=%s parent_len=%zu parent=%.*s\n",
+                "EM: app=%s hero=%s parent_len=%zu parent_ptr=0x%llx\n",
                 em.szApplicationName,
                 em.szHeroFile,
-                static_cast<size_t>(em.szParentProcess.m_size),
-                static_cast<int>(em.szParentProcess.m_size),
-                GetBlzStringPtr(em.szParentProcess)
+                parent_len,
+                static_cast<unsigned long long>(parent_addr)
             );
+            if (parent_len != 0 && parent_ptr != nullptr) {
+                constexpr size_t kMaxParentDump = 512;
+                const size_t     want           = std::min(parent_len, kMaxParentDump);
+                const size_t     safe_len       = ClampReadableLen(parent_addr, want);
+                if (safe_len != 0) {
+                    WriteDumpLine(&tFileRef, "EM: parent=");
+                    (void)FileWrite(&tFileRef, parent_ptr, static_cast<u32>(-1), static_cast<u32>(safe_len), ERROR_FILE_WRITE);
+                    WriteDumpLine(&tFileRef, "\n");
+                } else {
+                    WriteDumpLine(&tFileRef, "EM: parent=<unreadable>\n");
+                }
+            }
 
             const auto &sys = em.tSystemInfo;
             WriteDumpLine(
@@ -276,7 +340,9 @@ namespace d3 {
             )
             PRINT_EXPR("eErrorCode: 0x%x | FP: 0x%lx LR: 0x%lx", (u32)ctx->X[3], ctx->X[29], ctx->X[30])
             DumpStackTrace("DisplayInternalError", ctx->X[29]);
-            DumpErrorManagerToFile("DisplayInternalError", pszMessageOut, szFileOut, nLine);
+            // Avoid calling file IO helpers from inside the internal error display path.
+            // In some failure modes, ErrorManager state is partially corrupted and dumping
+            // can trigger further faults (especially under emulators).
         }
     };
 
@@ -302,7 +368,7 @@ namespace d3 {
         static void Callback(exl::hook::InlineCtx *ctx) {
             PRINT_EXPR("DisplayErrorMessage strfinal: %s", (LPCSTR)ctx->X[0])
             DumpStackTrace("DisplayErrorMessage", ctx->X[29]);
-            DumpErrorManagerToFile("DisplayErrorMessage", (LPCSTR)ctx->X[0], nullptr, 0);
+            // Avoid calling file IO helpers from inside the error display path.
         }
     };
 
@@ -462,8 +528,6 @@ namespace d3 {
     HOOK_DEFINE_INLINE(ShowReg) {
         static void Callback(exl::hook::InlineCtx *ctx) {
             PRINT("GAMETEXT: %s", (char *)(ctx->X[1]))
-            // auto g_ptXVarBroadcast = (XVarString *const)(exl::util::GetMainModuleInfo().m_Total.m_Start + 0x1159808);
-            // PRINT_EXPR("%lx", *reinterpret_cast<u64 *>(&g_ptXVarBroadcast))
             // D3::Account::ConsoleData::legacy_license_bits_
             for (int i = 0; i < 9; i++) {
                 // PRINT_EXPR("X%d: %lx", i, ctx->X[i])

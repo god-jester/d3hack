@@ -1,11 +1,14 @@
-#include "../../config.hpp"
-#include "../patches.hpp"
-#include "d3/types/common.hpp"
-#include "d3/types/attributes.hpp"
+#include "program/config.hpp"
+#include "program/d3/patches.hpp"
+#include "program/d3/types/common.hpp"
+#include "program/d3/types/attributes.hpp"
 #include "lib/hook/inline.hpp"
 #include "lib/hook/replace.hpp"
 #include "lib/hook/trampoline.hpp"
-#include <oe.hpp>
+#include "nn/oe.hpp"
+
+#include <array>
+#include <iterator>
 
 namespace nn::os {
     auto GetHostArgc() -> u64;
@@ -23,7 +26,12 @@ namespace d3 {
     inline void RequestPerfNotify() { g_pending_perf_notify = true; }
     inline void RequestDockNotify() { g_pending_dock_notify = true; }
 
-    inline constinit const char *g_cmdArgs[] = {
+    // NOTE: Command line injection is extremely fragile on the console build and can
+    // provoke early fatal UI errors in Ryujinx (missing UIID -> DisplayInternalError).
+    // Keep the implementation available for investigation, but default it off.
+    inline constexpr bool kEnableCmdlineHooks = false;
+
+    inline constinit auto g_cmdArgs = std::to_array<const char *>({
         "<<main>>",
         "-ignoreversioncheck",
         // "-w",
@@ -68,18 +76,14 @@ namespace d3 {
         "sd:/config/d3hack-nx/",
         // "-overridefmodemergencymem",
         // "-nod4license"
-    };
+    });
 
     HOOK_DEFINE_TRAMPOLINE(CmdLineParse) {
         static void Callback(const char *szCmdLine) {
             Orig(szCmdLine);
-            return;
             auto &array = CmdLineGetParams()->tBitArray;
             array.SetNthBit(38, true);
             array.SetNthBit(40, true);
-            for (int i = 0; i < 62; ++i) {
-                PRINT_EXPR("%i %i", i, CmdLineGetParams()->tBitArray.GetNthBit(i));
-            }
         }
     };
 
@@ -358,11 +362,11 @@ namespace d3 {
     };
 
     HOOK_DEFINE_REPLACE(HostArgC) {
-        static auto Callback() -> u64 { return (*(&g_cmdArgs + 1) - g_cmdArgs); }
+        static auto Callback() -> u64 { return static_cast<u64>(std::size(g_cmdArgs)); }
     };
 
     HOOK_DEFINE_REPLACE(HostArgV) {
-        static auto Callback() -> const char ** { return g_cmdArgs; }
+        static auto Callback() -> const char ** { return std::data(g_cmdArgs); }
     };
 
     HOOK_DEFINE_TRAMPOLINE(SpoofDocked) {
@@ -386,19 +390,25 @@ namespace d3 {
             const bool ret = Orig(pOutMessage);
             if (ret && pOutMessage != nullptr) {
                 const auto msg = static_cast<u32>(*pOutMessage);
-                PRINT("TryPopNotificationMessage: %u (0x%x)", msg, msg)
+                if (global_config.debug.log_oe_notification_messages) {
+                    PRINT("TryPopNotificationMessage: %u (0x%x)", msg, msg)
+                }
                 return ret;
             }
             if (g_pending_dock_notify && pOutMessage != nullptr) {
                 g_pending_dock_notify = false;
                 *pOutMessage          = 0x1Eu;
-                PRINT_LINE("TryPopNotificationMessage: forced 0x1E");
+                if (global_config.debug.log_oe_notification_messages) {
+                    PRINT_LINE("TryPopNotificationMessage: forced 0x1E");
+                }
                 return true;
             }
             if (g_pending_perf_notify && pOutMessage != nullptr) {
                 g_pending_perf_notify = false;
                 *pOutMessage          = 0x1Fu;
-                PRINT_LINE("TryPopNotificationMessage: forced 0x1F");
+                if (global_config.debug.log_oe_notification_messages) {
+                    PRINT_LINE("TryPopNotificationMessage: forced 0x1F");
+                }
                 return true;
             }
             return ret;
@@ -414,12 +424,14 @@ namespace d3 {
                 InstallAtFuncPtr(ACDInventoryItemAllowedInSlot);
         }
 
-        CmdLineParse::
-            InstallAtFuncPtr(cmd_line_parse);
-        HostArgC::
-            InstallAtFuncPtr(nn::os::GetHostArgc);
-        HostArgV::
-            InstallAtFuncPtr(nn::os::GetHostArgv);
+        if (!kEnableCmdlineHooks && global_config.debug.enable_debug_flags) {
+            PRINT_LINE("[util] debug_flags enabled but cmdline hooks are disabled by build (kEnableCmdlineHooks=0)");
+        }
+        if (kEnableCmdlineHooks && global_config.debug.enable_debug_flags) {
+            CmdLineParse::InstallAtFuncPtr(cmd_line_parse);
+            HostArgC::InstallAtFuncPtr(nn::os::GetHostArgc);
+            HostArgV::InstallAtFuncPtr(nn::os::GetHostArgv);
+        }
 
         if (global_config.resolution_hack.active) {
             VarResHook::
@@ -453,9 +465,14 @@ namespace d3 {
                 InstallAtSymbol("sym_font_string_draw_0010c8");
         }
 
-        SpoofPerfMode::InstallAtFuncPtr(nn::oe::GetPerformanceMode);
-        SpoofDocked::InstallAtFuncPtr(nn::oe::GetOperationMode);
-        TryPopNotificationMessageHook::InstallAtFuncPtr(nn::oe::TryPopNotificationMessage);
+        if (global_config.resolution_hack.spoof_docked) {
+            SpoofPerfMode::InstallAtFuncPtr(nn::oe::GetPerformanceMode);
+            SpoofDocked::InstallAtFuncPtr(nn::oe::GetOperationMode);
+        }
+
+        if (global_config.debug.enable_oe_notification_hook) {
+            TryPopNotificationMessageHook::InstallAtFuncPtr(nn::oe::TryPopNotificationMessage);
+        }
     }
 
 }  // namespace d3
