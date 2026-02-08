@@ -5,11 +5,57 @@
 #include <cstdarg>
 #include <cstdio>
 
+#include "program/logging.hpp"
+
 namespace d3::gui2::ui::windows {
+    namespace {
+        NotificationsWindow *g_key_event_window = nullptr;
+
+        auto KeyEventColor(exl::log::KeyEventLevel level) -> ImVec4 {
+            switch (level) {
+            case exl::log::KeyEventLevel::Warning:
+                return ImVec4(1.0f, 0.75f, 0.2f, 1.0f);
+            case exl::log::KeyEventLevel::Error:
+                return ImVec4(1.0f, 0.3f, 0.3f, 1.0f);
+            case exl::log::KeyEventLevel::Info:
+            default:
+                return ImVec4(0.3f, 1.0f, 0.3f, 1.0f);
+            }
+        }
+
+        auto KeyEventTtl(exl::log::KeyEventLevel level) -> float {
+            switch (level) {
+            case exl::log::KeyEventLevel::Error:
+                return 10.0f;
+            case exl::log::KeyEventLevel::Warning:
+                return 8.0f;
+            case exl::log::KeyEventLevel::Info:
+            default:
+                return 6.0f;
+            }
+        }
+
+        void HandleKeyEvent(exl::log::KeyEventLevel level, std::string_view message) {
+            if (g_key_event_window == nullptr || message.empty()) {
+                return;
+            }
+            g_key_event_window->AddNotificationText(KeyEventColor(level), KeyEventTtl(level), message);
+        }
+    }  // namespace
 
     NotificationsWindow::NotificationsWindow() :
         Window("Notifications", false) {
         SetFlags(ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoInputs);
+
+        g_key_event_window = this;
+        exl::log::SetKeyEventSink(&HandleKeyEvent);
+    }
+
+    NotificationsWindow::~NotificationsWindow() {
+        if (g_key_event_window == this) {
+            g_key_event_window = nullptr;
+            exl::log::SetKeyEventSink(nullptr);
+        }
     }
 
     void NotificationsWindow::SetViewportSize(ImVec2 viewport_size) {
@@ -49,6 +95,16 @@ namespace d3::gui2::ui::windows {
 
         Notification n {};
         n.text          = buf.data();
+        n.color         = color;
+        n.ttl_s         = ttl_s;
+        n.ttl_initial_s = ttl_s;
+        notifications_.push_back(std::move(n));
+        SetOpen(true);
+    }
+
+    void NotificationsWindow::AddNotificationText(const ImVec4 &color, float ttl_s, std::string_view text) {
+        Notification n {};
+        n.text          = std::string(text);
         n.color         = color;
         n.ttl_s         = ttl_s;
         n.ttl_initial_s = ttl_s;

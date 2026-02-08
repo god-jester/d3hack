@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "program/gui2/ui/window.hpp"
@@ -17,12 +18,14 @@ namespace d3::gui2::ui::windows {
     class NotificationsWindow : public ui::Window {
        public:
         NotificationsWindow();
+        ~NotificationsWindow() override;
 
         void SetViewportSize(ImVec2 viewport_size);
 
         void Clear();
 
         void AddNotification(const ImVec4 &color, float ttl_s, const char *fmt, ...);
+        void AddNotificationText(const ImVec4 &color, float ttl_s, std::string_view text);
         void SetPinnedOpen(bool pinned);
         bool IsPinnedOpen() const { return pinned_open_; }
 

@@ -385,6 +385,11 @@ namespace d3::gui2::ui {
         return it->second.c_str();
     }
 
+    auto Overlay::translations_metadata() -> const std::vector<TranslationLanguage> & {
+        EnsureTranslationsMetadataLoaded();
+        return translations_metadata_;
+    }
+
     void Overlay::AppendTranslationGlyphs(ImFontGlyphRangesBuilder &builder) const {
         if (!translations_loaded_) {
             return;
@@ -462,6 +467,8 @@ namespace d3::gui2::ui {
             return;
         }
 
+        EnsureTranslationsMetadataLoaded();
+
         std::string desired_lang;
         if (!ui_config_.gui.language_override.empty()) {
             desired_lang = NormalizeLang(ui_config_.gui.language_override);
@@ -510,6 +517,91 @@ namespace d3::gui2::ui {
         FlattenTomlStrings(result.table(), prefix, translations_);
         translations_loaded_ = true;
         PRINT("[gui] translations loaded: lang=%s keys=%u", translations_lang_.c_str(), static_cast<unsigned>(translations_.size()));
+    }
+
+    void Overlay::EnsureTranslationsMetadataLoaded() {
+        if (translations_metadata_loaded_) {
+            return;
+        }
+
+        translations_metadata_loaded_ = true;
+        translations_metadata_.clear();
+
+        constexpr const char *kMetaPath = "romfs:/d3gui/strings_meta.toml";
+        std::string           text;
+        if (!d3::romfs::ReadFileToString(kMetaPath, text, 64 * 1024)) {
+            PRINT("[gui] translations metadata missing: %s", kMetaPath);
+            return;
+        }
+
+        auto result = toml::parse(text, std::string_view {kMetaPath});
+        if (!result) {
+            const auto       &err  = result.error();
+            const std::string desc = std::string(err.description());
+            PRINT("[gui] translations metadata parse failed: %s", desc.c_str());
+            return;
+        }
+
+        const auto *langs_node = result.table().get("languages");
+        if (langs_node == nullptr || !langs_node->is_array()) {
+            PRINT("[gui] translations metadata missing languages array: %s", kMetaPath);
+            return;
+        }
+
+        const auto *langs = langs_node->as_array();
+        for (const auto &entry : *langs) {
+            if (!entry.is_table()) {
+                continue;
+            }
+            const auto *tbl = entry.as_table();
+
+            std::string code;
+            if (const auto *code_node = tbl->get("code")) {
+                if (auto value = code_node->value<std::string>()) {
+                    code = *value;
+                }
+            }
+
+            std::string label_key;
+            if (const auto *label_key_node = tbl->get("label_key")) {
+                if (auto value = label_key_node->value<std::string>()) {
+                    label_key = *value;
+                }
+            }
+            if (label_key.empty()) {
+                continue;
+            }
+
+            std::string label_fallback;
+            if (const auto *label_fallback_node = tbl->get("label_fallback")) {
+                if (auto value = label_fallback_node->value<std::string>()) {
+                    label_fallback = *value;
+                }
+            }
+            if (label_fallback.empty()) {
+                label_fallback = label_key;
+            }
+
+            std::string glyphs;
+            if (const auto *glyphs_node = tbl->get("glyphs")) {
+                if (auto value = glyphs_node->value<std::string>()) {
+                    glyphs = *value;
+                }
+            }
+
+            TranslationLanguage lang {};
+            lang.code           = std::move(code);
+            lang.label_key      = std::move(label_key);
+            lang.label_fallback = std::move(label_fallback);
+            lang.glyphs         = std::move(glyphs);
+            translations_metadata_.push_back(std::move(lang));
+        }
+
+        if (translations_metadata_.empty()) {
+            PRINT("[gui] translations metadata empty: %s", kMetaPath);
+        } else {
+            PRINT("[gui] translations metadata loaded: %s entries=%u", kMetaPath, static_cast<unsigned>(translations_metadata_.size()));
+        }
     }
 
     void Overlay::set_overlay_visible(bool v) {

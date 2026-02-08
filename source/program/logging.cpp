@@ -1,6 +1,9 @@
 #include "program/logging.hpp"
 
-#include <lib/log/logger_mgr.hpp>
+#include "lib/log/logger_mgr.hpp"
+#include <array>
+#include <atomic>
+#include <cstdio>
 #include <cstring>
 #include "d3/_util.hpp"
 #include "program/loggers.hpp"
@@ -34,6 +37,7 @@ namespace exl::log {
 
         alignas(d3::system_allocator::Buffer) std::byte s_game_log_storage[sizeof(d3::system_allocator::Buffer)];
         d3::system_allocator::Buffer *s_game_log_buffer = nullptr;
+        std::atomic<KeyEventSink>     g_key_event_sink {nullptr};
 
         auto IsGameLogReady() -> bool {
             return TraceInternal_Log != nullptr && d3::g_tSigmaGlobals.ptEMGlobals != nullptr;
@@ -96,6 +100,13 @@ namespace exl::log {
 
             ReleaseGameLogBuffer();
         }
+
+        auto EmitKeyEvent(KeyEventLevel level, std::string_view message) -> void {
+            auto sink = g_key_event_sink.load(std::memory_order_acquire);
+            if (sink != nullptr) {
+                sink(level, message);
+            }
+        }
     }  // namespace
 
     void LogV(const char *fmt, std::va_list vl) {
@@ -134,6 +145,22 @@ namespace exl::log {
         va_start(vl, fmt);
         PrintV(fmt, vl);
         va_end(vl);
+    }
+
+    void KeyEventFmt(KeyEventLevel level, const char *fmt, ...) {
+        std::array<char, 512> buf {};
+        va_list               vl;
+        va_start(vl, fmt);
+        vsnprintf(buf.data(), buf.size(), fmt, vl);
+        va_end(vl);
+        buf.back() = '\0';
+
+        PrintFmt("%s", buf.data());
+        EmitKeyEvent(level, std::string_view(buf.data()));
+    }
+
+    void SetKeyEventSink(KeyEventSink sink) {
+        g_key_event_sink.store(sink, std::memory_order_release);
     }
 
     void ConfigureGameFileLogging() {

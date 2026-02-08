@@ -22,6 +22,13 @@ namespace d3::gui2::ui {
         bool allow_left_stick_passthrough = false;
     };
 
+    struct TranslationLanguage {
+        std::string code;
+        std::string label_key;
+        std::string label_fallback;
+        std::string glyphs;
+    };
+
     enum class GuiTheme {
         D3Dark  = 0,
         Blueish = 1,
@@ -71,9 +78,10 @@ namespace d3::gui2::ui {
         const FrameDebugInfo &frame_debug() const { return frame_debug_; }
 
         // Translation helper: returns a localized string when available, otherwise returns fallback.
-        const char        *tr(const char *key, const char *fallback);
-        const std::string &translations_lang() const { return translations_lang_; }
-        void               AppendTranslationGlyphs(ImFontGlyphRangesBuilder &builder) const;
+        const char                             *tr(const char *key, const char *fallback);
+        const std::string                      &translations_lang() const { return translations_lang_; }
+        void                                    AppendTranslationGlyphs(ImFontGlyphRangesBuilder &builder) const;
+        const std::vector<TranslationLanguage> &translations_metadata();
 
         PatchConfig       &ui_config() { return ui_config_; }
         const PatchConfig &ui_config() const { return ui_config_; }
@@ -115,6 +123,7 @@ namespace d3::gui2::ui {
 
        protected:
        private:
+        void           EnsureTranslationsMetadataLoaded();
         FrameDebugInfo frame_debug_ {};
 
         GuiFocusState focus_ {};
@@ -131,6 +140,8 @@ namespace d3::gui2::ui {
         std::string                                  translations_lang_ {};
         bool                                         translations_loaded_ = false;
         std::unordered_map<std::string, std::string> translations_ {};
+        bool                                         translations_metadata_loaded_ = false;
+        std::vector<TranslationLanguage>             translations_metadata_ {};
 
         bool                                 windows_initialized_ = false;
         std::vector<std::unique_ptr<Window>> windows_ {};

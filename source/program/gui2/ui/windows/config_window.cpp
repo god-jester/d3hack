@@ -313,37 +313,30 @@ namespace d3::gui2::ui::windows {
                 }
             }
 
-            const char *preview = cfg.gui.language_override.empty() ? overlay_.tr("gui.lang_auto", "Auto (game)") : cfg.gui.language_override.c_str();
+            const auto &langs         = overlay_.translations_metadata();
+            const auto *selected_lang = [&]() -> const d3::gui2::ui::TranslationLanguage * {
+                for (const auto &lang : langs) {
+                    if (lang.code == cfg.gui.language_override) {
+                        return &lang;
+                    }
+                }
+                return nullptr;
+            }();
+
+            const char *preview = nullptr;
+            if (selected_lang != nullptr) {
+                preview = overlay_.tr(selected_lang->label_key.c_str(), selected_lang->label_fallback.c_str());
+            } else if (cfg.gui.language_override.empty()) {
+                preview = overlay_.tr("gui.lang_auto", "Auto (game)");
+            } else {
+                preview = cfg.gui.language_override.c_str();
+            }
             ImGui::SetNextWindowSizeConstraints(ImVec2(0.0f, 0.0f), ImVec2(FLT_MAX, FLT_MAX));
             if (ImGui::BeginCombo(overlay_.tr("gui.language", "Language"), preview)) {
-                struct Lang {
-                    const char *label;
-                    const char *code;
-                };
-                const std::array<Lang, 9> kLangs = {{
-                    {.label = overlay_.tr("gui.lang_auto", "Auto (game)"),
-                     .code  = ""},
-                    {.label = overlay_.tr("gui.lang_en", "English"),
-                     .code  = "en"},
-                    {.label = overlay_.tr("gui.lang_de", "Deutsch"),
-                     .code  = "de"},
-                    {.label = overlay_.tr("gui.lang_fr", "Francais"),
-                     .code  = "fr"},
-                    {.label = overlay_.tr("gui.lang_es", "Espanol"),
-                     .code  = "es"},
-                    {.label = overlay_.tr("gui.lang_it", "Italiano"),
-                     .code  = "it"},
-                    {.label = overlay_.tr("gui.lang_ja", "Japanese"),
-                     .code  = "ja"},
-                    {.label = overlay_.tr("gui.lang_ko", "Korean"),
-                     .code  = "ko"},
-                    {.label = overlay_.tr("gui.lang_zh", "Chinese"),
-                     .code  = "zh"},
-                }};
-
-                for (const auto &lang : kLangs) {
-                    const bool is_selected = (cfg.gui.language_override == lang.code);
-                    if (ImGui::Selectable(lang.label, is_selected)) {
+                for (const auto &lang : langs) {
+                    const char *label       = overlay_.tr(lang.label_key.c_str(), lang.label_fallback.c_str());
+                    const bool  is_selected = (cfg.gui.language_override == lang.code);
+                    if (ImGui::Selectable(label, is_selected)) {
                         cfg.gui.language_override = lang.code;
                         overlay_.set_ui_dirty(true);
                         lang_restart_pending_ = cfg.gui.language_override != global_config.gui.language_override;

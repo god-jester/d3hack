@@ -1,0 +1,56 @@
+# Translation metadata for GUI language selection.
+# Fields are intentionally minimal and safe to extend.
+
+[[languages]]
+code = ""
+label_key = "gui.lang_auto"
+label_fallback = "Auto (game)"
+glyphs = "auto"
+
+[[languages]]
+code = "en"
+label_key = "gui.lang_en"
+label_fallback = "English"
+glyphs = "latin"
+
+[[languages]]
+code = "de"
+label_key = "gui.lang_de"
+label_fallback = "Deutsch"
+glyphs = "latin"
+
+[[languages]]
+code = "fr"
+label_key = "gui.lang_fr"
+label_fallback = "Francais"
+glyphs = "latin"
+
+[[languages]]
+code = "es"
+label_key = "gui.lang_es"
+label_fallback = "Espanol"
+glyphs = "latin"
+
+[[languages]]
+code = "it"
+label_key = "gui.lang_it"
+label_fallback = "Italiano"
+glyphs = "latin"
+
+[[languages]]
+code = "ja"
+label_key = "gui.lang_ja"
+label_fallback = "Japanese"
+glyphs = "cjk"
+
+[[languages]]
+code = "ko"
+label_key = "gui.lang_ko"
+label_fallback = "Korean"
+glyphs = "cjk"
+
+[[languages]]
+code = "zh"
+label_key = "gui.lang_zh"
+label_fallback = "Chinese"
+glyphs = "cjk"
