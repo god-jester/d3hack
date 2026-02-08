@@ -45,28 +45,30 @@ namespace d3 {
                 return 0;
             }
 
-            // Clamp to the end of the containing known range when possible.
-            const auto clamp_to = [&](exl::util::Range range) -> size_t {
-                if (!InRange(range, addr)) {
-                    return len;
+            if (exl::util::TryGetModule(addr) != nullptr) {
+                return len;
+            }
+
+            const exl::util::Range *const kRanges[] = {
+                &exl::util::mem_layout::s_Heap,
+                &exl::util::mem_layout::s_Alias,
+                &exl::util::mem_layout::s_Aslr,
+                &exl::util::mem_layout::s_Stack,
+            };
+
+            for (const auto *range : kRanges) {
+                if (!InRange(*range, addr)) {
+                    continue;
                 }
-                const uintptr_t end = range.GetEnd();
+                const uintptr_t end = range->GetEnd();
                 if (end <= addr) {
                     return 0;
                 }
                 const size_t remaining = static_cast<size_t>(end - addr);
                 return std::min(len, remaining);
-            };
-
-            if (exl::util::TryGetModule(addr) != nullptr) {
-                return len;
             }
-            size_t out = len;
-            out        = clamp_to(exl::util::mem_layout::s_Heap);
-            out        = clamp_to(exl::util::mem_layout::s_Alias);
-            out        = clamp_to(exl::util::mem_layout::s_Aslr);
-            out        = clamp_to(exl::util::mem_layout::s_Stack);
-            return out;
+
+            return len;
         }
 
         inline void WriteDumpLine(FileReference *tFileRef, const char *fmt, ...) {

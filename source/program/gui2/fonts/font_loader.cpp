@@ -63,6 +63,7 @@ namespace d3::gui2::fonts::font_loader {
 
         static std::string s_font_lang;
         static std::string s_ranges_lang;
+        static bool        s_logged_shared_defer = false;
 
         if (g_font_atlas_built && s_font_lang != desired_lang) {
             PRINT("[font_loader] Font lang changed (%s -> %s); rebuilding atlas", s_font_lang.c_str(), desired_lang.c_str());
@@ -198,8 +199,14 @@ namespace d3::gui2::fonts::font_loader {
             (nn::pl::GetSharedFontLoadState(shared_ext) == nn::pl::SharedFontLoadState_Loaded);
 
         if (!base_loaded) {
-            PRINT_LINE("[font_loader] Shared base font not yet loaded; falling back");
+            if (!s_logged_shared_defer) {
+                PRINT_LINE("[font_loader] Shared base font still loading; deferring atlas build");
+                s_logged_shared_defer = true;
+            }
+            g_font_build_attempted = false;
+            return result;
         } else {
+            s_logged_shared_defer = false;
             const void  *shared_font = nn::pl::GetSharedFontAddress(shared_base);
             const size_t shared_size = nn::pl::GetSharedFontSize(shared_base);
             if (shared_font == nullptr || shared_size == 0) {
