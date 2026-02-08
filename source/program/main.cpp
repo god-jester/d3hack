@@ -1,7 +1,13 @@
 #include "lib/hook/trampoline.hpp"
 #include "lib/diag/assert.hpp"
+#include "lib/armv8.hpp"
+#include "lib/util/stack_trace.hpp"
 #include "lib/util/version.hpp"
+#include "lib/util/sys/mem_layout.hpp"
+#include "lib/util/sys/modules.hpp"
 #include "program/build_info.hpp"
+#include "program/boot_report.hpp"
+#include "program/hook_registry.hpp"
 #include "nn/fs/fs_mount.hpp"
 #include "d3/_util.hpp"
 #include "d3/patches.hpp"
@@ -15,10 +21,14 @@
 #include "program/gui2/imgui_overlay.hpp"
 #include "program/runtime_apply.hpp"
 #include "program/logging.hpp"
+#include "program/fs_util.hpp"
 #include "idadefs.h"
 #include "program/exception_handler.hpp"
 
 #include <cstring>
+#include <cstdarg>
+#include <cstdio>
+#include <string>
 
 #define TO_FLOAT(v)         __coerce<float>(v)
 #define TO_S32(v)           vcvtps_s32_f32(v)
@@ -32,6 +42,15 @@ namespace d3 {
         constexpr uintptr_t kBuildVersionFullOffset     = 0x0E45863;  // rodata: "C" D3CLIENT_VER (BuildVersionFull)
         constexpr char      kBuildVersionFullExpected[] = "C" D3CLIENT_VER;
 
+        // HookRegistry stores pointers to these setup functions. They are defined
+        // as `inline` in headers, so we must ODR-use them in at least one TU to
+        // ensure a definition is emitted for linkage.
+        [[gnu::used]] static void (*const k_emit_setup_utility)()       = &SetupUtilityHooks;
+        [[gnu::used]] static void (*const k_emit_setup_resolution)()    = &SetupResolutionHooks;
+        [[gnu::used]] static void (*const k_emit_setup_debugging)()     = &SetupDebuggingHooks;
+        [[gnu::used]] static void (*const k_emit_setup_season_events)() = &SetupSeasonEventHooks;
+        [[gnu::used]] static void (*const k_emit_setup_lobby)()         = &SetupLobbyHooks;
+
         static auto VerifyBuildVersionFull() -> bool {
             const auto  base = exl::util::GetMainModuleInfo().m_Total.m_Start;
             const void *p    = reinterpret_cast<const void *>(base + kBuildVersionFullOffset);
@@ -40,32 +59,56 @@ namespace d3 {
 
         bool g_configHooksInstalled = false;
 
-    }  // namespace
+        enum class BootStage : u8 {
+            ExlMainStart,
+            VerifyBuild,
+            ValidateOffsets,
+            EarlyPatches,
+            InstallBootHooks,
+            MountSd,
+            LoadConfig,
+            ConfigureLogging,
+            InstallHooks,
+            ApplyPatches,
+            InitGui,
+            StartGameLoop,
+        };
 
-    // static auto diablo_rounding(u32 nDamage) {
-    //     float flTruncated = to_float(nDamage) / 1.0e12f;
-    //     float flRemainder = 8388600.0;
-    //     u32   nRounded;
-    //     if (__builtin_fabsf(flTruncated) <= flRemainder) {
-    //         if (flTruncated <= 0.0) {
-    //             if (flTruncated < 0.0)
-    //                 nRounded = -(to_u32(flTruncated + -flRemainder) & 0x7FFFFF);
-    //             else
-    //                 nRounded = 0;
-    //             PRINT_EXPR("flTruncated <= 0.0: %x %i", nRounded, nRounded)
-    //         } else {
-    //             nRounded = COERCE_UNSIGNED_INT(flTruncated + flRemainder) & 0x7FFFFF;
-    //             PRINT_EXPR("2 COERCE &x7FF: %x %i", nRounded, nRounded)
-    //         }
-    //     } else if (flTruncated >= 0.0) {
-    //         nRounded = (__PAIR64__((flTruncated + 0.5), (flTruncated + 0.5)) - to_u32(0.0)) >> 32;
-    //         PRINT_EXPR("3 >>32: %x %i (%.3f)", nRounded, nRounded, flTruncated)
-    //     } else {
-    //         nRounded = to_s32(flTruncated + -0.5);  // vcvtps_s32_f32
-    //         PRINT_EXPR("4: %x %i (%i ? %.3f)", nRounded, nRounded, to_s32(flTruncated - 0.5f), flTruncated)
-    //     }
-    //     return nRounded;
-    // }
+        static auto BootStageName(BootStage stage) -> const char * {
+            switch (stage) {
+            case BootStage::ExlMainStart:
+                return "ExlMainStart";
+            case BootStage::VerifyBuild:
+                return "VerifyBuild";
+            case BootStage::ValidateOffsets:
+                return "ValidateOffsets";
+            case BootStage::EarlyPatches:
+                return "EarlyPatches";
+            case BootStage::InstallBootHooks:
+                return "InstallBootHooks";
+            case BootStage::MountSd:
+                return "MountSd";
+            case BootStage::LoadConfig:
+                return "LoadConfig";
+            case BootStage::ConfigureLogging:
+                return "ConfigureLogging";
+            case BootStage::InstallHooks:
+                return "InstallHooks";
+            case BootStage::ApplyPatches:
+                return "ApplyPatches";
+            case BootStage::InitGui:
+                return "InitGui";
+            case BootStage::StartGameLoop:
+                return "StartGameLoop";
+            }
+            return "Unknown";
+        }
+
+        static void PrintBootStage(BootStage stage) {
+            PRINT("[boot] stage=%s", BootStageName(stage))
+        }
+
+    }  // namespace
 
     HOOK_DEFINE_TRAMPOLINE(GfxInit){
         static auto Callback() -> BOOL {
@@ -123,6 +166,7 @@ namespace d3 {
             }
             g_requestSeasonsLoad = true;
             exl::log::ConfigureGameFileLogging();
+            d3::boot_report::PrintOnce();
 
             return ret;
         }
@@ -151,12 +195,18 @@ namespace d3 {
     HOOK_DEFINE_TRAMPOLINE(MainInit){
         static void Callback() {
             // Require our SD to be mounted before running nnMain()
+            PrintBootStage(BootStage::MountSd);
             R_ABORT_UNLESS(nn::fs::MountSdCardForDebug("sd"));
-            LoadPatchConfig();
-            exl::log::ConfigureGameFileLogging();
 
-            // Needs config to decide heap size, but must run before nnMain()/game init. Cantfix
-            // PatchGraphicsPersistentHeapEarly();
+            PrintBootStage(BootStage::LoadConfig);
+            LoadPatchConfig();
+
+            PrintBootStage(BootStage::ConfigureLogging);
+            exl::log::ConfigureGameFileLogging();
+            if (global_config.debug.enable_exception_handler) {
+                InstallExceptionHandler();
+                PRINT_LINE("User exception handler enabled");
+            }
 
             if (global_config.resolution_hack.active) {
                 const u32 outW   = global_config.resolution_hack.OutputWidthPx();
@@ -181,158 +231,177 @@ namespace d3 {
 
             // Apply patches based on config
             if (!g_configHooksInstalled) {
-                SetupUtilityHooks();
-                SetupResolutionHooks();
-                SetupDebuggingHooks();
-                SetupSeasonEventHooks();
-                // PatchVarResLabel();
-                // PatchReleaseFPSLabel();
+                PrintBootStage(BootStage::InstallHooks);
+                for (const auto &entry : hook_registry::Entries()) {
+                    const bool enabled = (entry.enabled == nullptr) ? true : entry.enabled(global_config);
+                    if (!enabled) {
+                        continue;
+                    }
+                    EXL_ABORT_UNLESS(entry.install != nullptr, "Hook entry missing install: %s", entry.name);
+                    entry.install();
+                    d3::boot_report::RecordHook(entry.name);
+                }
                 g_configHooksInstalled = true;
             }
-            if (global_config.debug.enable_crashes)
-                SetupLobbyHooks();
-            if (global_config.events.active)
+
+            PrintBootStage(BootStage::ApplyPatches);
+            if (global_config.events.active) {
+                d3::boot_report::RecordPatch("DynamicEvents");
                 PatchDynamicEvents();
-            if (global_config.seasons.active)
+            }
+            if (global_config.seasons.active) {
+                d3::boot_report::RecordPatch("DynamicSeasonal");
                 PatchDynamicSeasonal();
-            if (global_config.overlays.active && global_config.overlays.buildlocker_watermark)
+            }
+            if (global_config.overlays.active && global_config.overlays.buildlocker_watermark) {
+                d3::boot_report::RecordPatch("BuildLocker");
                 PatchBuildlocker();
-            // if (global_config.overlays.active && global_config.overlays.ddm_labels)
-            //     PatchDDMLabels();
-            if (global_config.resolution_hack.active)
+            }
+            if (global_config.resolution_hack.active) {
+                d3::boot_report::RecordPatch("ResolutionTargets");
                 PatchResolutionTargets();
+            }
+            d3::boot_report::RecordPatch("Base");
             PatchBase();
 
             // GUI bringup
+            PrintBootStage(BootStage::InitGui);
             d3::imgui_overlay::Initialize();
 
             // Allow game loop to start
+            PrintBootStage(BootStage::StartGameLoop);
             Orig();
         }
     };
 
     extern "C" void exl_main(void * /*x0*/, void * /*x1*/) {
+        PrintBootStage(BootStage::ExlMainStart);
         /* Setup hooking environment. */
         exl::hook::Initialize();
+
+        PrintBootStage(BootStage::VerifyBuild);
         // Build guard: validate the expected build string exists at the known rodata offset.
         EXL_ABORT_UNLESS(VerifyBuildVersionFull(), "Unsupported build; expected %s", kBuildVersionFullExpected);
         PRINT_LINE("Compiled at " __DATE__ " " __TIME__);
 
-        // InstallExceptionHandler();
+        // Validate a small set of required offsets/symbols up-front. This prevents
+        // late null derefs that look like "random crash" when running on an
+        // unsupported build.
+        PrintBootStage(BootStage::ValidateOffsets);
+        {
+            for (const char *key : offsets::kRequiredBootLookupKeys) {
+                if (key == nullptr || key[0] == '\0') {
+                    continue;
+                }
+                const uintptr_t addr = GameOffsetFromTable(key);
+                EXL_ABORT_UNLESS(addr != 0, "Required lookup resolved to 0: %s", key);
+            }
+        }
 
+        PrintBootStage(BootStage::EarlyPatches);
         PatchGraphicsPersistentHeapEarly();
+        d3::boot_report::RecordPatch("GraphicsPersistentHeapEarly");
 
+        PrintBootStage(BootStage::InstallBootHooks);
         MainInit::InstallAtFuncPtr(main_init);
+        d3::boot_report::RecordHook("boot:MainInit");
         GfxInit::InstallAtFuncPtr(gfx_init);
+        d3::boot_report::RecordHook("boot:GfxInit");
         ShellInitialize::InstallAtFuncPtr(shell_initialize);
+        d3::boot_report::RecordHook("boot:ShellInitialize");
         GameCommonDataInit::InstallAtFuncPtr(game_common_data_init);
-        // SGameInitialize::InstallAtFuncPtr(sgame_initialize);
+        d3::boot_report::RecordHook("boot:GameCommonDataInit");
         sInitializeWorld::InstallAtFuncPtr(sinitialize_world);
-        // PostFXInitClampDims::InstallAtOffset(0x12F218);
-        // GfxSetRenderAndDepthTargetSwapchainFix::InstallAtOffset(0x29C670);
-        // GfxSetDepthTargetSwapchainFix::InstallAtOffset(0x29C4E0);
-        // LobbyServiceIdleInternal::InstallAtFuncPtr(lobby_service_idle_internal);
-    }
-
-    void ApplyPatchConfigRuntime(const PatchConfig &config, RuntimeApplyResult *out) {
-        RuntimeApplyResult result {};
-
-        const PatchConfig prev      = global_config;
-        global_config               = config;
-        global_config.initialized   = true;
-        global_config.defaults_only = false;
-
-        // Safe, per-frame-gated features should apply immediately just by updating global_config.
-        // For enable-only static patches, re-run patch entrypoints when turning them on.
-
-        auto append_note = [&](const char *text) -> void {
-            if (text == nullptr || text[0] == '\0') {
-                return;
-            }
-            if (result.note[0] == '\0') {
-                snprintf(result.note, sizeof(result.note), "%s", text);
-                return;
-            }
-            const size_t len = std::strlen(result.note);
-            if (len + 2 >= sizeof(result.note)) {
-                return;
-            }
-            std::strncat(result.note, ", ", sizeof(result.note) - len - 1);
-            std::strncat(result.note, text, sizeof(result.note) - std::strlen(result.note) - 1);
-        };
-
-        // XVars that can be updated at runtime.
-        XVarBool_Set(&g_varOnlineServicePTR, global_config.seasons.spoof_ptr, 3u);
-        XVarBool_Set(&g_varExperimentalScheduling, global_config.resolution_hack.exp_scheduler, 3u);
-
-        // Enable-only patches.
-        if (global_config.overlays.active && global_config.overlays.buildlocker_watermark &&
-            !(prev.overlays.active && prev.overlays.buildlocker_watermark)) {
-            PatchBuildlocker();
-            result.applied_enable_only = true;
-            append_note("BuildLocker");
-        } else if ((prev.overlays.active && prev.overlays.buildlocker_watermark) &&
-                   !(global_config.overlays.active && global_config.overlays.buildlocker_watermark)) {
-            result.restart_required = true;
-        }
-
-        if (prev.resolution_hack.active != global_config.resolution_hack.active ||
-            prev.resolution_hack.output_handheld_scale != global_config.resolution_hack.output_handheld_scale) {
-            result.restart_required = true;
-        }
-
-        // Dynamic/runtime patches.
-        if (global_config.events.active) {
-            PatchDynamicEvents();
-        } else if (prev.events.active) {
-            result.restart_required = true;
-        }
-
-        if (global_config.seasons.active) {
-            PatchDynamicSeasonal();
-        } else if (prev.seasons.active) {
-            result.restart_required = true;
-        }
-
-        if (prev.resolution_hack.active != global_config.resolution_hack.active) {
-            result.restart_required = true;
-        }
-
-        const bool resolution_target_changed =
-            prev.resolution_hack.target_resolution != global_config.resolution_hack.target_resolution ||
-            prev.resolution_hack.OutputHandheldHeightPx() != global_config.resolution_hack.OutputHandheldHeightPx();
-        if (resolution_target_changed) {
-            append_note("Resolution targets");
-            result.restart_required = true;
-        }
-        // PatchResolutionTargetDeviceDims();
-        // RequestDockNotify();
-        // RequestPerfNotify();
-        // g_ptGfxData->dwFlags &= ~0x400u;
-        // // GfxForceDeviceReset(true);
-        // // GfxDeviceReset();
-        // scheck_gfx_ready(true);
-
-        // Hooks/patches gated at boot.
-        if (!prev.debug.enable_crashes && global_config.debug.enable_crashes) {
-            result.restart_required = true;
-        }
-        if (prev.seasons.allow_online != global_config.seasons.allow_online) {
-            result.restart_required = true;
-        }
-        if (prev.debug.tagnx != global_config.debug.tagnx) {
-            result.restart_required = true;
-            append_note("SpoofNetworkFunctions");
-        }
-
-        if (out != nullptr) {
-            *out = result;
-        }
+        d3::boot_report::RecordHook("boot:sInitializeWorld");
     }
 
 }  // namespace d3
 
 extern "C" NORETURN void exl_exception_entry() {
-    /* TODO: exception handling */
-    EXL_ABORT("Default exception handler called!");
+    constexpr char k_exl_exception_dump_path[] = "sd:/config/d3hack-nx/exl_exception.txt";
+
+    std::string error;
+    if (!d3::fs_util::EnsureConfigRootDirs(error)) {
+        PRINT_LINE("[exl_exception_entry] EnsureConfigRootDirs failed");
+    }
+
+    FileReference tFileRef;
+    FileReferenceInit(&tFileRef, k_exl_exception_dump_path);
+    FileCreate(&tFileRef);
+    if (FileOpen(&tFileRef, 2u) == 0) {
+        EXL_ABORT("Default exception handler called (dump open failed)");
+    }
+
+    struct Writer {
+        FileReference *ref;
+        u32            offset;
+
+        void Write(const char *fmt, ...) {
+            char    buf[512] = {};
+            va_list vl;
+            va_start(vl, fmt);
+            const int n = vsnprintf(buf, sizeof(buf), fmt, vl);
+            va_end(vl);
+            if (n <= 0) {
+                return;
+            }
+            const u32 size = (n >= static_cast<int>(sizeof(buf))) ? static_cast<u32>(sizeof(buf) - 1) : static_cast<u32>(n);
+            FileWrite(ref, buf, offset, size, ERROR_FILE_WRITE);
+            offset += size;
+        }
+
+        void WriteAddressWithModule(const char *label, uintptr_t address) {
+            const auto *module = exl::util::TryGetModule(address);
+            if (module == nullptr) {
+                Write("%s: 0x%016llx\n", label, static_cast<unsigned long long>(address));
+                return;
+            }
+            const auto name   = module->GetModuleName();
+            const auto offset = address - module->m_Total.m_Start;
+            Write("%s: 0x%016llx (", label, static_cast<unsigned long long>(address));
+            FileWrite(ref, name.data(), this->offset, static_cast<u32>(name.size()), ERROR_FILE_WRITE);
+            this->offset += static_cast<u32>(name.size());
+            Write("+0x%llx)\n", static_cast<unsigned long long>(offset));
+        }
+    };
+
+    Writer writer {&tFileRef, 0u};
+    writer.Write("\n--- exl_exception_entry ---\n");
+    writer.Write("core=%d\n", nn::os::GetCurrentCoreNumber());
+
+    const uintptr_t fp = reinterpret_cast<uintptr_t>(__builtin_frame_address(0));
+    writer.Write("fp=0x%016llx\n", static_cast<unsigned long long>(fp));
+    if (fp != 0) {
+        writer.Write("Stack trace:\n");
+        auto   it    = exl::util::stack_trace::Iterator(fp, exl::util::mem_layout::s_Stack);
+        size_t depth = 0;
+        while (it.Step() && depth < 64) {
+            char label[24];
+            snprintf(label, sizeof(label), "  #%zu", depth);
+            writer.WriteAddressWithModule(label, it.GetReturnAddress());
+            depth++;
+        }
+    }
+
+    writer.Write("Modules:\n");
+    for (int i = static_cast<int>(exl::util::ModuleIndex::Start); i < static_cast<int>(exl::util::ModuleIndex::End); ++i) {
+        const auto index = static_cast<exl::util::ModuleIndex>(i);
+        if (!exl::util::HasModule(index)) {
+            continue;
+        }
+        const auto &module = exl::util::GetModuleInfo(index);
+        const auto  name   = module.GetModuleName();
+        writer.Write(
+            "  %02d: 0x%016llx-0x%016llx ",
+            i,
+            static_cast<unsigned long long>(module.m_Total.m_Start),
+            static_cast<unsigned long long>(module.m_Total.GetEnd())
+        );
+        FileWrite(&tFileRef, name.data(), writer.offset, static_cast<u32>(name.size()), ERROR_FILE_WRITE);
+        writer.offset += static_cast<u32>(name.size());
+        writer.Write("\n");
+    }
+
+    FileClose(&tFileRef);
+    EXL_ABORT("Default exception handler called (dump written)");
 }

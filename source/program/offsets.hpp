@@ -1,6 +1,7 @@
 #pragma once
 
 #include <common.hpp>
+#include <array>
 #include <tuple>
 
 #include "version.hpp"
@@ -164,6 +165,7 @@ namespace exl::reloc {
             { util::ModuleIndex::Main, 0x299FE0, "sym_GfxDeviceReset" }, 
             { util::ModuleIndex::Main, 0x299910, "sym_GfxForceDeviceReset" },
             { util::ModuleIndex::Main, 0x29B0E0, "sym_GfxWindowChangeDisplayMode" },
+            { util::ModuleIndex::Main, 0x0EBAC0, "sym_get_render_target_current_resolution" },
             { util::ModuleIndex::Main, 0x03D550, "sym_CGameAsyncRenderFlush" },
             { util::ModuleIndex::Main, 0x03D570, "sym_CGameAsyncRenderGPUFlush" },
             { util::ModuleIndex::Main, 0x34BED0, "sym_SetUICConversionConstansts" },
@@ -301,3 +303,19 @@ namespace exl::reloc {
     >;
     // clang-format on
 }  // namespace exl::reloc
+
+namespace d3::offsets {
+    // Minimal set of lookup keys required to safely install boot hooks and bring up the overlay.
+    // Keep this list small and focused: optional features should not hard-fail boot.
+    inline constexpr std::array<const char *, 8> kRequiredBootLookupKeys = {
+        "sym_main_init",
+        "sym_gfx_init",
+        "sym_shell_initialize",
+        "sym_game_common_data_init",
+        "sym_sinitialize_world",
+
+        "main_rwindow",
+        "gfx_internal_data_ptr",
+        "unicode_text_current_locale",
+    };
+}  // namespace d3::offsets
