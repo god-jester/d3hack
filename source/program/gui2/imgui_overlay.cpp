@@ -3,315 +3,55 @@
 #include <array>
 #include <algorithm>
 #include <atomic>
+#include <cstdarg>
+#include <cctype>
 #include <cfloat>
 #include <cstdint>
 #include <cstdlib>
+#include <cstdio>
 #include <cstring>
 #include <cmath>
 #include <limits>
 #include <string>
 
-#include "lib/hook/trampoline.hpp"
-#include "lib/reloc/reloc.hpp"
-#include "lib/util/sys/mem_layout.hpp"
+#include "types.h"
+
+#include <nn/nn_common.hpp>
 #include "nn/hid.hpp"  // IWYU pragma: keep
 #include "nn/oe.hpp"   // IWYU pragma: keep
 #include "nn/os.hpp"   // IWYU pragma: keep
-#include <nn/nn_common.hpp>
 #include "program/romfs_assets.hpp"
+#include "program/gui2/backend/nvn_hooks.hpp"
+#include "program/gui2/fonts/font_loader.hpp"
+#include "program/gui2/input/hid_block.hpp"
+#include "program/gui2/memory/imgui_alloc.hpp"
 #include "program/gui2/ui/overlay.hpp"
 #include "program/gui2/ui/windows/notifications_window.hpp"
-#include "program/gui2/imgui_glyph_ranges.hpp"
+#include "program/gui2/input_util.hpp"
+#include "program/d3/_util.hpp"
 #include "program/d3/setting.hpp"
-#include "program/system_allocator.hpp"
+#include "program/log_once.hpp"
 #include "symbols/common.hpp"
+#include "tomlplusplus/toml.hpp"
 
 #include "imgui/imgui.h"
 #include "imgui_backend/imgui_impl_nvn.hpp"
 
-// Pull in only the C NVN API (avoid the NVN C++ funcptr shim headers which declare
-// a conflicting `nvnBootstrapLoader` symbol).
-#include "nvn/nvn.h"
-// NVN C++ proc loader (fills pfncpp_* function pointers).
-#include "nvn/nvn_CppFuncPtrImpl.h"
-
-extern "C" auto nvnBootstrapLoader(const char *) -> PFNNVNGENERICFUNCPTRPROC;
-
-struct RWindow;
-namespace d3 {
-    extern ::RWindow *g_ptMainRWindow;
-}
-
-namespace nn::pl {
-    enum SharedFontType {
-        SharedFontType_Standard,
-        SharedFontType_ChineseSimple,
-        SharedFontType_ChineseSimpleExtension,
-        SharedFontType_ChineseTraditional,
-        SharedFontType_Korean,
-        SharedFontType_NintendoExtension,
-        SharedFontType_Max,
-    };
-
-    enum SharedFontLoadState {
-        SharedFontLoadState_Loading,
-        SharedFontLoadState_Loaded,
-    };
-
-    void RequestSharedFontLoad(SharedFontType sharedFontType) noexcept;
-    auto GetSharedFontLoadState(SharedFontType sharedFontType) noexcept
-        -> SharedFontLoadState;
-    auto GetSharedFontAddress(SharedFontType sharedFontType) noexcept -> const
-        void *;
-    auto GetSharedFontSize(SharedFontType sharedFontType) noexcept -> size_t;
-}  // namespace nn::pl
-
-namespace nn::ro {
-    void   Initialize() noexcept;
-    Result LookupSymbol(uintptr_t *pOutAddress, const char *name) noexcept;
-}  // namespace nn::ro
-
 namespace d3::imgui_overlay {
     namespace {
-
-        using NvnDeviceGetProcAddressFn     = PFNNVNDEVICEGETPROCADDRESSPROC;
-        using NvnQueuePresentTextureFn      = PFNNVNQUEUEPRESENTTEXTUREPROC;
-        using NvnCommandBufferInitializeFn  = PFNNVNCOMMANDBUFFERINITIALIZEPROC;
-        using NvnWindowBuilderSetTexturesFn = PFNNVNWINDOWBUILDERSETTEXTURESPROC;
-        using NvnWindowSetCropFn            = PFNNVNWINDOWSETCROPPROC;
 
         constexpr bool kImGuiBringup_DrawText                = true;
         constexpr bool kImGuiBringup_AlwaysSubmitProofOfLife = false;
         // Docking is required for the main overlay layout/dockspace.
+        bool g_imgui_ctx_initialized = false;
+        bool g_backend_initialized   = false;
+        bool g_font_uploaded         = false;
+        bool g_hooks_installed       = false;
 
-        NvnDeviceGetProcAddressFn    g_orig_get_proc           = nullptr;
-        NvnQueuePresentTextureFn     g_orig_present            = nullptr;
-        NvnCommandBufferInitializeFn g_orig_cmd_buf_initialize = nullptr;
-        NVNdevice                   *g_device                  = nullptr;
-        NVNqueue                    *g_queue                   = nullptr;
+        float g_overlay_toggle_hold_s = 0.0f;
+        bool  g_overlay_toggle_armed  = true;
 
-        // Captured game command buffer (preferred vs creating our own).
-        NVNcommandBuffer *g_cmd_buf = nullptr;
-
-        constexpr int                                           kMaxSwapchainTextures = 8;
-        std::array<const nvn::Texture *, kMaxSwapchainTextures> g_swapchain_textures {};
-        int                                                     g_swapchain_texture_count = 0;
-
-        NvnWindowBuilderSetTexturesFn g_orig_window_builder_set_textures = nullptr;
-        NvnWindowSetCropFn            g_orig_window_set_crop             = nullptr;
-
-        int g_crop_w = 0;
-        int g_crop_h = 0;
-
-        void WindowBuilderSetTexturesHook(NVNwindowBuilder *builder, int num_textures, NVNtexture *const *textures) {
-            if (textures != nullptr && num_textures > 0) {
-                g_swapchain_texture_count = std::min(num_textures, kMaxSwapchainTextures);
-                for (int i = 0; i < g_swapchain_texture_count; ++i) {
-                    g_swapchain_textures[i] = reinterpret_cast<const nvn::Texture *>(textures[i]);
-                }
-            }
-
-            if (g_orig_window_builder_set_textures != nullptr) {
-                g_orig_window_builder_set_textures(builder, num_textures, textures);
-            }
-        }
-
-        void WindowSetCropHook(NVNwindow *window, int x, int y, int w, int h) {
-            g_crop_w = w;
-            g_crop_h = h;
-
-            if (g_orig_window_set_crop != nullptr) {
-                g_orig_window_set_crop(window, x, y, w, h);
-            }
-        }
-
-        using ImGuiMallocFn = void *(*)(size_t);
-        using ImGuiFreeFn   = void (*)(void *);
-
-        ImGuiMallocFn g_imgui_malloc = nullptr;
-        ImGuiFreeFn   g_imgui_free   = nullptr;
-
-        auto EnsureRoInitialized() -> bool {
-            static bool s_ro_initialized    = false;
-            static bool s_ro_init_attempted = false;
-
-            if (!s_ro_initialized && !s_ro_init_attempted) {
-                s_ro_init_attempted = true;
-                nn::ro::Initialize();
-                s_ro_initialized = true;
-            }
-
-            return s_ro_initialized;
-        }
-
-        void ResolveImGuiAllocators() {
-            if (g_imgui_malloc == nullptr) {
-                if (!EnsureRoInitialized()) {
-                    return;
-                }
-                uintptr_t  addr = 0;
-                const auto rc   = nn::ro::LookupSymbol(&addr, "malloc");
-                if (R_SUCCEEDED(rc) && addr != 0) {
-                    g_imgui_malloc = reinterpret_cast<ImGuiMallocFn>(addr);
-                } else {
-                    static bool s_logged_malloc_missing = false;
-                    if (!s_logged_malloc_missing) {
-                        s_logged_malloc_missing = true;
-                        PRINT("[imgui_overlay] ERROR: nn::ro::LookupSymbol(malloc) failed (rc=0x%x addr=0x%lx)", rc, addr);
-                    }
-                }
-            }
-            if (g_imgui_free == nullptr) {
-                if (!EnsureRoInitialized()) {
-                    return;
-                }
-                uintptr_t  addr = 0;
-                const auto rc   = nn::ro::LookupSymbol(&addr, "free");
-                if (R_SUCCEEDED(rc) && addr != 0) {
-                    g_imgui_free = reinterpret_cast<ImGuiFreeFn>(addr);
-                } else {
-                    static bool s_logged_free_missing = false;
-                    if (!s_logged_free_missing) {
-                        s_logged_free_missing = true;
-                        PRINT("[imgui_overlay] ERROR: nn::ro::LookupSymbol(free) failed (rc=0x%x addr=0x%lx)", rc, addr);
-                    }
-                }
-            }
-        }
-
-        auto ImGuiAlloc(size_t size, void *user_data) -> void * {
-            if (user_data != nullptr) {
-                auto *alloc = static_cast<nn::mem::StandardAllocator *>(user_data);
-                void *ptr   = alloc->Allocate(size);
-                EXL_ABORT_UNLESS(ptr != nullptr, "[imgui_overlay] ImGuiAlloc system allocator OOM (size=0x%zx)", size);
-                return ptr;
-            }
-            EXL_ABORT_UNLESS(g_imgui_malloc != nullptr, "[imgui_overlay] ImGuiAlloc missing malloc");
-            return g_imgui_malloc(size);
-        }
-
-        void ImGuiFree(void *ptr, void *user_data) {
-            if (ptr == nullptr) {
-                return;
-            }
-            if (user_data != nullptr) {
-                auto *alloc = static_cast<nn::mem::StandardAllocator *>(user_data);
-                alloc->Free(ptr);
-                return;
-            }
-            EXL_ABORT_UNLESS(g_imgui_free != nullptr, "[imgui_overlay] ImGuiFree missing free");
-            g_imgui_free(ptr);
-        }
-
-        bool    g_imgui_ctx_initialized = false;
-        bool    g_imgui_allocators_set  = false;
-        bool    g_backend_initialized   = false;
-        bool    g_font_atlas_built      = false;
-        bool    g_font_uploaded         = false;
-        ImFont *g_font_body             = nullptr;
-        ImFont *g_font_title            = nullptr;
-
-        // NOTE: The backend expects NVN C++ wrapper types (nvn::Device/Queue/CommandBuffer).
-        // We will wire those up once we hook stable NVN init entrypoints.
-        bool g_hooks_installed = false;
-
-        bool g_font_build_attempted   = false;
-        bool g_font_build_in_progress = false;
-
-        float                  g_overlay_toggle_hold_s = 0.0f;
-        bool                   g_overlay_toggle_armed  = true;
-        std::atomic<bool>      g_block_gamepad_input_to_game {false};
-        std::atomic<bool>      g_allow_left_stick_passthrough {false};
-        bool                   g_hid_hooks_installed = false;
-        std::atomic<int>       g_hid_passthrough_depth {0};
-        std::atomic<uintptr_t> g_hid_passthrough_thread {0};
-
-        static auto GetCurrentThreadToken() -> uintptr_t {
-            const auto *thread = nn::os::GetCurrentThread();
-            return reinterpret_cast<uintptr_t>(thread);
-        }
-
-        struct ScopedHidPassthroughForOverlay {
-            ScopedHidPassthroughForOverlay() {
-                const int prev = g_hid_passthrough_depth.fetch_add(1, std::memory_order_acq_rel);
-                if (prev == 0) {
-                    const auto token = GetCurrentThreadToken();
-                    if (token != 0) {
-                        g_hid_passthrough_thread.store(token, std::memory_order_release);
-                    }
-                }
-            }
-            ~ScopedHidPassthroughForOverlay() {
-                const int prev = g_hid_passthrough_depth.fetch_sub(1, std::memory_order_acq_rel);
-                if (prev <= 1) {
-                    g_hid_passthrough_depth.store(0, std::memory_order_relaxed);
-                    g_hid_passthrough_thread.store(0, std::memory_order_release);
-                }
-            }
-        };
-
-        template<typename TState>
-        static void ClearNpadButtonsAndSticks(TState *st) {
-            if (st == nullptr) {
-                return;
-            }
-            st->mButtons      = {};
-            st->mAnalogStickL = {};
-            st->mAnalogStickR = {};
-        }
-
-        template<typename TState>
-        static void ClearNpadButtonsAndRightStick(TState *st) {
-            if (st == nullptr) {
-                return;
-            }
-            st->mButtons      = {};
-            st->mAnalogStickR = {};
-        }
-
-        template<typename TState>
-        static void ResetNpadState(TState *st) {
-            if (st == nullptr) {
-                return;
-            }
-            *st = {};
-        }
-
-        template<typename TState>
-        static void ResetNpadStates(TState *out, int count) {
-            if (out == nullptr || count <= 0) {
-                return;
-            }
-            for (int i = 0; i < count; ++i) {
-                ResetNpadState(out + i);
-            }
-        }
-
-        enum class GamepadBlockMode {
-            None,
-            Full,
-            LeftStickOnly,
-        };
-
-        static auto GetGamepadBlockMode() -> GamepadBlockMode {
-            if (!g_block_gamepad_input_to_game.load(std::memory_order_relaxed)) {
-                return GamepadBlockMode::None;
-            }
-
-            const bool allow_left_stick =
-                g_allow_left_stick_passthrough.load(std::memory_order_relaxed);
-
-            if (g_hid_passthrough_depth.load(std::memory_order_relaxed) <= 0) {
-                return allow_left_stick ? GamepadBlockMode::LeftStickOnly : GamepadBlockMode::Full;
-            }
-
-            const auto passthrough_thread = g_hid_passthrough_thread.load(std::memory_order_acquire);
-            if (passthrough_thread != 0 && passthrough_thread == GetCurrentThreadToken()) {
-                return GamepadBlockMode::None;
-            }
-
-            return allow_left_stick ? GamepadBlockMode::LeftStickOnly : GamepadBlockMode::Full;
-        }
+        static void OnPresent(NVNqueue *queue, NVNwindow *window, int texture_index);
 
         struct NpadCombinedState {
             u64                       buttons = 0;
@@ -321,20 +61,10 @@ namespace d3::imgui_overlay {
             bool                      have_stick_r = false;
         };
 
-        static auto NormalizeStickComponent(s32 v) -> float {
-            constexpr float kMax = 32767.0f;
-            float           out  = static_cast<float>(v) / kMax;
-            if (out < -1.0f)
-                out = -1.0f;
-            if (out > 1.0f)
-                out = 1.0f;
-            return out;
-        }
-
         static auto CombineNpadState(NpadCombinedState &out, uint port) -> bool {
             out = {};
 
-            ScopedHidPassthroughForOverlay const passthrough_guard;
+            d3::gui2::input::hid_block::ScopedHidPassthroughForOverlay const passthrough_guard;
 
             auto consider_stick = [](bool &have, nn::hid::AnalogStickState &dst, const nn::hid::AnalogStickState &src) -> void {
                 const auto mag     = static_cast<u64>(std::abs(src.X)) + static_cast<u64>(std::abs(src.Y));
@@ -464,6 +194,198 @@ namespace d3::imgui_overlay {
             style.TabBorderSize            = 1.0f;
         }
 
+        static auto ThemeOverrideStem(d3::gui2::ui::GuiTheme theme) -> const char * {
+            switch (theme) {
+            case d3::gui2::ui::GuiTheme::D3Dark:
+                return "d3";
+            case d3::gui2::ui::GuiTheme::Blueish:
+                return "blueish";
+            }
+            return "d3";
+        }
+
+        static auto NormalizeThemeKey(std::string_view input) -> std::string {
+            std::string out;
+            out.reserve(input.size());
+            for (const char ch : input) {
+                const unsigned char uch = static_cast<unsigned char>(ch);
+                if (std::isspace(uch) || ch == '_' || ch == '-') {
+                    continue;
+                }
+                out.push_back(static_cast<char>(std::tolower(uch)));
+            }
+            if (out.rfind("imguicol", 0) == 0) {
+                out.erase(0, std::strlen("imguicol"));
+            }
+            return out;
+        }
+
+        static auto ParseHexNibble(char ch, u8 &out) -> bool {
+            if (ch >= '0' && ch <= '9') {
+                out = static_cast<u8>(ch - '0');
+                return true;
+            }
+            if (ch >= 'a' && ch <= 'f') {
+                out = static_cast<u8>(10 + (ch - 'a'));
+                return true;
+            }
+            if (ch >= 'A' && ch <= 'F') {
+                out = static_cast<u8>(10 + (ch - 'A'));
+                return true;
+            }
+            return false;
+        }
+
+        static auto ParseHexColor(std::string_view s, ImVec4 &out) -> bool {
+            if (s.empty()) {
+                return false;
+            }
+            if (s.front() == '#') {
+                s.remove_prefix(1);
+            }
+            if (s.size() != 6 && s.size() != 8) {
+                return false;
+            }
+
+            auto parse_byte = [&](size_t i, u8 &b) -> bool {
+                u8 hi = 0;
+                u8 lo = 0;
+                if (!ParseHexNibble(s[i], hi) || !ParseHexNibble(s[i + 1], lo)) {
+                    return false;
+                }
+                b = static_cast<u8>((hi << 4) | lo);
+                return true;
+            };
+
+            u8 r = 0, g = 0, b = 0, a = 0xFF;
+            if (!parse_byte(0, r) || !parse_byte(2, g) || !parse_byte(4, b)) {
+                return false;
+            }
+            if (s.size() == 8) {
+                if (!parse_byte(6, a)) {
+                    return false;
+                }
+            }
+
+            out = ImVec4(
+                static_cast<float>(r) / 255.0f,
+                static_cast<float>(g) / 255.0f,
+                static_cast<float>(b) / 255.0f,
+                static_cast<float>(a) / 255.0f
+            );
+            return true;
+        }
+
+        static void TryApplyThemeOverrides(ImGuiStyle &style, d3::gui2::ui::GuiTheme theme) {
+            std::string path = "sd:/config/d3hack-nx/themes/";
+            path += ThemeOverrideStem(theme);
+            path += ".toml";
+
+            std::string text;
+            if (!d3::romfs::ReadFileToString(path.c_str(), text, 64 * 1024)) {
+                return;
+            }
+
+            auto result = toml::parse(text, std::string_view {path});
+            if (!result) {
+                if (d3::log_once::ShouldLog("gui.theme_override.parse_failed")) {
+                    const auto &err = result.error();
+                    PRINT("[gui] theme override parse failed: %s", std::string(err.description()).c_str());
+                }
+                return;
+            }
+
+            const toml::table &root   = result.table();
+            const toml::table *colors = nullptr;
+            if (auto node = root.get("colors"); node && node->is_table()) {
+                colors = node->as_table();
+            }
+            if (colors == nullptr) {
+                return;
+            }
+
+            auto apply_color = [&](std::string_view key, const toml::node &node) -> void {
+                auto v = node.value<std::string>();
+                if (!v) {
+                    return;
+                }
+                ImVec4 color {};
+                if (!ParseHexColor(*v, color)) {
+                    return;
+                }
+
+                const std::string normalized = NormalizeThemeKey(key);
+                if (normalized == "text") {
+                    style.Colors[ImGuiCol_Text] = color;
+                } else if (normalized == "textdisabled") {
+                    style.Colors[ImGuiCol_TextDisabled] = color;
+                } else if (normalized == "windowbg") {
+                    style.Colors[ImGuiCol_WindowBg] = color;
+                } else if (normalized == "popupbg") {
+                    style.Colors[ImGuiCol_PopupBg] = color;
+                } else if (normalized == "border") {
+                    style.Colors[ImGuiCol_Border] = color;
+                } else if (normalized == "framebg") {
+                    style.Colors[ImGuiCol_FrameBg] = color;
+                } else if (normalized == "framebghovered") {
+                    style.Colors[ImGuiCol_FrameBgHovered] = color;
+                } else if (normalized == "framebgactive") {
+                    style.Colors[ImGuiCol_FrameBgActive] = color;
+                } else if (normalized == "titlebg") {
+                    style.Colors[ImGuiCol_TitleBg] = color;
+                } else if (normalized == "titlebgactive") {
+                    style.Colors[ImGuiCol_TitleBgActive] = color;
+                } else if (normalized == "menubarbg") {
+                    style.Colors[ImGuiCol_MenuBarBg] = color;
+                } else if (normalized == "checkmark") {
+                    style.Colors[ImGuiCol_CheckMark] = color;
+                } else if (normalized == "slidergrab") {
+                    style.Colors[ImGuiCol_SliderGrab] = color;
+                } else if (normalized == "slidergrabactive") {
+                    style.Colors[ImGuiCol_SliderGrabActive] = color;
+                } else if (normalized == "button") {
+                    style.Colors[ImGuiCol_Button] = color;
+                } else if (normalized == "buttonhovered") {
+                    style.Colors[ImGuiCol_ButtonHovered] = color;
+                } else if (normalized == "buttonactive") {
+                    style.Colors[ImGuiCol_ButtonActive] = color;
+                } else if (normalized == "header") {
+                    style.Colors[ImGuiCol_Header] = color;
+                } else if (normalized == "headerhovered") {
+                    style.Colors[ImGuiCol_HeaderHovered] = color;
+                } else if (normalized == "headeractive") {
+                    style.Colors[ImGuiCol_HeaderActive] = color;
+                } else if (normalized == "separator") {
+                    style.Colors[ImGuiCol_Separator] = color;
+                } else if (normalized == "separatorhovered") {
+                    style.Colors[ImGuiCol_SeparatorHovered] = color;
+                } else if (normalized == "separatoractive") {
+                    style.Colors[ImGuiCol_SeparatorActive] = color;
+                } else if (normalized == "tab") {
+                    style.Colors[ImGuiCol_Tab] = color;
+                } else if (normalized == "tabhovered") {
+                    style.Colors[ImGuiCol_TabHovered] = color;
+                } else if (normalized == "tabselected") {
+                    style.Colors[ImGuiCol_TabSelected] = color;
+                } else if (normalized == "textselectedbg") {
+                    style.Colors[ImGuiCol_TextSelectedBg] = color;
+                } else if (normalized == "navcursor") {
+                    style.Colors[ImGuiCol_NavCursor] = color;
+                } else if (normalized == "navwindowinghighlight") {
+                    style.Colors[ImGuiCol_NavWindowingHighlight] = color;
+                }
+            };
+
+            colors->for_each([&](const toml::key &k, const toml::node &v) -> void {
+                apply_color(std::string_view {k.str()}, v);
+            });
+
+            const char *key = (theme == d3::gui2::ui::GuiTheme::Blueish) ? "gui.theme_override.applied.blueish" : "gui.theme_override.applied.d3";
+            if (d3::log_once::ShouldLog(key)) {
+                PRINT("[gui] theme overrides applied: %s", path.c_str());
+            }
+        }
+
         static void ApplyImGuiThemeColors(ImGuiStyle &style, d3::gui2::ui::GuiTheme theme) {
             ImVec4 *colors = style.Colors;
 
@@ -517,6 +439,7 @@ namespace d3::imgui_overlay {
                 colors[ImGuiCol_TextSelectedBg]        = ImVec4(kAccent.x, kAccent.y, kAccent.z, 0.35f);
                 colors[ImGuiCol_NavCursor]             = ImVec4(kAccentHi.x, kAccentHi.y, kAccentHi.z, 0.80f);
                 colors[ImGuiCol_NavWindowingHighlight] = ImVec4(kAccent.x, kAccent.y, kAccent.z, 0.80f);
+                TryApplyThemeOverrides(style, theme);
                 return;
             }
 
@@ -569,6 +492,8 @@ namespace d3::imgui_overlay {
             colors[ImGuiCol_TextSelectedBg]        = ImVec4(kAccent.x, kAccent.y, kAccent.z, 0.35f);
             colors[ImGuiCol_NavCursor]             = ImVec4(kAccentHi.x, kAccentHi.y, kAccentHi.z, 0.80f);
             colors[ImGuiCol_NavWindowingHighlight] = ImVec4(kAccent.x, kAccent.y, kAccent.z, 0.80f);
+
+            TryApplyThemeOverrides(style, theme);
         }
 
         static void InitializeImGuiStyle(d3::gui2::ui::GuiTheme theme) {
@@ -679,8 +604,8 @@ namespace d3::imgui_overlay {
             io.AddKeyAnalogEvent(ImGuiKey_GamepadLStickDown, false, 0.0f);
 
             if (st.have_stick_r) {
-                const float x = NormalizeStickComponent(st.stick_r.X);
-                const float y = NormalizeStickComponent(st.stick_r.Y);
+                const float x = d3::gui2::NormalizeStickComponentS16(st.stick_r.X);
+                const float y = d3::gui2::NormalizeStickComponentS16(st.stick_r.Y);
                 io.AddKeyAnalogEvent(ImGuiKey_GamepadRStickLeft, x < -deadzone, std::max(0.0f, -x));
                 io.AddKeyAnalogEvent(ImGuiKey_GamepadRStickRight, x > deadzone, std::max(0.0f, x));
                 io.AddKeyAnalogEvent(ImGuiKey_GamepadRStickUp, y > deadzone, std::max(0.0f, y));
@@ -710,7 +635,7 @@ namespace d3::imgui_overlay {
                 return;
             }
 
-            ScopedHidPassthroughForOverlay const passthrough_guard;
+            d3::gui2::input::hid_block::ScopedHidPassthroughForOverlay const passthrough_guard;
             EnsureTouchInitialized();
 
             nn::hid::TouchScreenState<nn::hid::TouchStateCountMax> st {};
@@ -781,7 +706,7 @@ namespace d3::imgui_overlay {
             ImGuiIO &io = ImGui::GetIO();
 
             // Keep touch reads scoped so our own HID hooks don't block us while the overlay is visible.
-            ScopedHidPassthroughForOverlay const passthrough_guard;
+            d3::gui2::input::hid_block::ScopedHidPassthroughForOverlay const passthrough_guard;
 
             EnsureTouchInitialized();
 
@@ -838,7 +763,7 @@ namespace d3::imgui_overlay {
             }
 
             // Keep KBM init and reads scoped so our own HID hooks don't block us while the overlay is visible.
-            ScopedHidPassthroughForOverlay const passthrough_guard;
+            d3::gui2::input::hid_block::ScopedHidPassthroughForOverlay const passthrough_guard;
 
             static bool s_mouse_init_tried = false;
             if (!s_mouse_init_tried) {
@@ -891,7 +816,7 @@ namespace d3::imgui_overlay {
                 return;
             }
 
-            ScopedHidPassthroughForOverlay const passthrough_guard;
+            d3::gui2::input::hid_block::ScopedHidPassthroughForOverlay const passthrough_guard;
 
             static bool s_keyboard_init_tried = false;
             if (!s_keyboard_init_tried) {
@@ -980,275 +905,18 @@ namespace d3::imgui_overlay {
             set_key(ImGuiKey_Z, nn::hid::KeyboardKey::Z);
         }
 
-        using GetNpadStateFullKeyFn  = void (*)(nn::hid::NpadFullKeyState *, uint const &);
-        using GetNpadStateHandheldFn = void (*)(nn::hid::NpadHandheldState *, uint const &);
-        using GetNpadStateJoyDualFn  = void (*)(nn::hid::NpadJoyDualState *, uint const &);
-        using GetNpadStateJoyLeftFn  = void (*)(nn::hid::NpadJoyLeftState *, uint const &);
-        using GetNpadStateJoyRightFn = void (*)(nn::hid::NpadJoyRightState *, uint const &);
-
-        using GetNpadStatesFullKeyFn  = void (*)(nn::hid::NpadFullKeyState *, int, uint const &);
-        using GetNpadStatesHandheldFn = void (*)(nn::hid::NpadHandheldState *, int, uint const &);
-        using GetNpadStatesJoyDualFn  = void (*)(nn::hid::NpadJoyDualState *, int, uint const &);
-        using GetNpadStatesJoyLeftFn  = void (*)(nn::hid::NpadJoyLeftState *, int, uint const &);
-        using GetNpadStatesJoyRightFn = void (*)(nn::hid::NpadJoyRightState *, int, uint const &);
-
-        using GetNpadStatesDetailFullKeyFn  = int (*)(int *, nn::hid::NpadFullKeyState *, int, uint const &);
-        using GetNpadStatesDetailHandheldFn = int (*)(int *, nn::hid::NpadHandheldState *, int, uint const &);
-        using GetNpadStatesDetailJoyDualFn  = int (*)(int *, nn::hid::NpadJoyDualState *, int, uint const &);
-        using GetNpadStatesDetailJoyLeftFn  = int (*)(int *, nn::hid::NpadJoyLeftState *, int, uint const &);
-        using GetNpadStatesDetailJoyRightFn = int (*)(int *, nn::hid::NpadJoyRightState *, int, uint const &);
-
-        using GetMouseStateFn    = void (*)(nn::hid::MouseState *);
-        using GetKeyboardStateFn = void (*)(nn::hid::KeyboardState *);
-
-        static auto LookupSymbolAddress(const char *name) -> void * {
-            for (int i = static_cast<int>(exl::util::ModuleIndex::Start);
-                 i < static_cast<int>(exl::util::ModuleIndex::End);
-                 ++i) {
-                const auto index = static_cast<exl::util::ModuleIndex>(i);
-                if (!exl::util::HasModule(index)) {
-                    continue;
-                }
-                const auto *sym = exl::reloc::GetSymbol(index, name);
-                if (sym == nullptr || sym->st_value == 0) {
-                    continue;
-                }
-                const auto &info = exl::util::GetModuleInfo(index);
-                return reinterpret_cast<void *>(info.m_Total.m_Start + sym->st_value);
-            }
-            return nullptr;
-        }
-
-        // clang-format off
-#define DEFINE_HID_GET_STATE_HOOK(HOOK_NAME, STATE_TYPE)                           \
-    HOOK_DEFINE_TRAMPOLINE(HOOK_NAME) {                                            \
-        static auto Callback(nn::hid::STATE_TYPE *out, uint const &port) -> void { \
-            const auto mode = GetGamepadBlockMode();                               \
-            if (mode != GamepadBlockMode::None) {                                  \
-                if (mode == GamepadBlockMode::LeftStickOnly) {                     \
-                    Orig(out, port);                                               \
-                    ClearNpadButtonsAndRightStick(out);                            \
-                } else {                                                           \
-                    ResetNpadState(out);                                           \
-                }                                                                  \
-                return;                                                            \
-            }                                                                      \
-            Orig(out, port);                                                       \
-        }                                                                          \
-    };
-
-#define DEFINE_HID_GET_STATES_HOOK(HOOK_NAME, STATE_TYPE)                               \
-    HOOK_DEFINE_TRAMPOLINE(HOOK_NAME) {                                                 \
-        static auto Callback(nn::hid::STATE_TYPE *out, int count, uint const &port)     \
-            -> void {                                                                   \
-            const auto mode = GetGamepadBlockMode();                                    \
-            if (mode != GamepadBlockMode::None) {                                       \
-                if (mode == GamepadBlockMode::LeftStickOnly) {                          \
-                    Orig(out, count, port);                                             \
-                    if (out != nullptr && count > 0) {                                  \
-                        for (int i = 0; i < count; ++i) {                               \
-                            ClearNpadButtonsAndRightStick(out + i);                     \
-                        }                                                               \
-                    }                                                                   \
-                } else {                                                                \
-                    ResetNpadStates(out, count);                                        \
-                }                                                                       \
-                return;                                                                 \
-            }                                                                           \
-            Orig(out, count, port);                                                     \
-        }                                                                               \
-    };
-
-#define DEFINE_HID_DETAIL_GET_STATES_HOOK(HOOK_NAME, STATE_TYPE)                        \
-    HOOK_DEFINE_TRAMPOLINE(HOOK_NAME) {                                                 \
-        static auto Callback(int *out_count, nn::hid::STATE_TYPE *out, int count,       \
-                             uint const &port) -> int {                                 \
-            const auto mode = GetGamepadBlockMode();                                    \
-            if (mode != GamepadBlockMode::None) {                                       \
-                if (mode == GamepadBlockMode::LeftStickOnly) {                          \
-                    const int rc = Orig(out_count, out, count, port);                   \
-                    if (out != nullptr && count > 0) {                                  \
-                        for (int i = 0; i < count; ++i) {                               \
-                            ClearNpadButtonsAndRightStick(out + i);                     \
-                        }                                                               \
-                    }                                                                   \
-                    return rc;                                                          \
-                }                                                                       \
-                if (out_count != nullptr) {                                             \
-                    *out_count = 0;                                                     \
-                }                                                                       \
-                ResetNpadStates(out, count);                                            \
-                return 0;                                                               \
-            }                                                                           \
-            return Orig(out_count, out, count, port);                                   \
-        }                                                                               \
-    };
-        // clang-format on
-
-        DEFINE_HID_GET_STATE_HOOK(HidGetNpadStateFullKeyHook, NpadFullKeyState)
-        DEFINE_HID_GET_STATE_HOOK(HidGetNpadStateHandheldHook, NpadHandheldState)
-        DEFINE_HID_GET_STATE_HOOK(HidGetNpadStateJoyDualHook, NpadJoyDualState)
-        DEFINE_HID_GET_STATE_HOOK(HidGetNpadStateJoyLeftHook, NpadJoyLeftState)
-        DEFINE_HID_GET_STATE_HOOK(HidGetNpadStateJoyRightHook, NpadJoyRightState)
-
-        DEFINE_HID_GET_STATES_HOOK(HidGetNpadStatesFullKeyHook, NpadFullKeyState)
-        DEFINE_HID_GET_STATES_HOOK(HidGetNpadStatesHandheldHook, NpadHandheldState)
-        DEFINE_HID_GET_STATES_HOOK(HidGetNpadStatesJoyDualHook, NpadJoyDualState)
-        DEFINE_HID_GET_STATES_HOOK(HidGetNpadStatesJoyLeftHook, NpadJoyLeftState)
-        DEFINE_HID_GET_STATES_HOOK(HidGetNpadStatesJoyRightHook, NpadJoyRightState)
-
-        DEFINE_HID_DETAIL_GET_STATES_HOOK(HidDetailGetNpadStatesFullKeyHook, NpadFullKeyState)
-        DEFINE_HID_DETAIL_GET_STATES_HOOK(HidDetailGetNpadStatesHandheldHook, NpadHandheldState)
-        DEFINE_HID_DETAIL_GET_STATES_HOOK(HidDetailGetNpadStatesJoyDualHook, NpadJoyDualState)
-        DEFINE_HID_DETAIL_GET_STATES_HOOK(HidDetailGetNpadStatesJoyLeftHook, NpadJoyLeftState)
-        DEFINE_HID_DETAIL_GET_STATES_HOOK(HidDetailGetNpadStatesJoyRightHook, NpadJoyRightState)
-
-        HOOK_DEFINE_TRAMPOLINE(HidGetMouseStateHook) {
-            static auto Callback(nn::hid::MouseState *out) -> void {
-                if (GetGamepadBlockMode() != GamepadBlockMode::None) {
-                    if (out != nullptr) {
-                        *out = {};
-                    }
-                    return;
-                }
-                Orig(out);
-            }
-        };
-
-        HOOK_DEFINE_TRAMPOLINE(HidGetKeyboardStateHook) {
-            static auto Callback(nn::hid::KeyboardState *out) -> void {
-                if (GetGamepadBlockMode() != GamepadBlockMode::None) {
-                    if (out != nullptr) {
-                        *out = {};
-                    }
-                    return;
-                }
-                Orig(out);
-            }
-        };
-
-#undef DEFINE_HID_DETAIL_GET_STATES_HOOK
-#undef DEFINE_HID_GET_STATES_HOOK
-#undef DEFINE_HID_GET_STATE_HOOK
-
-        static void InstallHidHooks() {
-            if (g_hid_hooks_installed) {
-                return;
-            }
-
-            HidGetNpadStateFullKeyHook::InstallAtFuncPtr(static_cast<GetNpadStateFullKeyFn>(&nn::hid::GetNpadState));
-            HidGetNpadStateHandheldHook::InstallAtFuncPtr(static_cast<GetNpadStateHandheldFn>(&nn::hid::GetNpadState));
-            HidGetNpadStateJoyDualHook::InstallAtFuncPtr(static_cast<GetNpadStateJoyDualFn>(&nn::hid::GetNpadState));
-            HidGetNpadStateJoyLeftHook::InstallAtFuncPtr(static_cast<GetNpadStateJoyLeftFn>(&nn::hid::GetNpadState));
-            HidGetNpadStateJoyRightHook::InstallAtFuncPtr(static_cast<GetNpadStateJoyRightFn>(&nn::hid::GetNpadState));
-
-            HidGetNpadStatesFullKeyHook::InstallAtFuncPtr(static_cast<GetNpadStatesFullKeyFn>(&nn::hid::GetNpadStates));
-            HidGetNpadStatesHandheldHook::InstallAtFuncPtr(static_cast<GetNpadStatesHandheldFn>(&nn::hid::GetNpadStates));
-            HidGetNpadStatesJoyDualHook::InstallAtFuncPtr(static_cast<GetNpadStatesJoyDualFn>(&nn::hid::GetNpadStates));
-            HidGetNpadStatesJoyLeftHook::InstallAtFuncPtr(static_cast<GetNpadStatesJoyLeftFn>(&nn::hid::GetNpadStates));
-            HidGetNpadStatesJoyRightHook::InstallAtFuncPtr(static_cast<GetNpadStatesJoyRightFn>(&nn::hid::GetNpadStates));
-
-            HidGetMouseStateHook::InstallAtFuncPtr(static_cast<GetMouseStateFn>(&nn::hid::GetMouseState));
-            HidGetKeyboardStateHook::InstallAtFuncPtr(static_cast<GetKeyboardStateFn>(&nn::hid::GetKeyboardState));
-
-            struct DetailHookEntry {
-                const char *name;
-                void (*install)(uintptr_t);
-            };
-
-            const std::array<DetailHookEntry, 5> detail_hooks = {{
-                {.name    = "_ZN2nn3hid6detail13GetNpadStatesEPiPNS0_"
-                            "16NpadFullKeyStateEiRKj",
-                 .install = [](uintptr_t addr) -> void {
-                     HidDetailGetNpadStatesFullKeyHook::InstallAtPtr(addr);
-                 }},
-                {.name    = "_ZN2nn3hid6detail13GetNpadStatesEPiPNS0_"
-                            "17NpadHandheldStateEiRKj",
-                 .install = [](uintptr_t addr) -> void {
-                     HidDetailGetNpadStatesHandheldHook::InstallAtPtr(addr);
-                 }},
-                {.name    = "_ZN2nn3hid6detail13GetNpadStatesEPiPNS0_"
-                            "16NpadJoyDualStateEiRKj",
-                 .install = [](uintptr_t addr) -> void {
-                     HidDetailGetNpadStatesJoyDualHook::InstallAtPtr(addr);
-                 }},
-                {.name    = "_ZN2nn3hid6detail13GetNpadStatesEPiPNS0_"
-                            "16NpadJoyLeftStateEiRKj",
-                 .install = [](uintptr_t addr) -> void {
-                     HidDetailGetNpadStatesJoyLeftHook::InstallAtPtr(addr);
-                 }},
-                {.name    = "_ZN2nn3hid6detail13GetNpadStatesEPiPNS0_"
-                            "17NpadJoyRightStateEiRKj",
-                 .install = [](uintptr_t addr) -> void {
-                     HidDetailGetNpadStatesJoyRightHook::InstallAtPtr(addr);
-                 }},
-            }};
-
-            for (const auto &hook : detail_hooks) {
-                void const *addr = LookupSymbolAddress(hook.name);
-                if (addr == nullptr) {
-                    PRINT("[imgui_overlay] nn::hid detail symbol missing: %s", hook.name);
-                    continue;
-                }
-                hook.install(reinterpret_cast<uintptr_t>(addr));
-            }
-
-            g_hid_hooks_installed = true;
-            PRINT_LINE("[imgui_overlay] nn::hid input hooks installed");
-        }
-
-        static auto CmdBufInitializeWrapper(NVNcommandBuffer *buffer, NVNdevice *device) -> NVNboolean {
-            if (g_cmd_buf == nullptr && buffer != nullptr) {
-                g_cmd_buf = buffer;
-            }
-
-            if (g_orig_cmd_buf_initialize == nullptr) {
-                PRINT_LINE("[imgui_overlay] ERROR: CmdBufInitializeWrapper called without orig ptr");
-                return 0;
-            }
-
-            const auto ret = g_orig_cmd_buf_initialize(buffer, device);
-
-            return ret;
-        }
-
-        void QueuePresentTextureWrapper(NVNqueue *queue, NVNwindow *window, int texture_index) {
-            static bool s_logged_present = false;
-            if (!s_logged_present) {
-                s_logged_present = true;
-                PRINT_LINE("[imgui_overlay] Present hook entered");
-            }
-
-            if (g_queue == nullptr && queue != nullptr) {
-                g_queue = queue;
-            }
+        static void OnPresent(NVNqueue *queue, NVNwindow *window, int texture_index) {
+            (void)queue;
+            (void)window;
 
             // Create the ImGui context on the render/present thread to avoid cross-thread visibility issues
             // with ImGui's global context pointer.
             if (!g_imgui_ctx_initialized) {
                 IMGUI_CHECKVERSION();
-                if (!g_imgui_allocators_set) {
-                    // Prefer the game's system allocator to reduce fragmentation and isolate ImGui
-                    // from libc malloc quirks on different HOS versions.
-                    auto *sys_alloc = d3::system_allocator::GetSystemAllocator();
-                    if (sys_alloc != nullptr) {
-                        ImGui::SetAllocatorFunctions(ImGuiAlloc, ImGuiFree, sys_alloc);
-                        g_imgui_allocators_set = true;
-                    } else {
-                        ResolveImGuiAllocators();
-                        if (g_imgui_malloc != nullptr && g_imgui_free != nullptr) {
-                            ImGui::SetAllocatorFunctions(ImGuiAlloc, ImGuiFree, nullptr);
-                            g_imgui_allocators_set = true;
-                        }
-                    }
-                }
-                if (!g_imgui_allocators_set) {
-                    // Don't create the context until the allocator is ready.
-                    if (g_orig_present != nullptr) {
-                        g_orig_present(queue, window, texture_index);
-                    }
+                if (!d3::gui2::memory::imgui_alloc::TryConfigureImGuiAllocators()) {
                     return;
                 }
+
                 ImGui::CreateContext();
                 g_imgui_ctx_initialized = true;
 
@@ -1267,192 +935,111 @@ namespace d3::imgui_overlay {
                 g_overlay.OnImGuiContextCreated();
             }
 
-            if (!g_backend_initialized && g_device && g_queue) {
-                if (g_orig_get_proc != nullptr) {
-                    nvnLoadCPPProcs(reinterpret_cast<nvn::Device *>(g_device), reinterpret_cast<nvn::DeviceGetProcAddressFunc>(g_orig_get_proc));
-                }
+            if (!g_backend_initialized) {
+                d3::gui2::backend::nvn_hooks::LoadCppProcsOnce();
 
-                if (g_orig_get_proc != nullptr && g_cmd_buf != nullptr) {
+                auto *device  = d3::gui2::backend::nvn_hooks::GetDevice();
+                auto *q       = d3::gui2::backend::nvn_hooks::GetQueue();
+                auto *cmd_buf = d3::gui2::backend::nvn_hooks::GetCommandBuffer();
+                if (device != nullptr && q != nullptr && cmd_buf != nullptr) {
                     ImguiNvnBackend::NvnBackendInitInfo init_info {};
-                    init_info.device = reinterpret_cast<nvn::Device *>(g_device);
-                    init_info.queue  = reinterpret_cast<nvn::Queue *>(g_queue);
-                    init_info.cmdBuf = reinterpret_cast<nvn::CommandBuffer *>(g_cmd_buf);
+                    init_info.device = reinterpret_cast<nvn::Device *>(device);
+                    init_info.queue  = reinterpret_cast<nvn::Queue *>(q);
+                    init_info.cmdBuf = reinterpret_cast<nvn::CommandBuffer *>(cmd_buf);
                     ImguiNvnBackend::InitBackend(init_info);
                     g_backend_initialized = true;
                     PRINT_LINE("[imgui_overlay] ImGui NVN backend initialized");
                 }
             }
 
-            if (g_backend_initialized) {
-                // Build the font atlas only once the shell is initialized. This avoids blocking the early
-                // boot path (MainInit) and prevents any surprise default-font work during NewFrame().
-                if (kImGuiBringup_DrawText && g_imgui_ctx_initialized && !g_font_atlas_built) {
-                    PrepareFonts();
-                }
-
-                // Dynamic viewport: prefer crop (if available), but never exceed the swapchain texture.
-                // int tex_w = 0;
-                // int tex_h = 0;
-                // if (texture_index >= 0 && texture_index < g_swapchain_texture_count &&
-                //     g_swapchain_textures[texture_index] != nullptr) {
-                //     tex_w = g_swapchain_textures[texture_index]->GetWidth();
-                //     tex_h = g_swapchain_textures[texture_index]->GetHeight();
-                // }
-                // if (tex_w > 0 && tex_h > 0) {
-                //     if (w <= 0 || h <= 0) {
-                //         w = tex_w;
-                //         h = tex_h;
-                //     } else if (w > tex_w || h > tex_h) {
-                //         static bool s_logged_crop_clamp = false;
-                //         if (!s_logged_crop_clamp) {
-                //             s_logged_crop_clamp = true;
-                //             PRINT(
-                //                 "[imgui_overlay] Crop exceeds swapchain texture; clamping (crop=%dx%d tex=%dx%d)",
-                //                 w,
-                //                 h,
-                //                 tex_w,
-                //                 tex_h
-                //             );
-                //         }
-                //         w = std::min(w, tex_w);
-                //         h = std::min(h, tex_h);
-                //     }
-                int w = g_crop_w;
-                int h = g_crop_h;
-                if (w <= 0 || h <= 0) {
-                    if (texture_index >= 0 && texture_index < g_swapchain_texture_count &&
-                        g_swapchain_textures[texture_index] != nullptr) {
-                        w = g_swapchain_textures[texture_index]->GetWidth();
-                        h = g_swapchain_textures[texture_index]->GetHeight();
-                    }
-                }
-                if (w <= 0 || h <= 0) {
-                    w = 1280;
-                    h = 720;
-                }
-                ImguiNvnBackend::getBackendData()->viewportSize = ImVec2(static_cast<float>(w), static_cast<float>(h));
-
-                // Provide the active swapchain texture to the backend so it can bind it
-                // as the render target for proof-of-life draws.
-                if (texture_index >= 0 && texture_index < g_swapchain_texture_count) {
-                    ImguiNvnBackend::SetRenderTarget(g_swapchain_textures[texture_index]);
-                } else {
-                    ImguiNvnBackend::SetRenderTarget(nullptr);
-                }
-
-                if (kImGuiBringup_AlwaysSubmitProofOfLife) {
-                    ImguiNvnBackend::SubmitProofOfLifeClear();
-                }
-
-                g_overlay.EnsureConfigLoaded();
-
-                if (kImGuiBringup_DrawText && g_imgui_ctx_initialized && g_font_atlas_built && g_overlay.imgui_render_enabled()) {
-                    ImguiNvnBackend::newFrame();
-
-                    const ImVec2 viewport_size = ImguiNvnBackend::getBackendData()->viewportSize;
-                    UpdateImGuiStyleAndScale(viewport_size);
-                    DetectOverlaySwipe(viewport_size);
-                    ImGuiIO   &io              = ImGui::GetIO();
-                    const bool overlay_visible = g_overlay.overlay_visible();
-
-                    if (!overlay_visible) {
-                        // Prevent stale hover state when the overlay is hidden.
-                        io.AddMousePosEvent(-FLT_MAX, -FLT_MAX);
-                        io.MouseDrawCursor = false;
-                    }
-
-                    PushImGuiGamepadInputs(io.DeltaTime);
-
-                    if (overlay_visible) {
-                        bool       mouse_connected = false;
-                        const bool touch_active    = PushImGuiTouchInputs(viewport_size);
-                        if (!touch_active) {
-                            mouse_connected = PushImGuiMouseInputs(viewport_size);
-                        }
-                        PushImGuiKeyboardInputs();
-                        io.MouseDrawCursor = touch_active || mouse_connected;
-                    }
-
-                    ImGui::NewFrame();
-
-                    g_overlay.UpdateFrame(
-                        g_font_uploaded,
-                        g_crop_w,
-                        g_crop_h,
-                        g_swapchain_texture_count,
-                        viewport_size,
-                        g_last_npad_valid,
-                        static_cast<unsigned long long>(g_last_npad.buttons),
-                        g_last_npad.stick_l.X,
-                        g_last_npad.stick_l.Y,
-                        g_last_npad.stick_r.X,
-                        g_last_npad.stick_r.Y
-                    );
-                    g_block_gamepad_input_to_game.store(
-                        g_overlay.focus_state().should_block_game_input,
-                        std::memory_order_relaxed
-                    );
-                    g_allow_left_stick_passthrough.store(
-                        g_overlay.focus_state().allow_left_stick_passthrough,
-                        std::memory_order_relaxed
-                    );
-
-                    ImGui::Render();
-                    g_overlay.AfterFrame();
-                    ImguiNvnBackend::renderDrawData(ImGui::GetDrawData());
-                    ImFontAtlas const   *fonts = ImGui::GetIO().Fonts;
-                    ImTextureData const *font_tex =
-                        fonts ? fonts->TexData : nullptr;
-                    g_font_uploaded = (font_tex != nullptr && font_tex->Status == ImTextureStatus_OK);
-                }
+            if (!g_backend_initialized) {
+                return;
             }
 
-            if (g_orig_present != nullptr) {
-                g_orig_present(queue, window, texture_index);
+            if (kImGuiBringup_DrawText && g_imgui_ctx_initialized && !d3::gui2::fonts::font_loader::IsFontAtlasBuilt()) {
+                PrepareFonts();
+            }
+
+            int w = d3::gui2::backend::nvn_hooks::GetCropWidth();
+            int h = d3::gui2::backend::nvn_hooks::GetCropHeight();
+            if (w <= 0 || h <= 0) {
+                int tex_w = 0;
+                int tex_h = 0;
+                if (d3::gui2::backend::nvn_hooks::GetSwapchainTextureSize(texture_index, &tex_w, &tex_h)) {
+                    w = tex_w;
+                    h = tex_h;
+                }
+            }
+            if (w <= 0 || h <= 0) {
+                w = 1280;
+                h = 720;
+            }
+            ImguiNvnBackend::getBackendData()->viewportSize = ImVec2(static_cast<float>(w), static_cast<float>(h));
+
+            const auto *rt = d3::gui2::backend::nvn_hooks::GetSwapchainTextureForBackend(texture_index);
+            ImguiNvnBackend::SetRenderTarget(rt);
+
+            if (kImGuiBringup_AlwaysSubmitProofOfLife) {
+                ImguiNvnBackend::SubmitProofOfLifeClear();
+            }
+
+            g_overlay.EnsureConfigLoaded();
+
+            if (kImGuiBringup_DrawText && g_imgui_ctx_initialized && d3::gui2::fonts::font_loader::IsFontAtlasBuilt() && g_overlay.imgui_render_enabled()) {
+                ImguiNvnBackend::newFrame();
+
+                const ImVec2 viewport_size = ImguiNvnBackend::getBackendData()->viewportSize;
+                UpdateImGuiStyleAndScale(viewport_size);
+                DetectOverlaySwipe(viewport_size);
+                ImGuiIO   &io              = ImGui::GetIO();
+                const bool overlay_visible = g_overlay.overlay_visible();
+
+                if (!overlay_visible) {
+                    // Prevent stale hover state when the overlay is hidden.
+                    io.AddMousePosEvent(-FLT_MAX, -FLT_MAX);
+                    io.MouseDrawCursor = false;
+                }
+
+                PushImGuiGamepadInputs(io.DeltaTime);
+
+                if (overlay_visible) {
+                    bool       mouse_connected = false;
+                    const bool touch_active    = PushImGuiTouchInputs(viewport_size);
+                    if (!touch_active) {
+                        mouse_connected = PushImGuiMouseInputs(viewport_size);
+                    }
+                    PushImGuiKeyboardInputs();
+                    io.MouseDrawCursor = touch_active || mouse_connected;
+                }
+
+                ImGui::NewFrame();
+
+                g_overlay.UpdateFrame(
+                    g_font_uploaded,
+                    d3::gui2::backend::nvn_hooks::GetCropWidth(),
+                    d3::gui2::backend::nvn_hooks::GetCropHeight(),
+                    d3::gui2::backend::nvn_hooks::GetSwapchainTextureCount(),
+                    viewport_size,
+                    g_last_npad_valid,
+                    static_cast<unsigned long long>(g_last_npad.buttons),
+                    g_last_npad.stick_l.X,
+                    g_last_npad.stick_l.Y,
+                    g_last_npad.stick_r.X,
+                    g_last_npad.stick_r.Y
+                );
+
+                d3::gui2::input::hid_block::SetBlockGamepadInputToGame(g_overlay.focus_state().should_block_game_input);
+                d3::gui2::input::hid_block::SetAllowLeftStickPassthrough(g_overlay.focus_state().allow_left_stick_passthrough);
+
+                ImGui::Render();
+                g_overlay.AfterFrame();
+                ImguiNvnBackend::renderDrawData(ImGui::GetDrawData());
+
+                ImFontAtlas const   *fonts    = ImGui::GetIO().Fonts;
+                ImTextureData const *font_tex = fonts ? fonts->TexData : nullptr;
+                g_font_uploaded               = (font_tex != nullptr && font_tex->Status == ImTextureStatus_OK);
             }
         }
-
-        // Hook nvnDeviceGetProcAddress directly (works even when nvnBootstrapLoader isn't in dynsym).
-        HOOK_DEFINE_TRAMPOLINE(DeviceGetProcAddressHook) {
-            static auto Callback(const NVNdevice *device, const char *name) -> PFNNVNGENERICFUNCPTRPROC {
-                if (g_device == nullptr && device != nullptr) {
-                    g_device = const_cast<NVNdevice *>(device);
-                }
-
-                PFNNVNGENERICFUNCPTRPROC fn = Orig(device, name);
-                if (fn == nullptr || name == nullptr) {
-                    return fn;
-                }
-
-                if (std::strcmp(name, "nvnDeviceGetProcAddress") == 0) {
-                    g_orig_get_proc = reinterpret_cast<NvnDeviceGetProcAddressFn>(fn);
-                }
-
-                // Hook init entrypoints using the C ABI.
-                if (std::strcmp(name, "nvnCommandBufferInitialize") == 0) {
-                    g_orig_cmd_buf_initialize = reinterpret_cast<NvnCommandBufferInitializeFn>(fn);
-                    return reinterpret_cast<PFNNVNGENERICFUNCPTRPROC>(&CmdBufInitializeWrapper);
-                }
-
-                if (std::strcmp(name, "nvnWindowBuilderSetTextures") == 0) {
-                    g_orig_window_builder_set_textures = reinterpret_cast<NvnWindowBuilderSetTexturesFn>(fn);
-                    return reinterpret_cast<PFNNVNGENERICFUNCPTRPROC>(&WindowBuilderSetTexturesHook);
-                }
-
-                if (std::strcmp(name, "nvnWindowSetCrop") == 0) {
-                    g_orig_window_set_crop = reinterpret_cast<NvnWindowSetCropFn>(fn);
-                    return reinterpret_cast<PFNNVNGENERICFUNCPTRPROC>(&WindowSetCropHook);
-                }
-
-                if (std::strcmp(name, "nvnQueuePresentTexture") == 0) {
-                    g_orig_present = reinterpret_cast<NvnQueuePresentTextureFn>(fn);
-                    return reinterpret_cast<PFNNVNGENERICFUNCPTRPROC>(&QueuePresentTextureWrapper);
-                }
-
-                return fn;
-            }
-        };
-
     }  // namespace
 
     auto GetGuiFocusState() -> const d3::gui2::ui::GuiFocusState & {
@@ -1480,19 +1067,13 @@ namespace d3::imgui_overlay {
         }
 
         PRINT_LINE("[imgui_overlay] Initialize: begin");
-
-        // Resolve symbol via bootstrap loader (most reliable path in NVN environments).
-        const auto get_proc = nvnBootstrapLoader("nvnDeviceGetProcAddress");
-        if (get_proc == nullptr) {
-            PRINT_LINE("[imgui_overlay] ERROR: Failed to resolve nvnDeviceGetProcAddress via nvnBootstrapLoader");
+        if (!d3::gui2::backend::nvn_hooks::InstallHooks(&OnPresent)) {
+            PRINT_LINE("[imgui_overlay] ERROR: Failed to install NVN hooks");
             return;
         }
 
-        g_orig_get_proc = reinterpret_cast<NvnDeviceGetProcAddressFn>(get_proc);
-        DeviceGetProcAddressHook::InstallAtPtr(reinterpret_cast<uintptr_t>(get_proc));
+        d3::gui2::input::hid_block::InstallHidHooks();
         g_hooks_installed = true;
-
-        InstallHidHooks();
 
         // NOTE: Font preparation is intentionally deferred until after ShellInitialized (or, as a
         // fallback, from the NVN present hook once g_ptMainRWindow is non-null). Calling into the
@@ -1513,230 +1094,15 @@ namespace d3::imgui_overlay {
         if (desired_lang.empty()) {
             desired_lang = "en";
         }
-
-        static std::string s_font_lang;
-        static std::string s_ranges_lang;
-        if (g_font_atlas_built && s_font_lang != desired_lang) {
-            PRINT("[imgui_overlay] Font lang changed (%s -> %s); rebuilding atlas", s_font_lang.c_str(), desired_lang.c_str());
-            ImGuiIO &io = ImGui::GetIO();
-            io.Fonts->Clear();
-            g_font_atlas_built     = false;
-            g_font_uploaded        = false;
-            g_font_build_attempted = false;
-            g_font_body            = nullptr;
-            g_font_title           = nullptr;
-            s_ranges_lang.clear();
-        }
-
-        if (g_font_atlas_built) {
-            return;
-        }
-
-        // Heuristic for "boot is far enough along" to do heavier work.
-        // This matches how we gate HID calls elsewhere in this file.
-        if (d3::g_ptMainRWindow == nullptr) {
-            static bool s_logged_defer = false;
-            if (!s_logged_defer) {
-                PRINT_LINE("[imgui_overlay] PrepareFonts: deferring until ShellInitialized");
-                s_logged_defer = true;
-            }
-            return;
-        }
-
-        if (g_font_build_attempted) {
-            return;
-        }
-
-        // Avoid re-entrancy if PrepareFonts() is called from multiple threads/hooks.
-        // (Keep this lock-free/simple: Switch builds may not provide libatomic helpers for 1-byte atomics.)
-        if (g_font_build_in_progress) {
-            return;
-        }
-        g_font_build_in_progress = true;
-        struct ScopedClearInProgress {
-            ~ScopedClearInProgress() { g_font_build_in_progress = false; }
-        } const clear_in_progress {};
-
-        g_font_build_attempted = true;
-
-        ImGuiIO &io = ImGui::GetIO();
-        if (io.Fonts == nullptr) {
-            PRINT_LINE("[imgui_overlay] ERROR: ImGuiIO::Fonts is null; cannot build font atlas");
-            return;
-        }
-
-        PRINT_LINE("[imgui_overlay] Preparing ImGui font atlas...");
-        // Prefer smaller atlas allocations on real hardware.
-        // Non-power-of-two height can significantly reduce waste for large (CJK) atlases.
-        io.Fonts->Flags |= ImFontAtlasFlags_NoPowerOfTwoHeight;
-        io.Fonts->TexDesiredFormat   = ImTextureFormat_Alpha8;
-        io.Fonts->TexPixelsUseColors = false;
-        ImFontConfig font_cfg {};
-        font_cfg.Name[0]              = 'd';
-        font_cfg.Name[1]              = '3';
-        font_cfg.Name[2]              = '\0';
-        constexpr float kFontSizeBody = 15.0f;
-        // Build for docked readability (we apply a runtime scale for 720p).
-        font_cfg.SizePixels = kFontSizeBody;
-        // Keep the atlas smaller on real hardware (especially for CJK).
-        font_cfg.OversampleH                        = (desired_lang == "zh") ? 1 : 2;
-        font_cfg.OversampleV                        = (desired_lang == "zh") ? 1 : 2;
-        const std::array<ImWchar, 3> nvn_ext_ranges = {0xE000, 0xE152, 0};
-
-        static ImVector<ImWchar> s_font_ranges;
-        static bool              s_font_ranges_built = false;
-        if (!s_font_ranges_built || s_ranges_lang != desired_lang) {
-            // Keep the atlas small/stable: build a language-focused range set and rely on the
-            // Nintendo shared system fonts for coverage, rather than importing every CJK block.
-            //
-            // This is intentionally closer to lunakit's behavior (explicit, limited ranges) than
-            // a "load everything" approach, because overly-large ranges can fail/stall atlas build
-            // and make font upload feel flaky.
-            ImFontGlyphRangesBuilder builder;
-            builder.AddRanges(glyph_ranges::GetDefault());
-
-            if (desired_lang == "zh") {
-                // Ultra-low-memory path: build ranges from the actual translated UI strings.
-                // This is typically far smaller than even the "common" CJK ranges.
-                g_overlay.AppendTranslationGlyphs(builder);
-            } else if (desired_lang == "ko") {
-                builder.AddRanges(glyph_ranges::GetKorean());
-            } else if (desired_lang == "ja") {
-                builder.AddRanges(glyph_ranges::GetJapanese());
-            } else {
-                // "Good enough" default: support Cyrillic for RU users without pulling in all CJK.
-                builder.AddRanges(glyph_ranges::GetCyrillic());
-            }
-
-            // Private-use glyphs used by Nintendo's extension fonts.
-            builder.AddRanges(nvn_ext_ranges.data());
-
-            builder.BuildRanges(&s_font_ranges);
-            s_font_ranges_built = true;
-            s_ranges_lang       = desired_lang;
-        }
-        font_cfg.GlyphRanges = s_font_ranges.Data;
-
-        ImFont const *font_body        = nullptr;
-        bool          used_shared_font = false;
-
-        const bool is_chinese = (desired_lang == "zh");
-
-        auto WaitForSharedFontLoad = [](nn::pl::SharedFontType type) -> bool {
-            nn::pl::RequestSharedFontLoad(type);
-
-            // Don't block forever: shared font loading should be fast, but hooks run on real game threads.
-            constexpr int kMaxFrames = 180;  // ~3 seconds @ 60Hz
-            for (int i = 0; i < kMaxFrames; ++i) {
-                const auto state = nn::pl::GetSharedFontLoadState(type);
-                if (state == nn::pl::SharedFontLoadState_Loaded) {
-                    break;
-                }
-                nn::os::SleepThread(nn::TimeSpan::FromNanoSeconds(1000000000ULL / 60));
-            }
-
-            if (nn::pl::GetSharedFontLoadState(type) != nn::pl::SharedFontLoadState_Loaded) {
-                return false;
-            }
-
-            const void  *shared_font = nn::pl::GetSharedFontAddress(type);
-            const size_t shared_size = nn::pl::GetSharedFontSize(type);
-            return (shared_font != nullptr && shared_size > 0);
-        };
-
-        const nn::pl::SharedFontType shared_base =
-            is_chinese ? nn::pl::SharedFontType_ChineseSimple : nn::pl::SharedFontType_Standard;
-        const nn::pl::SharedFontType shared_ext =
-            is_chinese ? nn::pl::SharedFontType_ChineseSimpleExtension : nn::pl::SharedFontType_NintendoExtension;
-
-        const bool shared_base_ready = WaitForSharedFontLoad(shared_base);
-
-        nn::pl::RequestSharedFontLoad(shared_ext);
-        if (shared_ext != nn::pl::SharedFontType_NintendoExtension) {
-            nn::pl::RequestSharedFontLoad(nn::pl::SharedFontType_NintendoExtension);
-        }
-
-        const bool shared_ext_ready =
-            nn::pl::GetSharedFontLoadState(shared_ext) == nn::pl::SharedFontLoadState_Loaded;
-        const bool shared_nvn_ext_ready =
-            (shared_ext == nn::pl::SharedFontType_NintendoExtension) ||
-            (nn::pl::GetSharedFontLoadState(nn::pl::SharedFontType_NintendoExtension) ==
-             nn::pl::SharedFontLoadState_Loaded);
-
-        if (shared_base_ready) {
-            const void  *shared_font = nn::pl::GetSharedFontAddress(shared_base);
-            const size_t shared_size = nn::pl::GetSharedFontSize(shared_base);
-            if (shared_font != nullptr && shared_size > 0) {
-                font_cfg.FontDataOwnedByAtlas = false;
-                font_body                     = io.Fonts->AddFontFromMemoryTTF(const_cast<void *>(shared_font), static_cast<int>(shared_size), font_cfg.SizePixels, &font_cfg);
-                used_shared_font              = (font_body != nullptr);
-                if (used_shared_font) {
-                    PRINT("[imgui_overlay] Loaded Nintendo shared system font (base=%d)", static_cast<int>(shared_base));
-                } else {
-                    PRINT_LINE("[imgui_overlay] ERROR: AddFontFromMemoryTTF failed for shared base font");
-                }
-            } else {
-                PRINT_LINE("[imgui_overlay] Shared base font unavailable; address/size invalid");
-            }
-        } else {
-            PRINT_LINE("[imgui_overlay] Shared base font not yet loaded; falling back");
-        }
-
-        if (used_shared_font && shared_ext_ready) {
-            const void  *shared_ext_font = nn::pl::GetSharedFontAddress(shared_ext);
-            const size_t shared_ext_size = nn::pl::GetSharedFontSize(shared_ext);
-            if (shared_ext_font != nullptr && shared_ext_size > 0) {
-                ImFontConfig ext_cfg         = font_cfg;
-                ext_cfg.MergeMode            = true;
-                ext_cfg.FontDataOwnedByAtlas = false;
-                ext_cfg.GlyphRanges =
-                    (shared_ext == nn::pl::SharedFontType_NintendoExtension) ? nvn_ext_ranges.data() : s_font_ranges.Data;
-                if (io.Fonts->AddFontFromMemoryTTF(const_cast<void *>(shared_ext_font), static_cast<int>(shared_ext_size), ext_cfg.SizePixels, &ext_cfg) == nullptr) {
-                    PRINT_LINE("[imgui_overlay] ERROR: AddFontFromMemoryTTF failed for shared extension font");
-                } else {
-                    PRINT("[imgui_overlay] Loaded Nintendo shared system font (ext=%d)", static_cast<int>(shared_ext));
-                }
-            } else {
-                PRINT_LINE("[imgui_overlay] Shared extension font unavailable; address/size invalid");
-            }
-        }
-
-        if (used_shared_font && shared_nvn_ext_ready && shared_ext != nn::pl::SharedFontType_NintendoExtension) {
-            const void  *nvn_ext_font = nn::pl::GetSharedFontAddress(nn::pl::SharedFontType_NintendoExtension);
-            const size_t nvn_ext_size = nn::pl::GetSharedFontSize(nn::pl::SharedFontType_NintendoExtension);
-            if (nvn_ext_font != nullptr && nvn_ext_size > 0) {
-                ImFontConfig ext_cfg         = font_cfg;
-                ext_cfg.MergeMode            = true;
-                ext_cfg.FontDataOwnedByAtlas = false;
-                ext_cfg.GlyphRanges          = nvn_ext_ranges.data();
-                if (io.Fonts->AddFontFromMemoryTTF(const_cast<void *>(nvn_ext_font), static_cast<int>(nvn_ext_size), ext_cfg.SizePixels, &ext_cfg) == nullptr) {
-                    PRINT_LINE("[imgui_overlay] ERROR: AddFontFromMemoryTTF failed for shared Nintendo extension");
-                } else {
-                    PRINT_LINE("[imgui_overlay] Loaded Nintendo shared system font (NintendoExtension)");
-                }
-            }
-        }
-
-        if (!used_shared_font) {
-            ImFontConfig body_cfg = font_cfg;
-            body_cfg.SizePixels   = kFontSizeBody;
-            font_body             = io.Fonts->AddFontDefault(&body_cfg);
-        }
-
-        g_font_body  = const_cast<ImFont *>(font_body);
-        g_font_title = g_font_body;
-
-        g_font_atlas_built = true;
-        s_font_lang        = desired_lang;
-        PRINT_LINE("[imgui_overlay] ImGui font atlas prepared");
+        (void)d3::gui2::fonts::font_loader::PrepareFonts(g_overlay, desired_lang);
     }
 
     auto GetTitleFont() -> ImFont * {
-        return g_font_title;
+        return d3::gui2::fonts::font_loader::GetTitleFont();
     }
 
     auto GetBodyFont() -> ImFont * {
-        return g_font_body;
+        return d3::gui2::fonts::font_loader::GetBodyFont();
     }
 
 }  // namespace d3::imgui_overlay

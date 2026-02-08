@@ -41,6 +41,15 @@ namespace d3::gui2::ui {
         void EnsureWindowsCreated();
         void EnsureTranslationsLoaded();
 
+        enum class WindowLayer : u8 {
+            Dock,
+            Overlay,
+        };
+
+        // Register a window with the overlay. Ownership transfers to the overlay.
+        // Returns the raw pointer for convenience (lifetime owned by Overlay).
+        Window *RegisterWindow(std::unique_ptr<Window> window, WindowLayer layer);
+
         struct FrameDebugInfo {
             int    crop_w                  = 0;
             int    crop_h                  = 0;

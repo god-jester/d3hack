@@ -2,21 +2,23 @@
 
 #include <array>
 #include <algorithm>
+#include <cstdio>
 #include <cfloat>
 #include <cmath>
+#include <cstring>
 #include <cstdlib>
 #include <string>
 
 #include "program/d3/setting.hpp"
+#include "program/d3/resolution_util.hpp"
+#include "program/config_schema.hpp"
+#include "program/gui2/input_util.hpp"
 #include "program/gui2/imgui_overlay.hpp"
 #include "program/gui2/ui/overlay.hpp"
+#include "program/gui2/ui/virtual_keyboard.hpp"
 #include "program/gui2/ui/windows/notifications_window.hpp"
 #include "program/runtime_apply.hpp"
 #include "types.h"
-
-namespace d3 {
-    extern u32 *g_ptDevMemMode;
-}
 
 namespace d3::gui2::ui::windows {
     namespace {
@@ -39,15 +41,6 @@ namespace d3::gui2::ui::windows {
             return value;
         }
 
-        static auto MaxResolutionHackOutputTarget() -> int {
-            constexpr int kMaxDefault = 1440;
-            constexpr int kMaxDevMem  = 2160;
-            if (d3::g_ptDevMemMode != nullptr && *d3::g_ptDevMemMode != 0u) {
-                return kMaxDevMem;
-            }
-            return kMaxDefault;
-        }
-
         static auto SeasonMapModeToString(PatchConfig::SeasonEventMapMode mode) -> const char * {
             switch (mode) {
             case PatchConfig::SeasonEventMapMode::MapOnly:
@@ -58,16 +51,6 @@ namespace d3::gui2::ui::windows {
                 return "Disabled";
             }
             return "Disabled";
-        }
-
-        static auto NormalizeStickComponent(int v) -> float {
-            constexpr float kMax = 32767.0f;
-            float           out  = static_cast<float>(v) / kMax;
-            if (out < -1.0f)
-                out = -1.0f;
-            if (out > 1.0f)
-                out = 1.0f;
-            return out;
         }
 
     }  // namespace
@@ -283,25 +266,51 @@ namespace d3::gui2::ui::windows {
         };
 
         auto render_overlays = [&]() -> void {
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.overlays_enabled", "Enabled##overlays"), &cfg.overlays.active));
-            ImGui::BeginDisabled(!cfg.overlays.active);
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.overlays_buildlocker", "Build locker watermark"), &cfg.overlays.buildlocker_watermark));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.overlays_ddm", "DDM labels"), &cfg.overlays.ddm_labels));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.overlays_fps", "FPS label"), &cfg.overlays.fps_label));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.overlays_var_res", "Variable resolution label"), &cfg.overlays.var_res_label));
+            const auto *enabled_entry = d3::config_schema::FindEntry("overlays", "SectionEnabled");
+            if (enabled_entry == nullptr || enabled_entry->get_bool == nullptr || enabled_entry->set_bool == nullptr) {
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.overlays_enabled", "Enabled##overlays"), &cfg.overlays.active));
+                ImGui::BeginDisabled(!cfg.overlays.active);
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.overlays_buildlocker", "Build locker watermark"), &cfg.overlays.buildlocker_watermark));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.overlays_ddm", "DDM labels"), &cfg.overlays.ddm_labels));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.overlays_fps", "FPS label"), &cfg.overlays.fps_label));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.overlays_var_res", "Variable resolution label"), &cfg.overlays.var_res_label));
+                ImGui::EndDisabled();
+                return;
+            }
+
+            bool enabled = enabled_entry->get_bool(cfg);
+            if (ImGui::Checkbox(overlay_.tr(enabled_entry->tr_label, enabled_entry->label_fallback), &enabled)) {
+                enabled_entry->set_bool(cfg, enabled);
+                overlay_.set_ui_dirty(true);
+            }
+
+            ImGui::BeginDisabled(!enabled);
+            for (const auto &e : d3::config_schema::EntriesForSection("overlays")) {
+                if (e.key == "SectionEnabled") {
+                    continue;
+                }
+                if (e.kind != d3::config_schema::ValueKind::Bool || e.get_bool == nullptr || e.set_bool == nullptr) {
+                    continue;
+                }
+                bool v = e.get_bool(cfg);
+                if (ImGui::Checkbox(overlay_.tr(e.tr_label, e.label_fallback), &v)) {
+                    e.set_bool(cfg, v);
+                    overlay_.set_ui_dirty(true);
+                }
+            }
             ImGui::EndDisabled();
         };
 
         auto render_gui = [&]() -> void {
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.enabled_persist", "Enabled (persist)"), &cfg.gui.enabled));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.visible_persist", "Visible (persist)"), &cfg.gui.visible));
-            bool allow_left_stick_passthrough = cfg.gui.allow_left_stick_passthrough;
-            if (ImGui::Checkbox(
-                    overlay_.tr("gui.left_stick_passthrough", "Allow left stick passthrough"),
-                    &allow_left_stick_passthrough
-                )) {
-                cfg.gui.allow_left_stick_passthrough = allow_left_stick_passthrough;
-                overlay_.set_ui_dirty(true);
+            for (const auto &e : d3::config_schema::EntriesForSection("gui")) {
+                if (e.kind != d3::config_schema::ValueKind::Bool || e.get_bool == nullptr || e.set_bool == nullptr) {
+                    continue;
+                }
+                bool v = e.get_bool(cfg);
+                if (ImGui::Checkbox(overlay_.tr(e.tr_label, e.label_fallback), &v)) {
+                    e.set_bool(cfg, v);
+                    overlay_.set_ui_dirty(true);
+                }
             }
 
             const char *preview = cfg.gui.language_override.empty() ? overlay_.tr("gui.lang_auto", "Auto (game)") : cfg.gui.language_override.c_str();
@@ -337,6 +346,7 @@ namespace d3::gui2::ui::windows {
                     if (ImGui::Selectable(lang.label, is_selected)) {
                         cfg.gui.language_override = lang.code;
                         overlay_.set_ui_dirty(true);
+                        lang_restart_pending_ = cfg.gui.language_override != global_config.gui.language_override;
                         if (auto *notifications = overlay_.notifications_window()) {
                             notifications->AddNotification(
                                 ImVec4(1.0f, 0.75f, 0.2f, 1.0f),
@@ -352,13 +362,35 @@ namespace d3::gui2::ui::windows {
                 ImGui::EndCombo();
             }
 
+            ImGui::Separator();
+            const char *lang_value = cfg.gui.language_override.empty() ? overlay_.tr("gui.lang_auto", "Auto (game)") : cfg.gui.language_override.c_str();
+            ImGui::Text(overlay_.tr("gui.language_current", "Language code: %s"), lang_value);
+
+            if (ImGui::Button(overlay_.tr("gui.language_edit", "Edit language code (OSK)"))) {
+                d3::gui2::ui::virtual_keyboard::Options opts {};
+                opts.max_len       = 16;
+                opts.allowed_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_";
+                opts.allow_space   = false;
+                d3::gui2::ui::virtual_keyboard::Open(
+                    overlay_.tr("gui.language_edit_title", "Enter language code (e.g. en, ja, zh)"),
+                    &cfg.gui.language_override,
+                    opts
+                );
+            }
+            ImGui::SameLine();
+            if (ImGui::Button(overlay_.tr("gui.language_clear", "Clear"))) {
+                cfg.gui.language_override.clear();
+                overlay_.set_ui_dirty(true);
+                lang_restart_pending_ = cfg.gui.language_override != global_config.gui.language_override;
+            }
+
             ImGui::TextUnformatted(overlay_.tr("gui.hotkey_toggle", "Hold + and - (0.5s) to toggle overlay visibility."));
         };
 
         auto render_resolution = [&]() -> void {
             mark_dirty(ImGui::Checkbox(overlay_.tr("gui.resolution_enabled", "Enabled##res"), &cfg.resolution_hack.active));
             ImGui::BeginDisabled(!cfg.resolution_hack.active);
-            const int max_target = MaxResolutionHackOutputTarget();
+            const int max_target = static_cast<int>(d3::MaxResolutionHackOutputTarget());
             int       target     = static_cast<int>(cfg.resolution_hack.target_resolution);
             if (target > max_target) {
                 target = max_target;
@@ -677,14 +709,39 @@ namespace d3::gui2::ui::windows {
         };
 
         auto render_debug = [&]() -> void {
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.debug_enabled", "Enabled##debug"), &cfg.debug.active));
-            ImGui::BeginDisabled(!cfg.debug.active);
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.debug_enable_crashes", "Enable crashes (danger)"), &cfg.debug.enable_crashes));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.debug_pubfile_dump", "Enable pubfile dump"), &cfg.debug.enable_pubfile_dump));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.debug_error_traces", "Enable error traces"), &cfg.debug.enable_error_traces));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.debug_debug_flags", "Enable debug flags"), &cfg.debug.enable_debug_flags));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.debug_spoof_network", "Spoof Network Functions"), &cfg.debug.tagnx));
-            ImGui::EndDisabled();
+            const auto *enabled_entry = d3::config_schema::FindEntry("debug", "SectionEnabled");
+            if (enabled_entry == nullptr || enabled_entry->get_bool == nullptr || enabled_entry->set_bool == nullptr) {
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.debug_enabled", "Enabled##debug"), &cfg.debug.active));
+                ImGui::BeginDisabled(!cfg.debug.active);
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.debug_enable_crashes", "Enable crashes (danger)"), &cfg.debug.enable_crashes));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.debug_pubfile_dump", "Enable pubfile dump"), &cfg.debug.enable_pubfile_dump));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.debug_error_traces", "Enable error traces"), &cfg.debug.enable_error_traces));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.debug_debug_flags", "Enable debug flags"), &cfg.debug.enable_debug_flags));
+                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.debug_spoof_network", "Spoof Network Functions"), &cfg.debug.tagnx));
+                ImGui::EndDisabled();
+            } else {
+                bool enabled = enabled_entry->get_bool(cfg);
+                if (ImGui::Checkbox(overlay_.tr(enabled_entry->tr_label, enabled_entry->label_fallback), &enabled)) {
+                    enabled_entry->set_bool(cfg, enabled);
+                    overlay_.set_ui_dirty(true);
+                }
+
+                ImGui::BeginDisabled(!enabled);
+                for (const auto &e : d3::config_schema::EntriesForSection("debug")) {
+                    if (e.key == "SectionEnabled") {
+                        continue;
+                    }
+                    if (e.kind != d3::config_schema::ValueKind::Bool || e.get_bool == nullptr || e.set_bool == nullptr) {
+                        continue;
+                    }
+                    bool v = e.get_bool(cfg);
+                    if (ImGui::Checkbox(overlay_.tr(e.tr_label, e.label_fallback), &v)) {
+                        e.set_bool(cfg, v);
+                        overlay_.set_ui_dirty(true);
+                    }
+                }
+                ImGui::EndDisabled();
+            }
 
             ImGui::Separator();
 
@@ -766,7 +823,7 @@ namespace d3::gui2::ui::windows {
             }
 
             const auto     &dbg                  = overlay_.frame_debug();
-            const float     ry                   = NormalizeStickComponent(dbg.last_npad_stick_ry);
+            const float     ry                   = d3::gui2::NormalizeStickComponentS16(static_cast<s32>(dbg.last_npad_stick_ry));
             constexpr float kStickDeadzone       = 0.25f;
             constexpr float kStickLinesPerSecond = 16.0f;
             const float     abs_ry               = std::abs(ry);
@@ -858,7 +915,19 @@ namespace d3::gui2::ui::windows {
             if (has_state) {
                 ImGui::SameLine();
             }
-            ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.2f, 1.0f), "%s", overlay_.tr("gui.restart_required_banner", "Restart required for some changes."));
+            if (restart_note_[0] != '\0') {
+                ImGui::TextColored(
+                    ImVec4(1.0f, 0.75f, 0.2f, 1.0f),
+                    overlay_.tr("gui.restart_required_banner_note", "Restart required: %s"),
+                    restart_note_
+                );
+            } else {
+                ImGui::TextColored(
+                    ImVec4(1.0f, 0.75f, 0.2f, 1.0f),
+                    "%s",
+                    overlay_.tr("gui.restart_required_banner", "Restart required for some changes.")
+                );
+            }
             has_state = true;
         }
         if (lang_restart_pending_) {
@@ -890,6 +959,24 @@ namespace d3::gui2::ui::windows {
             return runtime;
         };
 
+        auto update_restart_note = [&](const d3::RuntimeApplyResult &apply, bool gui_pending) -> void {
+            restart_note_[0] = '\0';
+            if (apply.note[0] != '\0') {
+                snprintf(restart_note_, sizeof(restart_note_), "%s", apply.note);
+            }
+            if (gui_pending) {
+                if (restart_note_[0] == '\0') {
+                    snprintf(restart_note_, sizeof(restart_note_), "%s", "GUI");
+                } else {
+                    const size_t len = std::strlen(restart_note_);
+                    if (len + 6 < sizeof(restart_note_)) {
+                        std::strncat(restart_note_, ", ", sizeof(restart_note_) - len - 1);
+                        std::strncat(restart_note_, "GUI", sizeof(restart_note_) - std::strlen(restart_note_) - 1);
+                    }
+                }
+            }
+        };
+
         if (ImGui::Button(label_reload)) {
             PatchConfig loaded {};
             std::string error;
@@ -899,7 +986,11 @@ namespace d3::gui2::ui::windows {
                 const PatchConfig      runtime_apply = build_runtime_apply(normalized, &gui_pending);
                 d3::RuntimeApplyResult apply {};
                 d3::ApplyPatchConfigRuntime(runtime_apply, &apply);
-                restart_required_     = apply.restart_required || gui_pending;
+                restart_required_ = apply.restart_required || gui_pending;
+                update_restart_note(apply, gui_pending);
+                if (!restart_required_) {
+                    restart_note_[0] = '\0';
+                }
                 cfg                   = normalized;
                 lang_restart_pending_ = false;
                 overlay_.set_ui_dirty(false);
@@ -916,6 +1007,7 @@ namespace d3::gui2::ui::windows {
             cfg = global_config;
             overlay_.set_ui_dirty(false);
             restart_required_     = false;
+            restart_note_[0]      = '\0';
             lang_restart_pending_ = false;
         }
 
@@ -928,6 +1020,10 @@ namespace d3::gui2::ui::windows {
             d3::ApplyPatchConfigRuntime(runtime_apply, &apply);
             const bool restart_needed = apply.restart_required || gui_pending;
             restart_required_         = restart_needed;
+            update_restart_note(apply, gui_pending);
+            if (!restart_required_) {
+                restart_note_[0] = '\0';
+            }
 
             cfg                   = normalized;
             lang_restart_pending_ = cfg.gui.language_override != global_config.gui.language_override;
@@ -960,6 +1056,18 @@ namespace d3::gui2::ui::windows {
         }
 
         ImGui::EndChild();
+
+        if (d3::gui2::ui::virtual_keyboard::Render()) {
+            overlay_.set_ui_dirty(true);
+            lang_restart_pending_ = cfg.gui.language_override != global_config.gui.language_override;
+            if (auto *notifications = overlay_.notifications_window()) {
+                notifications->AddNotification(
+                    ImVec4(1.0f, 0.75f, 0.2f, 1.0f),
+                    6.0f,
+                    overlay_.tr("gui.notify_lang_restart", "Language updated. Restart to fully apply new glyphs.")
+                );
+            }
+        }
 
         UpdateDockSwipe(window_pos, window_size);
     }

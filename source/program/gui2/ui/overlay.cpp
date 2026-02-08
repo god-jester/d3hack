@@ -13,6 +13,7 @@
 #include "program/d3/setting.hpp"
 #include "program/d3/types/common.hpp"
 #include "program/d3/types/enums.hpp"
+#include "program/fs_util.hpp"
 #include "program/system_allocator.hpp"
 #include "nn/fs.hpp"  // IWYU pragma: keep
 #include "symbols/common.hpp"
@@ -161,23 +162,6 @@ namespace d3::gui2::ui {
                 float  alpha;
             };
 
-            // Code-only knobs for overlay label appearance.
-            const OverlayLabelStyle kBuildStyle = {
-                1.0f,
-                ImVec4(1.0f, 1.0f, 1.0f, 1.0f),
-                0.8f,
-            };
-            const OverlayLabelStyle kFpsStyle = {
-                1.0f,
-                ImVec4(1.0f, 1.0f, 1.0f, 1.0f),
-                1.0f,
-            };
-            const OverlayLabelStyle kVarStyle = {
-                1.0f,
-                ImVec4(1.0f, 1.0f, 1.0f, 1.0f),
-                1.0f,
-            };
-
             const float kFpsBottomOffsetPct = 0.2f;
             const float kShadowOffset       = 1.0f;
             const float kShadowAlpha        = 0.6f;
@@ -188,8 +172,29 @@ namespace d3::gui2::ui {
             const ImVec2 viewport_size =
                 (viewport != nullptr) ? viewport->Size : ImGui::GetIO().DisplaySize;
             const ImGuiStyle &style = ImGui::GetStyle();
-            const float       pad_x = style.WindowPadding.x;
-            const float       pad_y = style.WindowPadding.y;
+
+            // Theme-aware label styles (driven by the current ImGui style).
+            const ImVec4 text_col     = style.Colors[ImGuiCol_Text];
+            const ImVec4 disabled_col = style.Colors[ImGuiCol_TextDisabled];
+
+            const OverlayLabelStyle kBuildStyle = {
+                1.0f,
+                disabled_col,
+                0.95f,
+            };
+            const OverlayLabelStyle kFpsStyle = {
+                1.0f,
+                text_col,
+                1.0f,
+            };
+            const OverlayLabelStyle kVarStyle = {
+                1.0f,
+                text_col,
+                1.0f,
+            };
+
+            const float pad_x = style.WindowPadding.x;
+            const float pad_y = style.WindowPadding.y;
 
             const float left   = viewport_pos.x + pad_x;
             const float right  = viewport_pos.x + viewport_size.x - pad_x;
@@ -327,96 +332,8 @@ namespace d3::gui2::ui {
             return out.ok();
         }
 
-        static auto DoesFileExist(const char *path) -> bool {
-            nn::fs::DirectoryEntryType type {};
-            auto                       rc = nn::fs::GetEntryType(&type, path);
-            if (R_FAILED(rc)) {
-                return false;
-            }
-            return type == nn::fs::DirectoryEntryType_File;
-        }
-
-        static auto EnsureConfigDirectories(std::string &error_out) -> bool {
-            const char *root_dir = "sd:/config";
-            const char *hack_dir = "sd:/config/d3hack-nx";
-
-            (void)nn::fs::CreateDirectory(root_dir);
-            (void)nn::fs::CreateDirectory(hack_dir);
-
-            nn::fs::DirectoryEntryType type {};
-            auto                       rc = nn::fs::GetEntryType(&type, hack_dir);
-            if (R_FAILED(rc)) {
-                error_out = "Failed to ensure config directory exists";
-                return false;
-            }
-            return true;
-        }
-
-        static auto WriteAllAtomic(const char *path, std::string_view text, std::string &error_out) -> bool {
-            if (!EnsureConfigDirectories(error_out)) {
-                return false;
-            }
-
-            std::string const tmp_path = std::string(path) + ".tmp";
-            std::string const bak_path = std::string(path) + ".bak";
-
-            (void)nn::fs::DeleteFile(tmp_path.c_str());
-
-            auto rc = nn::fs::CreateFile(tmp_path.c_str(), static_cast<s64>(text.size()));
-            if (R_FAILED(rc)) {
-                error_out = "Failed to create temp layout file";
-                return false;
-            }
-
-            nn::fs::FileHandle fh {};
-            rc = nn::fs::OpenFile(&fh, tmp_path.c_str(), nn::fs::OpenMode_Write);
-            if (R_FAILED(rc)) {
-                (void)nn::fs::DeleteFile(tmp_path.c_str());
-                error_out = "Failed to open temp layout file";
-                return false;
-            }
-
-            const auto opt = nn::fs::WriteOption::CreateOption(nn::fs::WriteOptionFlag_Flush);
-            rc             = nn::fs::WriteFile(fh, 0, text.data(), static_cast<u64>(text.size()), opt);
-            if (R_FAILED(rc)) {
-                nn::fs::CloseFile(fh);
-                (void)nn::fs::DeleteFile(tmp_path.c_str());
-                error_out = "Failed to write temp layout file";
-                return false;
-            }
-
-            (void)nn::fs::FlushFile(fh);
-            nn::fs::CloseFile(fh);
-
-            if (DoesFileExist(path)) {
-                (void)nn::fs::DeleteFile(bak_path.c_str());
-                rc = nn::fs::RenameFile(path, bak_path.c_str());
-                if (R_FAILED(rc)) {
-                    (void)nn::fs::DeleteFile(tmp_path.c_str());
-                    error_out = "Failed to backup existing layout file";
-                    return false;
-                }
-            }
-
-            rc = nn::fs::RenameFile(tmp_path.c_str(), path);
-            if (R_FAILED(rc)) {
-                if (DoesFileExist(bak_path.c_str())) {
-                    (void)nn::fs::RenameFile(bak_path.c_str(), path);
-                }
-                (void)nn::fs::DeleteFile(tmp_path.c_str());
-                error_out = "Failed to move temp layout into place";
-                return false;
-            }
-
-            if (DoesFileExist(bak_path.c_str())) {
-                (void)nn::fs::DeleteFile(bak_path.c_str());
-            }
-
-            return true;
-        }
-
         static void DeleteLayoutFile() {
-            if (DoesFileExist(kGuiLayoutPath)) {
+            if (d3::fs_util::DoesFileExist(kGuiLayoutPath)) {
                 (void)nn::fs::DeleteFile(kGuiLayoutPath);
             }
         }
@@ -480,6 +397,23 @@ namespace d3::gui2::ui {
         }
     }
 
+    Window *Overlay::RegisterWindow(std::unique_ptr<Window> window, WindowLayer layer) {
+        if (!window) {
+            return nullptr;
+        }
+
+        Window *ptr = window.get();
+        windows_.push_back(std::move(window));
+
+        if (layer == WindowLayer::Dock) {
+            dock_windows_.push_back(ptr);
+        } else {
+            overlay_windows_.push_back(ptr);
+        }
+
+        return ptr;
+    }
+
     void Overlay::EnsureWindowsCreated() {
         if (windows_initialized_) {
             return;
@@ -487,23 +421,23 @@ namespace d3::gui2::ui {
 
         dock_windows_.clear();
         overlay_windows_.clear();
+        windows_.clear();
 
         auto notifications    = std::make_unique<windows::NotificationsWindow>();
-        notifications_window_ = notifications.get();
+        notifications_window_ = static_cast<windows::NotificationsWindow *>(
+            RegisterWindow(std::move(notifications), WindowLayer::Overlay)
+        );
         notifications_window_->AddNotification(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), 6.0f, D3HACK_VER " initialized!");
         notifications_window_->AddNotification(
             ImVec4(1.0f, 1.0f, 0.3f, 1.0f),
             10.0f,
             tr("gui.toast_toggle_hint", "Hold + and - or swipe from left edge to toggle GUI")
         );
-        overlay_windows_.push_back(notifications_window_);
 
         auto config    = std::make_unique<windows::ConfigWindow>(*this);
-        config_window_ = config.get();
-        dock_windows_.push_back(config_window_);
-
-        windows_.push_back(std::move(config));
-        windows_.push_back(std::move(notifications));
+        config_window_ = static_cast<windows::ConfigWindow *>(
+            RegisterWindow(std::move(config), WindowLayer::Dock)
+        );
 
         windows_initialized_ = true;
     }
@@ -935,7 +869,7 @@ namespace d3::gui2::ui {
             return;
         }
 
-        if (!WriteAllAtomic(kGuiLayoutPath, buffer.view(), error)) {
+        if (!d3::fs_util::WriteAllAtomic(kGuiLayoutPath, buffer.view(), "layout file", error)) {
             PRINT("[gui] layout save failed: %s", error.c_str());
             return;
         }
