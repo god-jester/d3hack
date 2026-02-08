@@ -5,6 +5,29 @@
 #include <cmath>
 #include <string>
 
+#define D3HACK_SEASON_EVENT_FLAGS(X)               \
+    X(IgrEnabled, false, false, "")                \
+    X(AnniversaryEnabled, false, false, "")        \
+    X(EasterEggWorldEnabled, false, false, "")     \
+    X(DoubleRiftKeystones, true, false, "")        \
+    X(DoubleBloodShards, true, false, "")          \
+    X(DoubleTreasureGoblins, true, false, "")      \
+    X(DoubleBountyBags, true, false, "")           \
+    X(RoyalGrandeur, false, false, "")             \
+    X(LegacyOfNightmares, false, false, "")        \
+    X(TriunesWill, false, false, "")               \
+    X(Pandemonium, false, false, "")               \
+    X(KanaiPowers, false, false, "")               \
+    X(TrialsOfTempests, false, false, "")          \
+    X(ShadowClones, false, false, "")              \
+    X(FourthKanaisCubeSlot, false, false, "")      \
+    X(EtherealItems, false, false, "EthrealItems") \
+    X(SoulShards, false, false, "")                \
+    X(SwarmRifts, false, false, "")                \
+    X(SanctifiedItems, false, false, "")           \
+    X(DarkAlchemy, true, true, "")                 \
+    X(NestingPortals, false, false, "")
+
 struct PatchConfig {
     bool initialized   = false;
     bool defaults_only = true;
@@ -118,29 +141,11 @@ struct PatchConfig {
     } challenge_rifts;
 
     struct {
-        bool               active                = true;
-        SeasonEventMapMode SeasonMapMode         = SeasonEventMapMode::Disabled;
-        bool               IgrEnabled            = false;
-        bool               AnniversaryEnabled    = false;
-        bool               EasterEggWorldEnabled = false;
-        bool               DoubleRiftKeystones   = true;
-        bool               DoubleBloodShards     = true;
-        bool               DoubleTreasureGoblins = true;
-        bool               DoubleBountyBags      = true;
-        bool               RoyalGrandeur         = false;
-        bool               LegacyOfNightmares    = false;
-        bool               TriunesWill           = false;
-        bool               Pandemonium           = false;
-        bool               KanaiPowers           = false;
-        bool               TrialsOfTempests      = false;
-        bool               ShadowClones          = false;
-        bool               FourthKanaisCubeSlot  = false;
-        bool               EtherealItems         = false;
-        bool               SoulShards            = false;
-        bool               SwarmRifts            = false;
-        bool               SanctifiedItems       = false;
-        bool               DarkAlchemy           = true;
-        bool               NestingPortals        = false;
+        bool               active        = true;
+        SeasonEventMapMode SeasonMapMode = SeasonEventMapMode::Disabled;
+#define D3HACK_SEASON_EVENT_FIELD(name, default_config, default_map, legacy_key) bool name = default_config;
+        D3HACK_SEASON_EVENT_FLAGS(D3HACK_SEASON_EVENT_FIELD)
+#undef D3HACK_SEASON_EVENT_FIELD
     } events;
 
     struct {
@@ -191,12 +196,15 @@ struct PatchConfig {
     } loot_modifiers;
 
     struct {
-        bool active              = true;
-        bool enable_crashes      = false;
-        bool enable_pubfile_dump = false;
-        bool enable_error_traces = true;
-        bool enable_debug_flags  = false;
-        bool tagnx               = false;
+        bool active                       = true;
+        bool enable_crashes               = false;
+        bool enable_pubfile_dump          = false;
+        bool enable_error_traces          = true;
+        bool enable_debug_flags           = false;
+        bool tagnx                        = false;
+        bool enable_exception_handler     = false;
+        bool enable_oe_notification_hook  = false;
+        bool log_oe_notification_messages = false;
     } debug;
 
     struct {
