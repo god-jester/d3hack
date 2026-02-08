@@ -118,7 +118,21 @@ list(APPEND EXL_SOURCES_CXX "${PROJECT_SOURCE_DIR}/source/third_party/imgui_back
 list(APPEND EXL_SOURCES_CXX "${PROJECT_SOURCE_DIR}/source/third_party/imgui_backend/imgui_impl_nvn_textures.cpp")
 list(REMOVE_DUPLICATES EXL_SOURCES_CXX)
 
+# Generate git build metadata header (best-effort).
+set(EXL_GENERATED_DIR "${CMAKE_BINARY_DIR}/generated")
+set(EXL_BUILD_GIT_HEADER "${EXL_GENERATED_DIR}/d3hack_build_git.hpp")
+add_custom_command(
+    OUTPUT "${EXL_BUILD_GIT_HEADER}"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${EXL_GENERATED_DIR}"
+    COMMAND ${PYTHON} "${CMAKE_SOURCE_DIR}/scripts/gen_build_git.py" "${EXL_BUILD_GIT_HEADER}"
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+    DEPENDS "${CMAKE_SOURCE_DIR}/scripts/gen_build_git.py"
+    VERBATIM
+)
+add_custom_target(exl-build-git-header DEPENDS "${EXL_BUILD_GIT_HEADER}")
+
 add_executable(${EXL_TARGET_NAME} ${EXL_SOURCES_ASM} ${EXL_SOURCES_C} ${EXL_SOURCES_CXX})
+add_dependencies(${EXL_TARGET_NAME} exl-build-git-header)
 exl_apply_iwyu(${EXL_TARGET_NAME})
 exl_add_find_all_symbols_target(iwyu-symbols)
 
@@ -139,6 +153,7 @@ if(LIBNX)
 endif()
 
 target_include_directories(${EXL_TARGET_NAME} PRIVATE "${PROJECT_SOURCE_DIR}/source")
+target_include_directories(${EXL_TARGET_NAME} PRIVATE "${EXL_GENERATED_DIR}")
 target_include_directories(${EXL_TARGET_NAME} SYSTEM PRIVATE ${EXL_INCLUDE_DIRS})
 # if(LIBNX)
 #     target_include_directories(${EXL_TARGET_NAME} SYSTEM PRIVATE "${LIBNX}/include")
