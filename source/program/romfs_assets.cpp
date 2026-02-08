@@ -1,6 +1,7 @@
 #include "program/romfs_assets.hpp"
 
 #include <algorithm>
+#include <cstdlib>
 #include <cstring>
 #include <string_view>
 
@@ -49,6 +50,9 @@ namespace d3::romfs {
             rc = nn::fs::MountRom(kRomfsMountName, s_romfs_mount_cache, static_cast<ulong>(s_romfs_mount_cache_size));
             if (R_FAILED(rc)) {
                 PRINT("[romfs] MountRom('%s') failed (rc=0x%x)", kRomfsMountName, rc);
+                std::free(s_romfs_mount_cache);
+                s_romfs_mount_cache      = nullptr;
+                s_romfs_mount_cache_size = 0;
                 return;
             }
 

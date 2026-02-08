@@ -42,7 +42,7 @@ void SetResumeNotificationEnabled(bool);
 void SetOperationModeChangedNotificationEnabled(bool);
 void SetPerformanceModeChangedNotificationEnabled(bool);
 void SetFocusHandlingMode(nn::oe::FocusHandlingMode);
-void setScreenShotImageOrientation(int32 /* nn::album::ImageOrientation */);
+void setScreenShotImageOrientation(s32 /* nn::album::ImageOrientation */);
 void SetUserInactivityDetectionTimeExtended(bool);
 bool IsUserInactivityDetectionTimeExtended();
 bool TryPopNotificationMessage(u32 *);

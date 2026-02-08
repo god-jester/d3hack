@@ -14,14 +14,18 @@ namespace exl::log {
         };
 
         constexpr StreamConfig kLogStreams[] = {
+            // Match the game's default output stream filenames where possible.
+            // Note: In the base game, OUTPUTSTREAM_LEADERBOARD shares "locks.log" with OUTPUTSTREAM_LOCKS.
+            // We keep LEADERBOARD separate for clarity.
+            {OUTPUTSTREAM_DEFAULT, "Debug.txt"},
             {OUTPUTSTREAM_BOOT, "Boot.txt"},
             {OUTPUTSTREAM_SYNC, "Sync.txt"},
             {OUTPUTSTREAM_STREAMING, "Streaming.log"},
             {OUTPUTSTREAM_BATTLENET, "Battlenet.log"},
             {OUTPUTSTREAM_LOCKS, "locks.log"},
-            {OUTPUTSTREAM_LEADERBOARD, "locks.log"},
             {OUTPUTSTREAM_NOTIFICATIONS, "Notifications.log"},
             {OUTPUTSTREAM_TRADE, "Trade.log"},
+            {OUTPUTSTREAM_LEADERBOARD, "Leaderboard.log"},
             {OUTPUTSTREAM_RIFTSTATS, "RiftStats.log"},
         };
 
@@ -99,11 +103,23 @@ namespace exl::log {
     }
 
     void PrintV(const char *fmt, std::va_list vl) {
-        std::va_list vl_game;
-        va_copy(vl_game, vl);
+        // NOTE: Printing to the game's log streams can recurse into ErrorManager.
+        // When we're already handling an internal error or exception, that can
+        // cascade into further faults. Keep OutputDebugString alive, but avoid
+        // re-entering game logging from inside error handling.
+        bool skip_game_logging = false;
+        if (d3::g_tSigmaGlobals.ptEMGlobals != nullptr) {
+            const auto &em    = *d3::g_tSigmaGlobals.ptEMGlobals;
+            skip_game_logging = (em.fSigmaCurrentlyHandlingError != 0) || (em.fSigmaCurrentlyInExceptionHandler != 0);
+        }
+
         Logging.VLog(fmt, vl);
-        GameLogging.VLog(fmt, vl_game);
-        va_end(vl_game);
+        if (!skip_game_logging) {
+            std::va_list vl_game;
+            va_copy(vl_game, vl);
+            GameLogging.VLog(fmt, vl_game);
+            va_end(vl_game);
+        }
     }
 
     void LogFmt(const char *fmt, ...) {
