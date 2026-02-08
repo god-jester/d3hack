@@ -1,7 +1,7 @@
 #pragma once
 
-#include <common.hpp>
-#include <lib/util/sys/modules.hpp>
+#include "common.hpp"
+#include "lib/util/sys/modules.hpp"
 #include "program/build_info.hpp"
 #include <cstring>
 #include <string_view>

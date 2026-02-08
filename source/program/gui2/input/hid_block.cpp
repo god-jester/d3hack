@@ -8,7 +8,7 @@
 #include "lib/hook/trampoline.hpp"
 #include "lib/reloc/reloc.hpp"
 #include "lib/util/sys/mem_layout.hpp"
-#include <nn/nn_common.hpp>
+#include "nn/nn_common.hpp"
 #include "nn/hid.hpp"  // IWYU pragma: keep
 #include "nn/os.hpp"   // IWYU pragma: keep
 #include "program/d3/setting.hpp"

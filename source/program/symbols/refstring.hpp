@@ -1,6 +1,6 @@
 #pragma once
 
-#include <lib.hpp>
+#include "lib.hpp"
 #include "d3/types/common.hpp"
 
 struct CRefString;

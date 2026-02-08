@@ -11,7 +11,7 @@
 #include "nn/fs/fs_mount.hpp"
 #include "d3/_util.hpp"
 #include "d3/patches.hpp"
-#include "config.hpp"
+#include "program/config.hpp"
 #include "d3/hooks/util.hpp"
 #include "d3/hooks/resolution.hpp"
 #include "d3/hooks/debug.hpp"

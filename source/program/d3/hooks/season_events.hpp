@@ -1,7 +1,7 @@
 #pragma once
 
 #include "lib/hook/trampoline.hpp"
-#include "config.hpp"
+#include "program/config.hpp"
 #include "d3/types/common.hpp"
 #include "d3/_util.hpp"
 #include "symbols/common.hpp"

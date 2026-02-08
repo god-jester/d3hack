@@ -1,6 +1,6 @@
 #pragma once
 
-#include "nvn/nvn.h"
+#include <nvn/nvn.h>
 
 namespace nvn {
     class Texture;

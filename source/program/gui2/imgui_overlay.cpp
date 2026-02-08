@@ -16,7 +16,7 @@
 
 #include "types.h"
 
-#include <nn/nn_common.hpp>
+#include "nn/nn_common.hpp"
 #include "nn/hid.hpp"  // IWYU pragma: keep
 #include "nn/oe.hpp"   // IWYU pragma: keep
 #include "nn/os.hpp"   // IWYU pragma: keep

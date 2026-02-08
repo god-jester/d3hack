@@ -7,7 +7,7 @@
 #include "lib/hook/inline.hpp"
 #include "lib/util/modules.hpp"
 #include "program/config.hpp"
-#include "nvn/nvn.h"
+#include <nvn/nvn.h>
 
 namespace d3::nvn {
     struct NVNTexInfo {

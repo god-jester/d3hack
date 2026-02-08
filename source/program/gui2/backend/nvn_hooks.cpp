@@ -10,11 +10,11 @@
 
 // Pull in only the C NVN API (avoid the NVN C++ funcptr shim headers which declare
 // a conflicting `nvnBootstrapLoader` symbol).
-#include "nvn/nvn.h"
+#include <nvn/nvn.h>
 // NVN C++ wrapper types.
-#include "nvn/nvn_Cpp.h"
+#include <nvn/nvn_Cpp.h>
 // NVN C++ proc loader (fills pfncpp_* function pointers).
-#include "nvn/nvn_CppFuncPtrImpl.h"
+#include <nvn/nvn_CppFuncPtrImpl.h>
 
 extern "C" auto nvnBootstrapLoader(const char *) -> PFNNVNGENERICFUNCPTRPROC;
 

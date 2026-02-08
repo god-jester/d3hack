@@ -1,4 +1,4 @@
-#include "config.hpp"
+#include "program/config.hpp"
 #include "d3/setting.hpp"
 #include "d3/resolution_util.hpp"
 #include "lib/diag/assert.hpp"
