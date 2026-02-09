@@ -316,8 +316,16 @@ namespace d3::gui2::ui::windows {
                 draw_restart_marker(restart_required);
                 ImGui::TableSetColumnIndex(1);
             } else {
+                float row_start = ImGui::GetCursorPosX();
+                float wrap_pos  = row_start + ImGui::GetContentRegionAvail().x;
+                if (restart_required) {
+                    const float marker_w = ImGui::CalcTextSize(overlay_.tr("gui.restart_marker_short", "[R]")).x;
+                    wrap_pos             = std::max(row_start + 120.0f, wrap_pos - marker_w - 12.0f);
+                }
                 ImGui::AlignTextToFramePadding();
+                ImGui::PushTextWrapPos(wrap_pos);
                 ImGui::TextUnformatted(label);
+                ImGui::PopTextWrapPos();
                 draw_restart_marker(restart_required);
             }
             ImGui::SetNextItemWidth(-FLT_MIN);
@@ -376,6 +384,13 @@ namespace d3::gui2::ui::windows {
             ImGui::TextDisabled("%s", overlay_.tr("gui.restart_marker_legend", "[R] restart required"));
         };
 
+        auto render_subgroup_header = [&](const char *label_key, const char *fallback, bool top_of_section) -> void {
+            if (!top_of_section) {
+                ImGui::Spacing();
+            }
+            ImGui::SeparatorText(overlay_.tr(label_key, fallback));
+        };
+
         auto label_passes_filter = [&](const ImGuiTextFilter &filter, const char *label) -> bool {
             return filter.IsActive() ? filter.PassFilter(label) : true;
         };
@@ -394,6 +409,17 @@ namespace d3::gui2::ui::windows {
             ImGui::TextUnformatted(filter_label);
             ImGui::SameLine();
             filter.Draw(filter_id, ImGui::GetContentRegionAvail().x);
+            const bool filter_active = filter.IsActive();
+            if (filter_active) {
+                ImGui::TextDisabled("%s", overlay_.tr("gui.filter_active", "Filter active"));
+                ImGui::SameLine();
+                ImGui::PushID(filter_id);
+                if (ImGui::Button(overlay_.tr("gui.filter_clear", "Clear filter"))) {
+                    filter.Clear();
+                    changed = true;
+                }
+                ImGui::PopID();
+            }
             ImGui::BeginDisabled(disabled);
             const char *bulk_enable  = overlay_.tr("gui.bulk_enable_visible", "Enable visible");
             const char *bulk_disable = overlay_.tr("gui.bulk_disable_visible", "Disable visible");
@@ -595,28 +621,46 @@ namespace d3::gui2::ui::windows {
         };
 
         auto render_resolution = [&]() -> void {
-            const float max_label = std::max(
-                ImGui::CalcTextSize(overlay_.tr("gui.resolution_output_target", "Output target (vertical)")).x,
-                ImGui::CalcTextSize(overlay_.tr("gui.resolution_extra_render_height", "Render height (-1=default)")).x
+            const float general_max_label = std::max(
+                ImGui::CalcTextSize(overlay_.tr("gui.resolution_spoof_docked", "Spoof docked")).x,
+                ImGui::CalcTextSize(overlay_.tr("gui.resolution_exp_scheduler", "Experimental scheduler")).x
             );
-            FormLayout layout = begin_form_layout("cfg_resolution_form", max_label);
-            mark_dirty(checkbox_row(layout, overlay_.tr("gui.resolution_enabled", "Enabled"), "##res_enabled", &cfg.resolution_hack.active, true));
+            const float output_max_label = std::max(
+                ImGui::CalcTextSize(overlay_.tr("gui.resolution_output_target_handheld", "Handheld output target (vertical)")).x,
+                ImGui::CalcTextSize(overlay_.tr("gui.resolution_output_handheld_auto", "Handheld output scale: auto (stock)")).x
+            );
+            const float scale_max_label = std::max(
+                ImGui::CalcTextSize(overlay_.tr("gui.resolution_min_scale", "Minimum resolution scale")).x,
+                ImGui::CalcTextSize(overlay_.tr("gui.resolution_max_scale", "Maximum resolution scale")).x
+            );
+            const float clamp_max_label = ImGui::CalcTextSize(overlay_.tr("gui.resolution_clamp_texture", "Clamp texture height (0=off, 100-9999)")).x;
+
+            render_subgroup_header("gui.resolution_group_general", "General", true);
+            FormLayout general_layout = begin_form_layout("cfg_resolution_general_form", general_max_label);
+            mark_dirty(checkbox_row(general_layout, overlay_.tr("gui.resolution_enabled", "Enabled"), "##res_enabled", &cfg.resolution_hack.active, true));
             ImGui::BeginDisabled(!cfg.resolution_hack.active);
-            const int max_target = static_cast<int>(d3::MaxResolutionHackOutputTarget());
-            int       target     = static_cast<int>(cfg.resolution_hack.target_resolution);
+            mark_dirty(checkbox_row(general_layout, overlay_.tr("gui.resolution_exp_scheduler", "Experimental scheduler"), "##res_exp_scheduler", &cfg.resolution_hack.exp_scheduler, false));
+            ImGui::EndDisabled();
+            end_form_layout(general_layout);
+
+            ImGui::BeginDisabled(!cfg.resolution_hack.active);
+            render_subgroup_header("gui.resolution_group_output", "Output Targeting", false);
+            FormLayout output_layout = begin_form_layout("cfg_resolution_output_form", output_max_label);
+            const int  max_target    = static_cast<int>(d3::MaxResolutionHackOutputTarget());
+            int        target        = static_cast<int>(cfg.resolution_hack.target_resolution);
             if (target > max_target) {
                 target = max_target;
                 cfg.resolution_hack.SetTargetRes(static_cast<u32>(target));
                 overlay_.set_ui_dirty(true);
             }
-            if (slider_int_row(layout, overlay_.tr("gui.resolution_output_target", "Output target (vertical)"), "##res_output_target", &target, 720, max_target, "%dp", 0, true)) {
+            if (slider_int_row(output_layout, overlay_.tr("gui.resolution_output_target", "Output target (vertical)"), "##res_output_target", &target, 720, max_target, "%dp", 0, true)) {
                 target = SnapOutputTarget(target);
                 cfg.resolution_hack.SetTargetRes(static_cast<u32>(target));
                 overlay_.set_ui_dirty(true);
             }
-            mark_dirty(checkbox_row(layout, overlay_.tr("gui.resolution_spoof_docked", "Spoof docked"), "##res_spoof_docked", &cfg.resolution_hack.spoof_docked, true));
+            mark_dirty(checkbox_row(output_layout, overlay_.tr("gui.resolution_spoof_docked", "Spoof docked"), "##res_spoof_docked", &cfg.resolution_hack.spoof_docked, true));
             bool handheld_auto = cfg.resolution_hack.output_handheld_scale <= 0.0f;
-            if (checkbox_row(layout, overlay_.tr("gui.resolution_output_handheld_auto", "Handheld output scale: auto (stock)"), "##res_handheld_auto", &handheld_auto, true)) {
+            if (checkbox_row(output_layout, overlay_.tr("gui.resolution_output_handheld_auto", "Handheld output scale: auto (stock)"), "##res_handheld_auto", &handheld_auto, true)) {
                 if (handheld_auto) {
                     cfg.resolution_hack.output_handheld_scale = 0.0f;
                 } else if (cfg.resolution_hack.output_handheld_scale <= 0.0f) {
@@ -626,7 +670,7 @@ namespace d3::gui2::ui::windows {
             }
             ImGui::BeginDisabled(handheld_auto);
             float handheld_scale = cfg.resolution_hack.output_handheld_scale;
-            if (slider_float_row(layout, overlay_.tr("gui.resolution_output_handheld_scale", "Handheld output scale (%)"), "##res_handheld_scale", &handheld_scale, PatchConfig::ResolutionHackConfig::kHandheldScaleMin, PatchConfig::ResolutionHackConfig::kHandheldScaleMax, "%.0f%%", ImGuiSliderFlags_AlwaysClamp, true)) {
+            if (slider_float_row(output_layout, overlay_.tr("gui.resolution_output_handheld_scale", "Handheld output scale (%)"), "##res_handheld_scale", &handheld_scale, PatchConfig::ResolutionHackConfig::kHandheldScaleMin, PatchConfig::ResolutionHackConfig::kHandheldScaleMax, "%.0f%%", ImGuiSliderFlags_AlwaysClamp, true)) {
                 handheld_scale = PatchConfig::ResolutionHackConfig::NormalizeHandheldScale(handheld_scale);
                 if (handheld_scale != cfg.resolution_hack.output_handheld_scale) {
                     cfg.resolution_hack.output_handheld_scale = handheld_scale;
@@ -634,19 +678,21 @@ namespace d3::gui2::ui::windows {
                 }
             }
             ImGui::EndDisabled();
+            readonly_int_row(output_layout, overlay_.tr("gui.resolution_output_target_handheld", "Handheld output target (vertical)"), "##res_output_target_handheld", static_cast<int>(cfg.resolution_hack.OutputHandheldHeightPx()));
+            end_form_layout(output_layout);
 
-            readonly_int_row(layout, overlay_.tr("gui.resolution_output_target_handheld", "Handheld output target (vertical)"), "##res_output_target_handheld", static_cast<int>(cfg.resolution_hack.OutputHandheldHeightPx()));
-
-            float min_scale   = cfg.resolution_hack.min_res_scale;
-            float max_scale   = cfg.resolution_hack.max_res_scale;
-            bool  scale_dirty = false;
-            if (slider_float_row(layout, overlay_.tr("gui.resolution_min_scale", "Minimum resolution scale"), "##res_min_scale", &min_scale, 10.0f, 100.0f, "%.0f%%", 0, true)) {
+            render_subgroup_header("gui.resolution_group_scale", "Dynamic Scale Bounds", false);
+            FormLayout scale_layout = begin_form_layout("cfg_resolution_scale_form", scale_max_label);
+            float      min_scale    = cfg.resolution_hack.min_res_scale;
+            float      max_scale    = cfg.resolution_hack.max_res_scale;
+            bool       scale_dirty  = false;
+            if (slider_float_row(scale_layout, overlay_.tr("gui.resolution_min_scale", "Minimum resolution scale"), "##res_min_scale", &min_scale, 10.0f, 100.0f, "%.0f%%", 0, true)) {
                 if (min_scale > max_scale) {
                     max_scale = min_scale;
                 }
                 scale_dirty = true;
             }
-            if (slider_float_row(layout, overlay_.tr("gui.resolution_max_scale", "Maximum resolution scale"), "##res_max_scale", &max_scale, 10.0f, 100.0f, "%.0f%%", 0, true)) {
+            if (slider_float_row(scale_layout, overlay_.tr("gui.resolution_max_scale", "Maximum resolution scale"), "##res_max_scale", &max_scale, 10.0f, 100.0f, "%.0f%%", 0, true)) {
                 if (max_scale < min_scale) {
                     min_scale = max_scale;
                 }
@@ -657,9 +703,12 @@ namespace d3::gui2::ui::windows {
                 cfg.resolution_hack.max_res_scale = max_scale;
                 overlay_.set_ui_dirty(true);
             }
+            end_form_layout(scale_layout);
 
-            int clamp_height = static_cast<int>(cfg.resolution_hack.clamp_texture_resolution);
-            if (input_int_row(layout, overlay_.tr("gui.resolution_clamp_texture", "Clamp texture height (0=off, 100-9999)"), "##res_clamp_texture", &clamp_height, 1, 100, 0, true)) {
+            render_subgroup_header("gui.resolution_group_texture", "Texture Clamp", false);
+            FormLayout clamp_layout = begin_form_layout("cfg_resolution_clamp_form", clamp_max_label);
+            int        clamp_height = static_cast<int>(cfg.resolution_hack.clamp_texture_resolution);
+            if (input_int_row(clamp_layout, overlay_.tr("gui.resolution_clamp_texture", "Clamp texture height (0=off, 100-9999)"), "##res_clamp_texture", &clamp_height, 1, 100, 0, true)) {
                 clamp_height = std::max(clamp_height, 0);
                 if (clamp_height != 0 && clamp_height < 100) {
                     clamp_height = 100;
@@ -670,13 +719,13 @@ namespace d3::gui2::ui::windows {
                 cfg.resolution_hack.clamp_texture_resolution = static_cast<u32>(clamp_height);
                 overlay_.set_ui_dirty(true);
             }
+            end_form_layout(clamp_layout);
 
-            mark_dirty(checkbox_row(layout, overlay_.tr("gui.resolution_exp_scheduler", "Experimental scheduler"), "##res_exp_scheduler", &cfg.resolution_hack.exp_scheduler, false));
-            end_form_layout(layout);
             render_restart_legend();
 
             ImGui::Text(overlay_.tr("gui.resolution_output_size", "Output size: %ux%u"), cfg.resolution_hack.OutputWidthPx(), cfg.resolution_hack.OutputHeightPx());
 
+            render_subgroup_header("gui.resolution_group_display_overrides", "Display Overrides (Advanced)", false);
             if (ImGui::CollapsingHeader(overlay_.tr("gui.resolution_extra_header", "Display mode overrides"), ImGuiTreeNodeFlags_None)) {
                 ImGui::TextDisabled("%s", overlay_.tr("gui.resolution_extra_hint", "Set to -1 to keep the game's value."));
                 const float extra_max_label = ImGui::CalcTextSize(overlay_.tr("gui.resolution_extra_render_height", "Render height (-1=default)")).x;
@@ -801,26 +850,58 @@ namespace d3::gui2::ui::windows {
 
             ImGui::BeginDisabled(!cfg.events.active);
             mark_dirty(render_filter_and_bulk(overlay_.tr("gui.filter_events", "Filter"), "##events_filter", events_filter, rows, false));
-            float max_label = 0.0f;
-            for (const BoolRowSpec &row : rows) {
-                const char *label = overlay_.tr(row.tr_key, row.fallback);
-                if (!label_passes_filter(events_filter, label)) {
-                    continue;
+            const auto render_events_cluster = [&](const char *title_key, const char *title_fallback, const auto &indices, const char *table_id) -> bool {
+                float max_label = 0.0f;
+                for (int index : indices) {
+                    EXL_ASSERT(index >= 0 && index < static_cast<int>(rows.size()), "events cluster index out of range");
+                    const BoolRowSpec &row   = rows[static_cast<size_t>(index)];
+                    const char        *label = overlay_.tr(row.tr_key, row.fallback);
+                    if (!label_passes_filter(events_filter, label)) {
+                        continue;
+                    }
+                    max_label = std::max(max_label, ImGui::CalcTextSize(label).x);
                 }
-                max_label = std::max(max_label, ImGui::CalcTextSize(label).x);
-            }
-            if (max_label <= 0.0f) {
-                ImGui::TextDisabled("%s", overlay_.tr("gui.filter_empty", "No rows match current filter."));
-            } else {
-                FormLayout toggles_layout = begin_form_layout("cfg_events_toggles_form", max_label);
-                for (const BoolRowSpec &row : rows) {
-                    const char *label = overlay_.tr(row.tr_key, row.fallback);
+                if (max_label <= 0.0f) {
+                    return false;
+                }
+
+                render_subgroup_header(title_key, title_fallback, false);
+                FormLayout toggles_layout = begin_form_layout(table_id, max_label);
+                for (int index : indices) {
+                    EXL_ASSERT(index >= 0 && index < static_cast<int>(rows.size()), "events cluster index out of range");
+                    const BoolRowSpec &row   = rows[static_cast<size_t>(index)];
+                    const char        *label = overlay_.tr(row.tr_key, row.fallback);
                     if (!label_passes_filter(events_filter, label)) {
                         continue;
                     }
                     mark_dirty(checkbox_row(toggles_layout, label, row.id, row.value, row.restart_required));
                 }
                 end_form_layout(toggles_layout);
+                return true;
+            };
+
+            int visible_count = 0;
+            for (const BoolRowSpec &row : rows) {
+                const char *label = overlay_.tr(row.tr_key, row.fallback);
+                if (label_passes_filter(events_filter, label)) {
+                    ++visible_count;
+                }
+            }
+
+            if (visible_count == 0) {
+                ImGui::TextDisabled("%s", overlay_.tr("gui.filter_empty", "No rows match current filter."));
+            } else {
+                constexpr std::array<int, 7>  kCoreEventIndices     = {0, 1, 2, 7, 8, 9, 10};
+                constexpr std::array<int, 4>  kBonusIndices         = {3, 4, 5, 6};
+                constexpr std::array<int, 10> kSeasonalEventIndices = {11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
+
+                bool rendered_any = false;
+                rendered_any |= render_events_cluster("gui.events_cluster_core", "Core Events", kCoreEventIndices, "cfg_events_toggles_core_form");
+                rendered_any |= render_events_cluster("gui.events_cluster_bonus", "Bonus Multipliers", kBonusIndices, "cfg_events_toggles_bonus_form");
+                rendered_any |= render_events_cluster("gui.events_cluster_seasonal", "Seasonal Mechanics", kSeasonalEventIndices, "cfg_events_toggles_seasonal_form");
+                if (!rendered_any) {
+                    ImGui::TextDisabled("%s", overlay_.tr("gui.filter_empty", "No rows match current filter."));
+                }
             }
             ImGui::EndDisabled();
         };
@@ -867,59 +948,81 @@ namespace d3::gui2::ui::windows {
             }};
 
             mark_dirty(render_filter_and_bulk(overlay_.tr("gui.filter_cheats", "Filter"), "##cheats_filter", cheats_filter, rows, false));
-            float max_label     = 0.0f;
-            int   visible_count = 0;
+            int visible_count = 0;
             for (const BoolRowSpec &row : rows) {
                 const char *label = overlay_.tr(row.tr_key, row.fallback);
                 if (!label_passes_filter(cheats_filter, label)) {
                     continue;
                 }
                 ++visible_count;
-                max_label = std::max(max_label, ImGui::CalcTextSize(label).x);
             }
             if (visible_count == 0) {
                 ImGui::TextDisabled("%s", overlay_.tr("gui.filter_empty", "No rows match current filter."));
             } else {
-                const float avail_w           = ImGui::GetContentRegionAvail().x;
-                const bool  use_checkbox_grid = (avail_w >= 760.0f);
-                if (use_checkbox_grid && ImGui::BeginTable("cfg_cheats_grid", 2, ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_NoSavedSettings)) {
+                const float avail_w               = ImGui::GetContentRegionAvail().x;
+                const bool  use_checkbox_grid     = (avail_w >= 760.0f);
+                const auto  render_cheats_cluster = [&](const char *title_key, const char *title_fallback, const auto &indices, const char *grid_id, const char *table_id) -> bool {
                     std::array<const BoolRowSpec *, rows.size()> visible_rows {};
                     int                                          visible_len = 0;
-                    for (const BoolRowSpec &row : rows) {
-                        const char *label = overlay_.tr(row.tr_key, row.fallback);
+                    float                                        max_label   = 0.0f;
+                    for (int index : indices) {
+                        EXL_ASSERT(index >= 0 && index < static_cast<int>(rows.size()), "cheats cluster index out of range");
+                        const BoolRowSpec &row   = rows[static_cast<size_t>(index)];
+                        const char        *label = overlay_.tr(row.tr_key, row.fallback);
                         if (!label_passes_filter(cheats_filter, label)) {
                             continue;
                         }
                         visible_rows[static_cast<size_t>(visible_len++)] = &row;
+                        max_label                                        = std::max(max_label, ImGui::CalcTextSize(label).x);
+                    }
+                    if (visible_len == 0) {
+                        return false;
                     }
 
-                    for (int i = 0; i < visible_count; i += 2) {
-                        ImGui::TableNextRow();
-                        for (int col = 0; col < 2; ++col) {
-                            ImGui::TableSetColumnIndex(col);
-                            if (i + col >= visible_count) {
-                                continue;
+                    render_subgroup_header(title_key, title_fallback, false);
+                    if (use_checkbox_grid && ImGui::BeginTable(grid_id, 2, ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_NoSavedSettings)) {
+                        for (int i = 0; i < visible_len; i += 2) {
+                            ImGui::TableNextRow();
+                            for (int col = 0; col < 2; ++col) {
+                                ImGui::TableSetColumnIndex(col);
+                                if (i + col >= visible_len) {
+                                    continue;
+                                }
+                                EXL_ASSERT(i + col < visible_len, "visible index out of range in cheats grid");
+                                const BoolRowSpec *row = visible_rows[static_cast<size_t>(i + col)];
+                                EXL_ASSERT(row != nullptr, "null visible row in cheats grid");
+                                bool row_changed = ImGui::Checkbox(row->id, row->value);
+                                ImGui::SameLine(0.0f, 6.0f);
+                                ImGui::TextUnformatted(overlay_.tr(row->tr_key, row->fallback));
+                                mark_dirty(row_changed);
                             }
-                            EXL_ASSERT(i + col < visible_len, "visible index out of range in cheats grid");
-                            const BoolRowSpec *row = visible_rows[static_cast<size_t>(i + col)];
-                            EXL_ASSERT(row != nullptr, "null visible row in cheats grid");
-                            bool row_changed = ImGui::Checkbox(row->id, row->value);
-                            ImGui::SameLine(0.0f, 6.0f);
-                            ImGui::TextUnformatted(overlay_.tr(row->tr_key, row->fallback));
-                            mark_dirty(row_changed);
                         }
-                    }
-                    ImGui::EndTable();
-                } else {
-                    FormLayout toggles_layout = begin_form_layout("cfg_cheats_toggles_form", max_label);
-                    for (const BoolRowSpec &row : rows) {
-                        const char *label = overlay_.tr(row.tr_key, row.fallback);
-                        if (!label_passes_filter(cheats_filter, label)) {
-                            continue;
+                        ImGui::EndTable();
+                    } else {
+                        FormLayout toggles_layout = begin_form_layout(table_id, max_label);
+                        for (int i = 0; i < visible_len; ++i) {
+                            const BoolRowSpec *row = visible_rows[static_cast<size_t>(i)];
+                            EXL_ASSERT(row != nullptr, "null visible row in cheats form");
+                            const char *label = overlay_.tr(row->tr_key, row->fallback);
+                            mark_dirty(checkbox_row(toggles_layout, label, row->id, row->value, row->restart_required));
                         }
-                        mark_dirty(checkbox_row(toggles_layout, label, row.id, row.value, row.restart_required));
+                        end_form_layout(toggles_layout);
                     }
-                    end_form_layout(toggles_layout);
+                    return true;
+                };
+
+                constexpr std::array<int, 5> kCombatIndices       = {0, 1, 2, 6, 12};
+                constexpr std::array<int, 8> kLootCraftingIndices = {3, 4, 7, 8, 13, 14, 15, 16};
+                constexpr std::array<int, 2> kProgressionIndices  = {11, 17};
+                constexpr std::array<int, 3> kMiscIndices         = {5, 9, 10};
+
+                bool rendered_any = false;
+                rendered_any |= render_cheats_cluster("gui.cheats_cluster_combat", "Combat", kCombatIndices, "cfg_cheats_grid_combat", "cfg_cheats_toggles_combat_form");
+                rendered_any |= render_cheats_cluster("gui.cheats_cluster_loot_crafting", "Loot-Crafting", kLootCraftingIndices, "cfg_cheats_grid_loot_crafting", "cfg_cheats_toggles_loot_crafting_form");
+                rendered_any |= render_cheats_cluster("gui.cheats_cluster_progression", "Progression", kProgressionIndices, "cfg_cheats_grid_progression", "cfg_cheats_toggles_progression_form");
+                rendered_any |= render_cheats_cluster("gui.cheats_cluster_misc", "Misc", kMiscIndices, "cfg_cheats_grid_misc", "cfg_cheats_toggles_misc_form");
+                if (!rendered_any) {
+                    ImGui::TextDisabled("%s", overlay_.tr("gui.filter_empty", "No rows match current filter."));
                 }
             }
             ImGui::EndDisabled();
@@ -988,15 +1091,17 @@ namespace d3::gui2::ui::windows {
 
             ImGui::Spacing();
             ImGui::TextUnformatted(overlay_.tr("gui.loot_group_overrides", "Overrides"));
-            FormLayout overrides_layout = begin_form_layout("cfg_loot_overrides_form", core_max_label);
-            int        forced_ilevel    = cfg.loot_modifiers.ForcedILevel;
-            if (slider_int_row(overrides_layout, overlay_.tr("gui.loot_forced_ilevel", "Forced iLevel"), "##loot_forced_ilevel", &forced_ilevel, 0, 70, "%d", 0, false)) {
+            const float quality_max_label = std::max(
+                ImGui::CalcTextSize(overlay_.tr("gui.loot_forced_ilevel", "Forced iLevel")).x,
+                ImGui::CalcTextSize(overlay_.tr("gui.loot_ancient_rank", "Ancient rank")).x
+            );
+            const float progression_max_label = ImGui::CalcTextSize(overlay_.tr("gui.loot_tiered_run_level", "Tiered loot run level")).x;
+
+            render_subgroup_header("gui.loot_cluster_quality", "Item Quality", true);
+            FormLayout quality_layout = begin_form_layout("cfg_loot_overrides_quality_form", quality_max_label);
+            int        forced_ilevel  = cfg.loot_modifiers.ForcedILevel;
+            if (slider_int_row(quality_layout, overlay_.tr("gui.loot_forced_ilevel", "Forced iLevel"), "##loot_forced_ilevel", &forced_ilevel, 0, 70, "%d", 0, false)) {
                 cfg.loot_modifiers.ForcedILevel = forced_ilevel;
-                overlay_.set_ui_dirty(true);
-            }
-            int tiered_level = cfg.loot_modifiers.TieredLootRunLevel;
-            if (slider_int_row(overrides_layout, overlay_.tr("gui.loot_tiered_run_level", "Tiered loot run level"), "##loot_tiered_run_level", &tiered_level, 0, 150, "%d", 0, false)) {
-                cfg.loot_modifiers.TieredLootRunLevel = tiered_level;
                 overlay_.set_ui_dirty(true);
             }
 
@@ -1007,7 +1112,7 @@ namespace d3::gui2::ui::windows {
             };
             int rank_value = cfg.loot_modifiers.AncientRankValue;
             if (combo_row(
-                    overrides_layout,
+                    quality_layout,
                     overlay_.tr("gui.loot_ancient_rank", "Ancient rank"),
                     "##loot_ancient_rank",
                     false,
@@ -1018,7 +1123,16 @@ namespace d3::gui2::ui::windows {
                 cfg.loot_modifiers.AncientRankValue = rank_value;
                 overlay_.set_ui_dirty(true);
             }
-            end_form_layout(overrides_layout);
+            end_form_layout(quality_layout);
+
+            render_subgroup_header("gui.loot_cluster_progression", "Progression", false);
+            FormLayout progression_layout = begin_form_layout("cfg_loot_overrides_progression_form", progression_max_label);
+            int        tiered_level       = cfg.loot_modifiers.TieredLootRunLevel;
+            if (slider_int_row(progression_layout, overlay_.tr("gui.loot_tiered_run_level", "Tiered loot run level"), "##loot_tiered_run_level", &tiered_level, 0, 150, "%d", 0, false)) {
+                cfg.loot_modifiers.TieredLootRunLevel = tiered_level;
+                overlay_.set_ui_dirty(true);
+            }
+            end_form_layout(progression_layout);
             ImGui::EndDisabled();
         };
 
