@@ -46,6 +46,52 @@ save = "Salva"
 reload = "Ricarica"
 # Restart required for some changes.
 restart_required_banner = "Riavvio richiesto per alcune modifiche."
+# Disable visible
+bulk_disable_visible = "Disabilita visibili"
+# Enable visible
+bulk_enable_visible = "Abilita visibili"
+# Reset visible
+bulk_reset_visible = "Reimposta visibili"
+# Cheats group: core
+cheats_group_core = "Core"
+# Cheats group: toggles
+cheats_group_toggles = "Attivazioni"
+# Events group: core
+events_group_core = "Core"
+# Events group: toggles
+events_group_toggles = "Attivazioni"
+# Filter: cheats
+filter_cheats = "Cheat"
+# Filter: empty result
+filter_empty = "Nessun elemento corrisponde a questo filtro."
+# Filter: events
+filter_events = "Eventi"
+# Filter: loot
+filter_loot = "Bottino"
+# Filter active indicator
+filter_active = "Filtro attivo"
+# Clear filter action
+filter_clear = "Cancella filtro"
+# Clear language override
+language_clear = "Cancella override"
+# Current language label
+language_current = "Attuale: %s"
+# Edit language override
+language_edit = "Modifica"
+# Edit language override title
+language_edit_title = "Modifica override lingua"
+# Loot group: core
+loot_group_core = "Core"
+# Loot group: overrides
+loot_group_overrides = "Override"
+# Loot group: toggles
+loot_group_toggles = "Attivazioni"
+# Restart marker legend
+restart_marker_legend = "* Richiede riavvio"
+# Restart marker short
+restart_marker_short = "*"
+# Restart required banner note
+restart_required_banner_note = "I campi contrassegnati con * richiedono il riavvio."
 # Language updated. Restart to fully apply new glyphs.
 lang_restart_banner = "Lingua aggiornata. Riavvio richiesto per applicare completamente i glifi."
 # Language updated. Restart to fully apply new glyphs.

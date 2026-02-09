@@ -46,6 +46,52 @@ save = "Speichern"
 reload = "Neu laden"
 # Restart required for some changes.
 restart_required_banner = "Neustart fuer einige Aenderungen erforderlich."
+# Disable visible
+bulk_disable_visible = "Sichtbares deaktivieren"
+# Enable visible
+bulk_enable_visible = "Sichtbares aktivieren"
+# Reset visible
+bulk_reset_visible = "Sichtbares zuruecksetzen"
+# Cheats group: core
+cheats_group_core = "Kern"
+# Cheats group: toggles
+cheats_group_toggles = "Umschalter"
+# Events group: core
+events_group_core = "Kern"
+# Events group: toggles
+events_group_toggles = "Umschalter"
+# Filter: cheats
+filter_cheats = "Cheats"
+# Filter: empty result
+filter_empty = "Keine Eintraege entsprechen diesem Filter."
+# Filter: events
+filter_events = "Events"
+# Filter: loot
+filter_loot = "Beute"
+# Filter active indicator
+filter_active = "Filter aktiv"
+# Clear filter action
+filter_clear = "Filter loeschen"
+# Clear language override
+language_clear = "Ueberschreibung loeschen"
+# Current language label
+language_current = "Aktuell: %s"
+# Edit language override
+language_edit = "Bearbeiten"
+# Edit language override title
+language_edit_title = "Sprachueberschreibung bearbeiten"
+# Loot group: core
+loot_group_core = "Kern"
+# Loot group: overrides
+loot_group_overrides = "Ueberschreibungen"
+# Loot group: toggles
+loot_group_toggles = "Umschalter"
+# Restart marker legend
+restart_marker_legend = "* Neustart erforderlich"
+# Restart marker short
+restart_marker_short = "*"
+# Restart required banner note
+restart_required_banner_note = "Mit * markierte Felder erfordern einen Neustart."
 # Language updated. Restart to fully apply new glyphs.
 lang_restart_banner = "Sprache aktualisiert. Neustart fuer vollstaendige Glyphen."
 # Language updated. Restart to fully apply new glyphs.

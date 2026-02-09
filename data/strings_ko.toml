@@ -46,6 +46,52 @@ save = "저장"
 reload = "다시 불러오기"
 # Restart required for some changes.
 restart_required_banner = "일부 변경은 재시작이 필요합니다."
+# Disable visible
+bulk_disable_visible = "표시 일괄 비활성화"
+# Enable visible
+bulk_enable_visible = "표시 일괄 활성화"
+# Reset visible
+bulk_reset_visible = "표시 일괄 초기화"
+# Cheats group: core
+cheats_group_core = "코어"
+# Cheats group: toggles
+cheats_group_toggles = "토글"
+# Events group: core
+events_group_core = "코어"
+# Events group: toggles
+events_group_toggles = "토글"
+# Filter: cheats
+filter_cheats = "치트"
+# Filter: empty result
+filter_empty = "이 필터와 일치하는 항목이 없습니다."
+# Filter: events
+filter_events = "이벤트"
+# Filter: loot
+filter_loot = "전리품"
+# Filter active indicator
+filter_active = "필터 활성"
+# Clear filter action
+filter_clear = "필터 지우기"
+# Clear language override
+language_clear = "오버라이드 지우기"
+# Current language label
+language_current = "현재: %s"
+# Edit language override
+language_edit = "편집"
+# Edit language override title
+language_edit_title = "언어 오버라이드 편집"
+# Loot group: core
+loot_group_core = "코어"
+# Loot group: overrides
+loot_group_overrides = "오버라이드"
+# Loot group: toggles
+loot_group_toggles = "토글"
+# Restart marker legend
+restart_marker_legend = "* 재시작 필요"
+# Restart marker short
+restart_marker_short = "*"
+# Restart required banner note
+restart_required_banner_note = "* 표시된 필드는 재시작이 필요합니다."
 # Language updated. Restart to fully apply new glyphs.
 lang_restart_banner = "언어가 업데이트되었습니다. 새 글리프를 완전히 적용하려면 재시작이 필요합니다."
 # Language updated. Restart to fully apply new glyphs.

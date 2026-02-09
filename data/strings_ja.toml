@@ -46,6 +46,52 @@ save = "保存"
 reload = "再読み込み"
 # Restart required for some changes.
 restart_required_banner = "一部の変更は再起動が必要です。"
+# Disable visible
+bulk_disable_visible = "表示を一括無効化"
+# Enable visible
+bulk_enable_visible = "表示を一括有効化"
+# Reset visible
+bulk_reset_visible = "表示を一括リセット"
+# Cheats group: core
+cheats_group_core = "コア"
+# Cheats group: toggles
+cheats_group_toggles = "切り替え"
+# Events group: core
+events_group_core = "コア"
+# Events group: toggles
+events_group_toggles = "切り替え"
+# Filter: cheats
+filter_cheats = "チート"
+# Filter: empty result
+filter_empty = "このフィルタに一致する項目はありません。"
+# Filter: events
+filter_events = "イベント"
+# Filter: loot
+filter_loot = "戦利品"
+# Filter active indicator
+filter_active = "フィルタ有効"
+# Clear filter action
+filter_clear = "フィルタをクリア"
+# Clear language override
+language_clear = "オーバーライドをクリア"
+# Current language label
+language_current = "現在: %s"
+# Edit language override
+language_edit = "編集"
+# Edit language override title
+language_edit_title = "言語オーバーライドを編集"
+# Loot group: core
+loot_group_core = "コア"
+# Loot group: overrides
+loot_group_overrides = "オーバーライド"
+# Loot group: toggles
+loot_group_toggles = "切り替え"
+# Restart marker legend
+restart_marker_legend = "* 再起動が必要"
+# Restart marker short
+restart_marker_short = "*"
+# Restart required banner note
+restart_required_banner_note = "*が付いたフィールドは再起動が必要です。"
 # Language updated. Restart to fully apply new glyphs.
 lang_restart_banner = "言語が更新されました。新しいグリフを完全に適用するには再起動が必要です。"
 # Language updated. Restart to fully apply new glyphs.

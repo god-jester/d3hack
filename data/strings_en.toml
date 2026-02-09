@@ -46,6 +46,52 @@ save = "Save"
 reload = "Reload"
 # Restart required for some changes.
 restart_required_banner = "Restart required for some changes."
+# Disable visible
+bulk_disable_visible = "Disable visible"
+# Enable visible
+bulk_enable_visible = "Enable visible"
+# Reset visible
+bulk_reset_visible = "Reset visible"
+# Cheats group: core
+cheats_group_core = "Core"
+# Cheats group: toggles
+cheats_group_toggles = "Toggles"
+# Events group: core
+events_group_core = "Core"
+# Events group: toggles
+events_group_toggles = "Toggles"
+# Filter: cheats
+filter_cheats = "Cheats"
+# Filter: empty result
+filter_empty = "No items match this filter."
+# Filter: events
+filter_events = "Events"
+# Filter: loot
+filter_loot = "Loot"
+# Filter active indicator
+filter_active = "Filter active"
+# Clear filter action
+filter_clear = "Clear filter"
+# Clear language override
+language_clear = "Clear override"
+# Current language label
+language_current = "Current: %s"
+# Edit language override
+language_edit = "Edit"
+# Edit language override title
+language_edit_title = "Edit language override"
+# Loot group: core
+loot_group_core = "Core"
+# Loot group: overrides
+loot_group_overrides = "Overrides"
+# Loot group: toggles
+loot_group_toggles = "Toggles"
+# Restart marker legend
+restart_marker_legend = "* Requires restart"
+# Restart marker short
+restart_marker_short = "*"
+# Restart required banner note
+restart_required_banner_note = "Fields marked with * require restart."
 # Language updated. Restart to fully apply new glyphs.
 lang_restart_banner = "Language updated. Restart to fully apply new glyphs."
 # Language updated. Restart to fully apply new glyphs.

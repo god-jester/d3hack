@@ -46,6 +46,52 @@ save = "Enregistrer"
 reload = "Recharger"
 # Restart required for some changes.
 restart_required_banner = "Redemarrage requis pour certains changements."
+# Disable visible
+bulk_disable_visible = "Desactiver visibles"
+# Enable visible
+bulk_enable_visible = "Activer visibles"
+# Reset visible
+bulk_reset_visible = "Reinitialiser visibles"
+# Cheats group: core
+cheats_group_core = "Noyau"
+# Cheats group: toggles
+cheats_group_toggles = "Bascules"
+# Events group: core
+events_group_core = "Noyau"
+# Events group: toggles
+events_group_toggles = "Bascules"
+# Filter: cheats
+filter_cheats = "Cheats"
+# Filter: empty result
+filter_empty = "Aucun element ne correspond a ce filtre."
+# Filter: events
+filter_events = "Evenements"
+# Filter: loot
+filter_loot = "Butin"
+# Filter active indicator
+filter_active = "Filtre actif"
+# Clear filter action
+filter_clear = "Effacer le filtre"
+# Clear language override
+language_clear = "Effacer la surcharge"
+# Current language label
+language_current = "Actuel : %s"
+# Edit language override
+language_edit = "Editer"
+# Edit language override title
+language_edit_title = "Editer la surcharge de langue"
+# Loot group: core
+loot_group_core = "Noyau"
+# Loot group: overrides
+loot_group_overrides = "Surcharges"
+# Loot group: toggles
+loot_group_toggles = "Bascules"
+# Restart marker legend
+restart_marker_legend = "* Redemarrage requis"
+# Restart marker short
+restart_marker_short = "*"
+# Restart required banner note
+restart_required_banner_note = "Les champs marques par * necessitent un redemarrage."
 # Language updated. Restart to fully apply new glyphs.
 lang_restart_banner = "Langue mise a jour. Redemarrage requis pour appliquer completement les glyphes."
 # Language updated. Restart to fully apply new glyphs.

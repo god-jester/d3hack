@@ -46,6 +46,52 @@ save = "Guardar"
 reload = "Recargar"
 # Restart required for some changes.
 restart_required_banner = "Se requiere reinicio para algunos cambios."
+# Disable visible
+bulk_disable_visible = "Deshabilitar visibles"
+# Enable visible
+bulk_enable_visible = "Habilitar visibles"
+# Reset visible
+bulk_reset_visible = "Restablecer visibles"
+# Cheats group: core
+cheats_group_core = "Nucleo"
+# Cheats group: toggles
+cheats_group_toggles = "Alternancias"
+# Events group: core
+events_group_core = "Nucleo"
+# Events group: toggles
+events_group_toggles = "Alternancias"
+# Filter: cheats
+filter_cheats = "Trucos"
+# Filter: empty result
+filter_empty = "Ningun elemento coincide con este filtro."
+# Filter: events
+filter_events = "Eventos"
+# Filter: loot
+filter_loot = "Botin"
+# Filter active indicator
+filter_active = "Filtro activo"
+# Clear filter action
+filter_clear = "Borrar filtro"
+# Clear language override
+language_clear = "Borrar anulacion"
+# Current language label
+language_current = "Actual: %s"
+# Edit language override
+language_edit = "Editar"
+# Edit language override title
+language_edit_title = "Editar anulacion de idioma"
+# Loot group: core
+loot_group_core = "Nucleo"
+# Loot group: overrides
+loot_group_overrides = "Anulaciones"
+# Loot group: toggles
+loot_group_toggles = "Alternancias"
+# Restart marker legend
+restart_marker_legend = "* Requiere reinicio"
+# Restart marker short
+restart_marker_short = "*"
+# Restart required banner note
+restart_required_banner_note = "Los campos marcados con * requieren reinicio."
 # Language updated. Restart to fully apply new glyphs.
 lang_restart_banner = "Idioma actualizado. Reinicia para aplicar completamente los glifos."
 # Language updated. Restart to fully apply new glyphs.

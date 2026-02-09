@@ -40,6 +40,7 @@ See: [Resolution Hack (ResHack) overview](#resolution-hack-reshack).
 - **Boot report + hook registry**: boot stages and enabled hooks/patches are recorded and printed after ShellInitialized.
 - **Schema-driven config**: config schema powers TOML IO + GUI labels/help and restart-required rules; runtime apply reports restart-required changes.
 - **GUI overlay stability**: NVN-backed ImGui textures, triple-buffered draw buffers, and safer texture lifetime to reduce tab/docking artifacts.
+- **ImGui polish status**: localization and config-window polish are implemented; screenshot/manual runtime validation is intentionally deferred to the next validation pass.
 - **GUI theming + OSK**: built-in themes with optional overrides from `sd:/config/d3hack-nx/themes/` and an on-screen keyboard for text entry.
 - **GUI language hot-swap**: translations update immediately; restart recommended for full glyph coverage.
 - **Crash diagnostics**: user exception and ErrorManager dumps are written to SD for post-crash triage.

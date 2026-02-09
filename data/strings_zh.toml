@@ -46,6 +46,52 @@ save = "保存"
 reload = "重新加载"
 # Restart required for some changes.
 restart_required_banner = "部分更改需要重启后生效."
+# Disable visible
+bulk_disable_visible = "禁用可见项"
+# Enable visible
+bulk_enable_visible = "启用可见项"
+# Reset visible
+bulk_reset_visible = "重置可见项"
+# Cheats group: core
+cheats_group_core = "核心"
+# Cheats group: toggles
+cheats_group_toggles = "开关"
+# Events group: core
+events_group_core = "核心"
+# Events group: toggles
+events_group_toggles = "开关"
+# Filter: cheats
+filter_cheats = "作弊"
+# Filter: empty result
+filter_empty = "没有项目匹配此筛选器."
+# Filter: events
+filter_events = "活动"
+# Filter: loot
+filter_loot = "战利品"
+# Filter active indicator
+filter_active = "筛选器已激活"
+# Clear filter action
+filter_clear = "清除筛选器"
+# Clear language override
+language_clear = "清除覆盖"
+# Current language label
+language_current = "当前: %s"
+# Edit language override
+language_edit = "编辑"
+# Edit language override title
+language_edit_title = "编辑语言覆盖"
+# Loot group: core
+loot_group_core = "核心"
+# Loot group: overrides
+loot_group_overrides = "覆盖"
+# Loot group: toggles
+loot_group_toggles = "开关"
+# Restart marker legend
+restart_marker_legend = "* 需要重启"
+# Restart marker short
+restart_marker_short = "*"
+# Restart required banner note
+restart_required_banner_note = "标有 * 的字段需要重启."
 # Language updated. Restart to fully apply new glyphs.
 lang_restart_banner = "语言已更新。需要重启才能完全应用新字形。"
 # Language updated. Restart to fully apply new glyphs.
