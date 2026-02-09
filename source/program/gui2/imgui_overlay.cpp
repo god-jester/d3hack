@@ -156,37 +156,58 @@ namespace d3::imgui_overlay {
         static d3::gui2::ui::GuiTheme g_imgui_theme    = d3::gui2::ui::GuiTheme::D3Dark;
 
         static auto ComputeGuiScale(ImVec2 viewport_size) -> float {
-            constexpr float kMinViewportH = 720.0f;
-            constexpr float kMaxViewportH = 1440.0f;
-            constexpr float kMinScale     = 0.9f;
-            constexpr float kMaxScale     = 1.3f;
+            constexpr float kScaleMinClamp = 0.95f;
+            constexpr float kScaleMaxClamp = 1.80f;
+
+            constexpr float kH0 = 720.0f;
+            constexpr float kS0 = 1.00f;
+            constexpr float kH1 = 1080.0f;
+            constexpr float kS1 = 1.12f;
+            constexpr float kH2 = 1440.0f;
+            constexpr float kS2 = 1.28f;
+            constexpr float kH3 = 2160.0f;
+            constexpr float kS3 = 1.58f;
 
             const float h = viewport_size.y;
             if (!(h > 0.0f)) {
-                return kMaxScale;
+                return kS1;
             }
 
-            const float t = std::clamp((h - kMinViewportH) / (kMaxViewportH - kMinViewportH), 0.0f, 1.0f);
-            return kMinScale + t * (kMaxScale - kMinScale);
+            float scale = kS0;
+            if (h <= kH1) {
+                const float t = std::clamp((h - kH0) / (kH1 - kH0), 0.0f, 1.0f);
+                scale         = kS0 + t * (kS1 - kS0);
+            } else if (h <= kH2) {
+                const float t = std::clamp((h - kH1) / (kH2 - kH1), 0.0f, 1.0f);
+                scale         = kS1 + t * (kS2 - kS1);
+            } else if (h <= kH3) {
+                const float t = std::clamp((h - kH2) / (kH3 - kH2), 0.0f, 1.0f);
+                scale         = kS2 + t * (kS3 - kS2);
+            } else {
+                constexpr float kGrowthPerPx = 0.00016f;
+                scale = kS3 + (h - kH3) * kGrowthPerPx;
+            }
+
+            return std::clamp(scale, kScaleMinClamp, kScaleMaxClamp);
         }
 
         static void ApplyImGuiStyleCommon(ImGuiStyle &style) {
             style.WindowPadding     = ImVec2(14.0f, 12.0f);
             style.FramePadding      = ImVec2(10.0f, 8.0f);
-            style.ItemSpacing       = ImVec2(10.0f, 8.0f);
-            style.ItemInnerSpacing  = ImVec2(6.0f, 4.0f);
+            style.ItemSpacing       = ImVec2(10.0f, 9.0f);
+            style.ItemInnerSpacing  = ImVec2(6.0f, 5.0f);
             style.IndentSpacing     = 18.0f;
             style.ScrollbarSize     = 18.0f;
             style.GrabMinSize       = 12.0f;
             style.TouchExtraPadding = ImVec2(6.0f, 6.0f);
 
-            style.WindowRounding    = 6.0f;
-            style.ChildRounding     = 4.0f;
-            style.FrameRounding     = 4.0f;
-            style.PopupRounding     = 4.0f;
+            style.WindowRounding    = 7.0f;
+            style.ChildRounding     = 5.0f;
+            style.FrameRounding     = 5.0f;
+            style.PopupRounding     = 5.0f;
             style.ScrollbarRounding = 9.0f;
-            style.GrabRounding      = 4.0f;
-            style.TabRounding       = 4.0f;
+            style.GrabRounding      = 5.0f;
+            style.TabRounding       = 5.0f;
 
             style.WindowBorderSize         = 1.0f;
             style.WindowBorderHoverPadding = 4.0f;
@@ -444,12 +465,12 @@ namespace d3::imgui_overlay {
             }
 
             // D3-ish palette: dark stone + gold accent.
-            constexpr ImVec4 kAccent      = ImVec4(0.86f, 0.67f, 0.18f, 1.00f);
-            constexpr ImVec4 kAccentHi    = ImVec4(0.95f, 0.80f, 0.28f, 1.00f);
-            constexpr ImVec4 kBg          = ImVec4(0.08f, 0.08f, 0.09f, 0.94f);
-            constexpr ImVec4 kPanel       = ImVec4(0.16f, 0.16f, 0.18f, 1.00f);
-            constexpr ImVec4 kPanelHover  = ImVec4(0.22f, 0.22f, 0.25f, 1.00f);
-            constexpr ImVec4 kPanelActive = ImVec4(0.26f, 0.26f, 0.29f, 1.00f);
+            constexpr ImVec4 kAccent      = ImVec4(0.88f, 0.70f, 0.20f, 1.00f);
+            constexpr ImVec4 kAccentHi    = ImVec4(0.97f, 0.84f, 0.32f, 1.00f);
+            constexpr ImVec4 kBg          = ImVec4(0.07f, 0.07f, 0.08f, 0.94f);
+            constexpr ImVec4 kPanel       = ImVec4(0.18f, 0.18f, 0.20f, 1.00f);
+            constexpr ImVec4 kPanelHover  = ImVec4(0.25f, 0.25f, 0.28f, 1.00f);
+            constexpr ImVec4 kPanelActive = ImVec4(0.30f, 0.30f, 0.34f, 1.00f);
 
             colors[ImGuiCol_Text]         = ImVec4(0.95f, 0.96f, 0.98f, 1.00f);
             colors[ImGuiCol_TextDisabled] = ImVec4(0.55f, 0.55f, 0.58f, 1.00f);
@@ -518,19 +539,23 @@ namespace d3::imgui_overlay {
                 g_last_gui_scale = -1.0f;
             }
 
-            constexpr float kTouchFontScale   = 1.00f;
-            constexpr float kTouchButtonScale = 1.35f;
-
-            const float base_scale = ComputeGuiScale(viewport_size);
-            const float font_scale = base_scale * kTouchFontScale;
-            if (g_last_gui_scale > 0.0f && std::fabs(font_scale - g_last_gui_scale) < 0.01f) {
+            const float gui_scale = ComputeGuiScale(viewport_size);
+            if (g_last_gui_scale > 0.0f && std::fabs(gui_scale - g_last_gui_scale) < 0.01f) {
                 return;
             }
 
             ImGuiStyle &style = ImGui::GetStyle();
             style             = g_imgui_base_style;
-            style.ScaleAllSizes(font_scale * 0.8f);
-            style.FramePadding = ImVec2(style.FramePadding.x * kTouchButtonScale, style.FramePadding.y * kTouchButtonScale);
+            style.ScaleAllSizes(gui_scale);
+
+            // Maintain explicit touch-target floor instead of relying only on scaled padding.
+            constexpr float kFallbackBaseFontPx  = 13.0f;
+            constexpr float kMinFrameHeightAt720 = 34.0f;
+            const float     min_frame_height_px  = kMinFrameHeightAt720 * gui_scale;
+            const float     font_px = std::max(ImGui::GetFontSize(), kFallbackBaseFontPx * gui_scale);
+            const float     min_padding_y = std::max((min_frame_height_px - font_px) * 0.5f, 0.0f);
+            style.FramePadding.y          = std::max(style.FramePadding.y, min_padding_y);
+
             if (style.WindowBorderHoverPadding < 1.0f) {
                 style.WindowBorderHoverPadding = 1.0f;
             }
@@ -540,8 +565,8 @@ namespace d3::imgui_overlay {
             style.AntiAliasedLinesUseTex = false;
             style.AntiAliasedFill        = false;
 
-            style.FontScaleMain = font_scale;
-            g_last_gui_scale    = font_scale;
+            style.FontScaleMain = gui_scale;
+            g_last_gui_scale    = gui_scale;
         }
 
         static void PushImGuiGamepadInputs(float dt_s) {
