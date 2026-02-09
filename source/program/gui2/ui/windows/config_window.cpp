@@ -265,21 +265,208 @@ namespace d3::gui2::ui::windows {
             }
         };
 
+        struct FormLayout {
+            bool table_open = false;
+        };
+
+        static ImGuiTextFilter events_filter;
+        static ImGuiTextFilter cheats_filter;
+        static ImGuiTextFilter loot_filter;
+
+        auto draw_restart_marker = [&](bool restart_required) -> void {
+            if (!restart_required) {
+                return;
+            }
+            ImGui::SameLine(0.0f, 6.0f);
+            ImGui::TextDisabled("%s", overlay_.tr("gui.restart_marker_short", "[R]"));
+        };
+
+        auto begin_form_layout = [&](const char *table_id, float max_label_width) -> FormLayout {
+            FormLayout  layout {};
+            const float avail_w      = ImGui::GetContentRegionAvail().x;
+            const bool  long_label   = max_label_width > (avail_w * 0.48f);
+            const bool  can_use_wide = avail_w >= 620.0f && !long_label;
+            if (can_use_wide) {
+                const float label_col_w = std::clamp(max_label_width + 28.0f, 220.0f, avail_w * 0.55f);
+                if (ImGui::BeginTable(
+                        table_id,
+                        2,
+                        ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_PadOuterX | ImGuiTableFlags_NoSavedSettings
+                    )) {
+                    ImGui::TableSetupColumn("label", ImGuiTableColumnFlags_WidthFixed, label_col_w);
+                    ImGui::TableSetupColumn("control", ImGuiTableColumnFlags_WidthStretch, 1.0f);
+                    layout.table_open = true;
+                }
+            }
+            return layout;
+        };
+
+        auto end_form_layout = [&](FormLayout &layout) -> void {
+            if (layout.table_open) {
+                ImGui::EndTable();
+            }
+        };
+
+        auto begin_form_row = [&](FormLayout &layout, const char *label, bool restart_required) -> void {
+            if (layout.table_open) {
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                ImGui::AlignTextToFramePadding();
+                ImGui::TextUnformatted(label);
+                draw_restart_marker(restart_required);
+                ImGui::TableSetColumnIndex(1);
+            } else {
+                ImGui::AlignTextToFramePadding();
+                ImGui::TextUnformatted(label);
+                draw_restart_marker(restart_required);
+            }
+            ImGui::SetNextItemWidth(-FLT_MIN);
+        };
+
+        auto end_form_row = [&](FormLayout &layout) -> void {
+            if (!layout.table_open) {
+                ImGui::Spacing();
+            }
+        };
+
+        auto checkbox_row = [&](FormLayout &layout, const char *label, const char *id, bool *value, bool restart_required) -> bool {
+            begin_form_row(layout, label, restart_required);
+            const bool changed = ImGui::Checkbox(id, value);
+            end_form_row(layout);
+            return changed;
+        };
+
+        auto slider_int_row = [&](FormLayout &layout, const char *label, const char *id, int *value, int min_value, int max_value, const char *fmt, ImGuiSliderFlags flags, bool restart_required) -> bool {
+            begin_form_row(layout, label, restart_required);
+            const bool changed = ImGui::SliderInt(id, value, min_value, max_value, fmt, flags);
+            end_form_row(layout);
+            return changed;
+        };
+
+        auto slider_float_row = [&](FormLayout &layout, const char *label, const char *id, float *value, float min_value, float max_value, const char *fmt, ImGuiSliderFlags flags, bool restart_required) -> bool {
+            begin_form_row(layout, label, restart_required);
+            const bool changed = ImGui::SliderFloat(id, value, min_value, max_value, fmt, flags);
+            end_form_row(layout);
+            return changed;
+        };
+
+        auto input_int_row = [&](FormLayout &layout, const char *label, const char *id, int *value, int step, int step_fast, ImGuiInputTextFlags flags, bool restart_required) -> bool {
+            begin_form_row(layout, label, restart_required);
+            const bool changed = ImGui::InputInt(id, value, step, step_fast, flags);
+            end_form_row(layout);
+            return changed;
+        };
+
+        auto combo_row = [&](FormLayout &layout, const char *label, const char *id, bool restart_required, auto &&draw_combo_body) -> bool {
+            begin_form_row(layout, label, restart_required);
+            const bool changed = draw_combo_body(id);
+            end_form_row(layout);
+            return changed;
+        };
+
+        auto readonly_int_row = [&](FormLayout &layout, const char *label, const char *id, int value) -> void {
+            begin_form_row(layout, label, false);
+            ImGui::BeginDisabled();
+            ImGui::InputInt(id, &value, 0, 0, ImGuiInputTextFlags_ReadOnly);
+            ImGui::EndDisabled();
+            end_form_row(layout);
+        };
+
+        auto render_restart_legend = [&]() -> void {
+            ImGui::TextDisabled("%s", overlay_.tr("gui.restart_marker_legend", "[R] restart required"));
+        };
+
+        auto label_passes_filter = [&](const ImGuiTextFilter &filter, const char *label) -> bool {
+            return filter.IsActive() ? filter.PassFilter(label) : true;
+        };
+
+        struct BoolRowSpec {
+            const char *tr_key;
+            const char *fallback;
+            const char *id;
+            bool       *value;
+            const bool *reset_value;
+            bool        restart_required;
+        };
+
+        auto render_filter_and_bulk = [&](const char *filter_label, const char *filter_id, ImGuiTextFilter &filter, auto &&rows, bool disabled) -> bool {
+            bool changed = false;
+            ImGui::TextUnformatted(filter_label);
+            ImGui::SameLine();
+            filter.Draw(filter_id, ImGui::GetContentRegionAvail().x);
+            ImGui::BeginDisabled(disabled);
+            const char *bulk_enable  = overlay_.tr("gui.bulk_enable_visible", "Enable visible");
+            const char *bulk_disable = overlay_.tr("gui.bulk_disable_visible", "Disable visible");
+            const char *bulk_reset   = overlay_.tr("gui.bulk_reset_visible", "Reset visible");
+
+            if (ImGui::Button(bulk_enable)) {
+                for (const BoolRowSpec &row : rows) {
+                    const char *label = overlay_.tr(row.tr_key, row.fallback);
+                    if (!label_passes_filter(filter, label)) {
+                        continue;
+                    }
+                    if (!*row.value) {
+                        *row.value = true;
+                        changed    = true;
+                    }
+                }
+            }
+            ImGui::SameLine();
+            if (ImGui::Button(bulk_disable)) {
+                for (const BoolRowSpec &row : rows) {
+                    const char *label = overlay_.tr(row.tr_key, row.fallback);
+                    if (!label_passes_filter(filter, label)) {
+                        continue;
+                    }
+                    if (*row.value) {
+                        *row.value = false;
+                        changed    = true;
+                    }
+                }
+            }
+            ImGui::SameLine();
+            if (ImGui::Button(bulk_reset)) {
+                for (const BoolRowSpec &row : rows) {
+                    const char *label = overlay_.tr(row.tr_key, row.fallback);
+                    if (!label_passes_filter(filter, label)) {
+                        continue;
+                    }
+                    if (*row.value != *row.reset_value) {
+                        *row.value = *row.reset_value;
+                        changed    = true;
+                    }
+                }
+            }
+            ImGui::EndDisabled();
+            return changed;
+        };
+
         auto render_overlays = [&]() -> void {
+            float max_label = ImGui::CalcTextSize(overlay_.tr("gui.overlays_enabled", "Enabled")).x;
+            for (const auto &e : d3::config_schema::EntriesForSection("overlays")) {
+                if (e.tr_label != nullptr && e.label_fallback != nullptr) {
+                    max_label = std::max(max_label, ImGui::CalcTextSize(overlay_.tr(e.tr_label, e.label_fallback)).x);
+                }
+            }
+            FormLayout layout = begin_form_layout("cfg_overlays_form", max_label);
+
             const auto *enabled_entry = d3::config_schema::FindEntry("overlays", "SectionEnabled");
             if (enabled_entry == nullptr || enabled_entry->get_bool == nullptr || enabled_entry->set_bool == nullptr) {
-                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.overlays_enabled", "Enabled##overlays"), &cfg.overlays.active));
+                const bool enabled_changed = checkbox_row(layout, overlay_.tr("gui.overlays_enabled", "Enabled"), "##overlays_enabled", &cfg.overlays.active, false);
+                mark_dirty(enabled_changed);
                 ImGui::BeginDisabled(!cfg.overlays.active);
-                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.overlays_buildlocker", "Build locker watermark"), &cfg.overlays.buildlocker_watermark));
-                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.overlays_ddm", "DDM labels"), &cfg.overlays.ddm_labels));
-                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.overlays_fps", "FPS label"), &cfg.overlays.fps_label));
-                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.overlays_var_res", "Variable resolution label"), &cfg.overlays.var_res_label));
+                mark_dirty(checkbox_row(layout, overlay_.tr("gui.overlays_buildlocker", "Build locker watermark"), "##overlays_buildlocker", &cfg.overlays.buildlocker_watermark, true));
+                mark_dirty(checkbox_row(layout, overlay_.tr("gui.overlays_ddm", "DDM labels"), "##overlays_ddm", &cfg.overlays.ddm_labels, true));
+                mark_dirty(checkbox_row(layout, overlay_.tr("gui.overlays_fps", "FPS label"), "##overlays_fps", &cfg.overlays.fps_label, false));
+                mark_dirty(checkbox_row(layout, overlay_.tr("gui.overlays_var_res", "Variable resolution label"), "##overlays_var_res", &cfg.overlays.var_res_label, false));
                 ImGui::EndDisabled();
+                end_form_layout(layout);
+                render_restart_legend();
                 return;
             }
 
             bool enabled = enabled_entry->get_bool(cfg);
-            if (ImGui::Checkbox(overlay_.tr(enabled_entry->tr_label, enabled_entry->label_fallback), &enabled)) {
+            if (checkbox_row(layout, overlay_.tr(enabled_entry->tr_label, enabled_entry->label_fallback), "##overlays_enabled", &enabled, enabled_entry->restart == d3::config_schema::RestartPolicy::RestartRequired)) {
                 enabled_entry->set_bool(cfg, enabled);
                 overlay_.set_ui_dirty(true);
             }
@@ -292,22 +479,36 @@ namespace d3::gui2::ui::windows {
                 if (e.kind != d3::config_schema::ValueKind::Bool || e.get_bool == nullptr || e.set_bool == nullptr) {
                     continue;
                 }
-                bool v = e.get_bool(cfg);
-                if (ImGui::Checkbox(overlay_.tr(e.tr_label, e.label_fallback), &v)) {
+                bool        v  = e.get_bool(cfg);
+                std::string id = "##overlays_";
+                id += e.key;
+                if (checkbox_row(layout, overlay_.tr(e.tr_label, e.label_fallback), id.c_str(), &v, e.restart == d3::config_schema::RestartPolicy::RestartRequired)) {
                     e.set_bool(cfg, v);
                     overlay_.set_ui_dirty(true);
                 }
             }
             ImGui::EndDisabled();
+            end_form_layout(layout);
+            render_restart_legend();
         };
 
         auto render_gui = [&]() -> void {
+            float max_label = 0.0f;
+            for (const auto &e : d3::config_schema::EntriesForSection("gui")) {
+                if (e.kind == d3::config_schema::ValueKind::Bool && e.tr_label != nullptr && e.label_fallback != nullptr) {
+                    max_label = std::max(max_label, ImGui::CalcTextSize(overlay_.tr(e.tr_label, e.label_fallback)).x);
+                }
+            }
+            max_label         = std::max(max_label, ImGui::CalcTextSize(overlay_.tr("gui.language", "Language")).x);
+            FormLayout layout = begin_form_layout("cfg_gui_form", max_label);
             for (const auto &e : d3::config_schema::EntriesForSection("gui")) {
                 if (e.kind != d3::config_schema::ValueKind::Bool || e.get_bool == nullptr || e.set_bool == nullptr) {
                     continue;
                 }
-                bool v = e.get_bool(cfg);
-                if (ImGui::Checkbox(overlay_.tr(e.tr_label, e.label_fallback), &v)) {
+                bool        v  = e.get_bool(cfg);
+                std::string id = "##gui_";
+                id += e.key;
+                if (checkbox_row(layout, overlay_.tr(e.tr_label, e.label_fallback), id.c_str(), &v, e.restart == d3::config_schema::RestartPolicy::RestartRequired)) {
                     e.set_bool(cfg, v);
                     overlay_.set_ui_dirty(true);
                 }
@@ -331,29 +532,43 @@ namespace d3::gui2::ui::windows {
             } else {
                 preview = cfg.gui.language_override.c_str();
             }
-            ImGui::SetNextWindowSizeConstraints(ImVec2(0.0f, 0.0f), ImVec2(FLT_MAX, FLT_MAX));
-            if (ImGui::BeginCombo(overlay_.tr("gui.language", "Language"), preview)) {
-                for (const auto &lang : langs) {
-                    const char *label       = overlay_.tr(lang.label_key.c_str(), lang.label_fallback.c_str());
-                    const bool  is_selected = (cfg.gui.language_override == lang.code);
-                    if (ImGui::Selectable(label, is_selected)) {
-                        cfg.gui.language_override = lang.code;
-                        overlay_.set_ui_dirty(true);
-                        lang_restart_pending_ = cfg.gui.language_override != global_config.gui.language_override;
-                        if (auto *notifications = overlay_.notifications_window()) {
-                            notifications->AddNotification(
-                                ImVec4(1.0f, 0.75f, 0.2f, 1.0f),
-                                6.0f,
-                                overlay_.tr("gui.notify_lang_restart", "Language updated. Restart to fully apply new glyphs.")
-                            );
+
+            mark_dirty(combo_row(
+                layout,
+                overlay_.tr("gui.language", "Language"),
+                "##gui_language",
+                true,
+                [&](const char *id) -> bool {
+                    bool changed = false;
+                    ImGui::SetNextWindowSizeConstraints(ImVec2(0.0f, 0.0f), ImVec2(FLT_MAX, FLT_MAX));
+                    if (ImGui::BeginCombo(id, preview)) {
+                        for (const auto &lang : langs) {
+                            const char *label       = overlay_.tr(lang.label_key.c_str(), lang.label_fallback.c_str());
+                            const bool  is_selected = (cfg.gui.language_override == lang.code);
+                            if (ImGui::Selectable(label, is_selected)) {
+                                cfg.gui.language_override = lang.code;
+                                changed                   = true;
+                                lang_restart_pending_     = cfg.gui.language_override != global_config.gui.language_override;
+                                if (auto *notifications = overlay_.notifications_window()) {
+                                    notifications->AddNotification(
+                                        ImVec4(1.0f, 0.75f, 0.2f, 1.0f),
+                                        6.0f,
+                                        overlay_.tr("gui.notify_lang_restart", "Language updated. Restart to fully apply new glyphs.")
+                                    );
+                                }
+                            }
+                            if (is_selected) {
+                                ImGui::SetItemDefaultFocus();
+                            }
                         }
+                        ImGui::EndCombo();
                     }
-                    if (is_selected) {
-                        ImGui::SetItemDefaultFocus();
-                    }
+                    return changed;
                 }
-                ImGui::EndCombo();
-            }
+            ));
+
+            end_form_layout(layout);
+            render_restart_legend();
 
             ImGui::Separator();
             const char *lang_value = cfg.gui.language_override.empty() ? overlay_.tr("gui.lang_auto", "Auto (game)") : cfg.gui.language_override.c_str();
@@ -376,12 +591,16 @@ namespace d3::gui2::ui::windows {
                 overlay_.set_ui_dirty(true);
                 lang_restart_pending_ = cfg.gui.language_override != global_config.gui.language_override;
             }
-
             ImGui::TextUnformatted(overlay_.tr("gui.hotkey_toggle", "Hold + and - (0.5s) to toggle overlay visibility."));
         };
 
         auto render_resolution = [&]() -> void {
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.resolution_enabled", "Enabled##res"), &cfg.resolution_hack.active));
+            const float max_label = std::max(
+                ImGui::CalcTextSize(overlay_.tr("gui.resolution_output_target", "Output target (vertical)")).x,
+                ImGui::CalcTextSize(overlay_.tr("gui.resolution_extra_render_height", "Render height (-1=default)")).x
+            );
+            FormLayout layout = begin_form_layout("cfg_resolution_form", max_label);
+            mark_dirty(checkbox_row(layout, overlay_.tr("gui.resolution_enabled", "Enabled"), "##res_enabled", &cfg.resolution_hack.active, true));
             ImGui::BeginDisabled(!cfg.resolution_hack.active);
             const int max_target = static_cast<int>(d3::MaxResolutionHackOutputTarget());
             int       target     = static_cast<int>(cfg.resolution_hack.target_resolution);
@@ -390,17 +609,14 @@ namespace d3::gui2::ui::windows {
                 cfg.resolution_hack.SetTargetRes(static_cast<u32>(target));
                 overlay_.set_ui_dirty(true);
             }
-            if (ImGui::SliderInt(overlay_.tr("gui.resolution_output_target", "Output target (vertical)"), &target, 720, max_target, "%dp")) {
+            if (slider_int_row(layout, overlay_.tr("gui.resolution_output_target", "Output target (vertical)"), "##res_output_target", &target, 720, max_target, "%dp", 0, true)) {
                 target = SnapOutputTarget(target);
                 cfg.resolution_hack.SetTargetRes(static_cast<u32>(target));
                 overlay_.set_ui_dirty(true);
             }
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.resolution_spoof_docked", "Spoof docked"), &cfg.resolution_hack.spoof_docked));
+            mark_dirty(checkbox_row(layout, overlay_.tr("gui.resolution_spoof_docked", "Spoof docked"), "##res_spoof_docked", &cfg.resolution_hack.spoof_docked, true));
             bool handheld_auto = cfg.resolution_hack.output_handheld_scale <= 0.0f;
-            if (ImGui::Checkbox(
-                    overlay_.tr("gui.resolution_output_handheld_auto", "Handheld output scale: auto (stock)"),
-                    &handheld_auto
-                )) {
+            if (checkbox_row(layout, overlay_.tr("gui.resolution_output_handheld_auto", "Handheld output scale: auto (stock)"), "##res_handheld_auto", &handheld_auto, true)) {
                 if (handheld_auto) {
                     cfg.resolution_hack.output_handheld_scale = 0.0f;
                 } else if (cfg.resolution_hack.output_handheld_scale <= 0.0f) {
@@ -410,14 +626,7 @@ namespace d3::gui2::ui::windows {
             }
             ImGui::BeginDisabled(handheld_auto);
             float handheld_scale = cfg.resolution_hack.output_handheld_scale;
-            if (ImGui::SliderFloat(
-                    overlay_.tr("gui.resolution_output_handheld_scale", "Handheld output scale (%)"),
-                    &handheld_scale,
-                    PatchConfig::ResolutionHackConfig::kHandheldScaleMin,
-                    PatchConfig::ResolutionHackConfig::kHandheldScaleMax,
-                    "%.0f%%",
-                    ImGuiSliderFlags_AlwaysClamp
-                )) {
+            if (slider_float_row(layout, overlay_.tr("gui.resolution_output_handheld_scale", "Handheld output scale (%)"), "##res_handheld_scale", &handheld_scale, PatchConfig::ResolutionHackConfig::kHandheldScaleMin, PatchConfig::ResolutionHackConfig::kHandheldScaleMax, "%.0f%%", ImGuiSliderFlags_AlwaysClamp, true)) {
                 handheld_scale = PatchConfig::ResolutionHackConfig::NormalizeHandheldScale(handheld_scale);
                 if (handheld_scale != cfg.resolution_hack.output_handheld_scale) {
                     cfg.resolution_hack.output_handheld_scale = handheld_scale;
@@ -425,39 +634,22 @@ namespace d3::gui2::ui::windows {
                 }
             }
             ImGui::EndDisabled();
-            int handheld_target = static_cast<int>(cfg.resolution_hack.OutputHandheldHeightPx());
-            ImGui::BeginDisabled();
-            ImGui::InputInt(
-                overlay_.tr("gui.resolution_output_target_handheld", "Handheld output target (vertical)"),
-                &handheld_target,
-                0,
-                0,
-                ImGuiInputTextFlags_ReadOnly
-            );
-            ImGui::EndDisabled();
+
+            readonly_int_row(layout, overlay_.tr("gui.resolution_output_target_handheld", "Handheld output target (vertical)"), "##res_output_target_handheld", static_cast<int>(cfg.resolution_hack.OutputHandheldHeightPx()));
+
             float min_scale   = cfg.resolution_hack.min_res_scale;
             float max_scale   = cfg.resolution_hack.max_res_scale;
             bool  scale_dirty = false;
-            if (ImGui::SliderFloat(
-                    overlay_.tr("gui.resolution_min_scale", "Minimum resolution scale"),
-                    &min_scale,
-                    10.0f,
-                    100.0f,
-                    "%.0f%%"
-                )) {
-                if (min_scale > max_scale)
+            if (slider_float_row(layout, overlay_.tr("gui.resolution_min_scale", "Minimum resolution scale"), "##res_min_scale", &min_scale, 10.0f, 100.0f, "%.0f%%", 0, true)) {
+                if (min_scale > max_scale) {
                     max_scale = min_scale;
+                }
                 scale_dirty = true;
             }
-            if (ImGui::SliderFloat(
-                    overlay_.tr("gui.resolution_max_scale", "Maximum resolution scale"),
-                    &max_scale,
-                    10.0f,
-                    100.0f,
-                    "%.0f%%"
-                )) {
-                if (max_scale < min_scale)
+            if (slider_float_row(layout, overlay_.tr("gui.resolution_max_scale", "Maximum resolution scale"), "##res_max_scale", &max_scale, 10.0f, 100.0f, "%.0f%%", 0, true)) {
+                if (max_scale < min_scale) {
                     min_scale = max_scale;
+                }
                 scale_dirty = true;
             }
             if (scale_dirty) {
@@ -465,95 +657,79 @@ namespace d3::gui2::ui::windows {
                 cfg.resolution_hack.max_res_scale = max_scale;
                 overlay_.set_ui_dirty(true);
             }
+
             int clamp_height = static_cast<int>(cfg.resolution_hack.clamp_texture_resolution);
-            if (ImGui::InputInt(overlay_.tr("gui.resolution_clamp_texture", "Clamp texture height (0=off, 100-9999)"), &clamp_height)) {
+            if (input_int_row(layout, overlay_.tr("gui.resolution_clamp_texture", "Clamp texture height (0=off, 100-9999)"), "##res_clamp_texture", &clamp_height, 1, 100, 0, true)) {
                 clamp_height = std::max(clamp_height, 0);
-                if (clamp_height != 0 && clamp_height < 100)
+                if (clamp_height != 0 && clamp_height < 100) {
                     clamp_height = 100;
-                if (clamp_height > 9999)
+                }
+                if (clamp_height > 9999) {
                     clamp_height = 9999;
+                }
                 cfg.resolution_hack.clamp_texture_resolution = static_cast<u32>(clamp_height);
                 overlay_.set_ui_dirty(true);
             }
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.resolution_exp_scheduler", "Experimental scheduler"), &cfg.resolution_hack.exp_scheduler));
+
+            mark_dirty(checkbox_row(layout, overlay_.tr("gui.resolution_exp_scheduler", "Experimental scheduler"), "##res_exp_scheduler", &cfg.resolution_hack.exp_scheduler, false));
+            end_form_layout(layout);
+            render_restart_legend();
+
             ImGui::Text(overlay_.tr("gui.resolution_output_size", "Output size: %ux%u"), cfg.resolution_hack.OutputWidthPx(), cfg.resolution_hack.OutputHeightPx());
-            ImGui::Separator();
-            ImGui::TextUnformatted(overlay_.tr("gui.resolution_extra_header", "Display mode overrides"));
-            ImGui::TextUnformatted(overlay_.tr("gui.resolution_extra_hint", "Set to -1 to keep the game's value."));
 
-            auto &extra      = cfg.resolution_hack.extra;
-            auto  edit_extra = [&](const char *label, s32 *value, int min_value, int max_value) -> void {
-                int v = *value;
-                if (ImGui::InputInt(label, &v)) {
-                    v      = std::clamp(v, min_value, max_value);
-                    *value = static_cast<s32>(v);
-                    overlay_.set_ui_dirty(true);
-                }
-            };
+            if (ImGui::CollapsingHeader(overlay_.tr("gui.resolution_extra_header", "Display mode overrides"), ImGuiTreeNodeFlags_None)) {
+                ImGui::TextDisabled("%s", overlay_.tr("gui.resolution_extra_hint", "Set to -1 to keep the game's value."));
+                const float extra_max_label = ImGui::CalcTextSize(overlay_.tr("gui.resolution_extra_render_height", "Render height (-1=default)")).x;
+                FormLayout  extra_layout    = begin_form_layout("cfg_resolution_extra_form", extra_max_label);
+                auto       &extra           = cfg.resolution_hack.extra;
+                const int   min_value       = PatchConfig::ResolutionHackConfig::ExtraConfig::kUnset;
+                auto        edit_extra      = [&](const char *label, const char *id, s32 *value, int max_value) -> void {
+                    int v = *value;
+                    if (input_int_row(extra_layout, label, id, &v, 1, 100, 0, true)) {
+                        v      = std::clamp(v, min_value, max_value);
+                        *value = static_cast<s32>(v);
+                        overlay_.set_ui_dirty(true);
+                    }
+                };
 
-            const int min_value = PatchConfig::ResolutionHackConfig::ExtraConfig::kUnset;
-            edit_extra(
-                overlay_.tr("gui.resolution_extra_msaa", "MSAA level (-1=default)"), &extra.msaa_level,
-                min_value, PatchConfig::ResolutionHackConfig::ExtraConfig::kMaxMsaaLevel
-            );
-            edit_extra(
-                overlay_.tr("gui.resolution_extra_bit_depth", "Bit depth (-1=default)"), &extra.bit_depth,
-                min_value, PatchConfig::ResolutionHackConfig::ExtraConfig::kMaxBitDepth
-            );
-            edit_extra(
-                overlay_.tr("gui.resolution_extra_refresh", "Refresh rate (-1=default)"), &extra.refresh_rate,
-                min_value, PatchConfig::ResolutionHackConfig::ExtraConfig::kMaxRefreshRate
-            );
-            edit_extra(
-                overlay_.tr("gui.resolution_extra_win_left", "Window left (-1=default)"), &extra.window_left,
-                min_value, PatchConfig::ResolutionHackConfig::ExtraConfig::kMaxDimension
-            );
-            edit_extra(
-                overlay_.tr("gui.resolution_extra_win_top", "Window top (-1=default)"), &extra.window_top,
-                min_value, PatchConfig::ResolutionHackConfig::ExtraConfig::kMaxDimension
-            );
-            edit_extra(
-                overlay_.tr("gui.resolution_extra_win_width", "Window width (-1=default)"), &extra.window_width,
-                min_value, PatchConfig::ResolutionHackConfig::ExtraConfig::kMaxDimension
-            );
-            edit_extra(
-                overlay_.tr("gui.resolution_extra_win_height", "Window height (-1=default)"), &extra.window_height,
-                min_value, PatchConfig::ResolutionHackConfig::ExtraConfig::kMaxDimension
-            );
-            edit_extra(
-                overlay_.tr("gui.resolution_extra_ui_width", "UI width (-1=default)"), &extra.ui_opt_width,
-                min_value, PatchConfig::ResolutionHackConfig::ExtraConfig::kMaxDimension
-            );
-            edit_extra(
-                overlay_.tr("gui.resolution_extra_ui_height", "UI height (-1=default)"), &extra.ui_opt_height,
-                min_value, PatchConfig::ResolutionHackConfig::ExtraConfig::kMaxDimension
-            );
-            edit_extra(
-                overlay_.tr("gui.resolution_extra_render_width", "Render width (-1=default)"), &extra.render_width,
-                min_value, PatchConfig::ResolutionHackConfig::ExtraConfig::kMaxDimension
-            );
-            edit_extra(
-                overlay_.tr("gui.resolution_extra_render_height", "Render height (-1=default)"), &extra.render_height,
-                min_value, PatchConfig::ResolutionHackConfig::ExtraConfig::kMaxDimension
-            );
+                edit_extra(overlay_.tr("gui.resolution_extra_msaa", "MSAA level (-1=default)"), "##res_extra_msaa", &extra.msaa_level, PatchConfig::ResolutionHackConfig::ExtraConfig::kMaxMsaaLevel);
+                edit_extra(overlay_.tr("gui.resolution_extra_bit_depth", "Bit depth (-1=default)"), "##res_extra_bit_depth", &extra.bit_depth, PatchConfig::ResolutionHackConfig::ExtraConfig::kMaxBitDepth);
+                edit_extra(overlay_.tr("gui.resolution_extra_refresh", "Refresh rate (-1=default)"), "##res_extra_refresh", &extra.refresh_rate, PatchConfig::ResolutionHackConfig::ExtraConfig::kMaxRefreshRate);
+                edit_extra(overlay_.tr("gui.resolution_extra_win_left", "Window left (-1=default)"), "##res_extra_win_left", &extra.window_left, PatchConfig::ResolutionHackConfig::ExtraConfig::kMaxDimension);
+                edit_extra(overlay_.tr("gui.resolution_extra_win_top", "Window top (-1=default)"), "##res_extra_win_top", &extra.window_top, PatchConfig::ResolutionHackConfig::ExtraConfig::kMaxDimension);
+                edit_extra(overlay_.tr("gui.resolution_extra_win_width", "Window width (-1=default)"), "##res_extra_win_width", &extra.window_width, PatchConfig::ResolutionHackConfig::ExtraConfig::kMaxDimension);
+                edit_extra(overlay_.tr("gui.resolution_extra_win_height", "Window height (-1=default)"), "##res_extra_win_height", &extra.window_height, PatchConfig::ResolutionHackConfig::ExtraConfig::kMaxDimension);
+                edit_extra(overlay_.tr("gui.resolution_extra_ui_width", "UI width (-1=default)"), "##res_extra_ui_width", &extra.ui_opt_width, PatchConfig::ResolutionHackConfig::ExtraConfig::kMaxDimension);
+                edit_extra(overlay_.tr("gui.resolution_extra_ui_height", "UI height (-1=default)"), "##res_extra_ui_height", &extra.ui_opt_height, PatchConfig::ResolutionHackConfig::ExtraConfig::kMaxDimension);
+                edit_extra(overlay_.tr("gui.resolution_extra_render_width", "Render width (-1=default)"), "##res_extra_render_width", &extra.render_width, PatchConfig::ResolutionHackConfig::ExtraConfig::kMaxDimension);
+                edit_extra(overlay_.tr("gui.resolution_extra_render_height", "Render height (-1=default)"), "##res_extra_render_height", &extra.render_height, PatchConfig::ResolutionHackConfig::ExtraConfig::kMaxDimension);
+                end_form_layout(extra_layout);
+                render_restart_legend();
+            }
             ImGui::EndDisabled();
         };
 
         auto render_seasons = [&]() -> void {
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.seasons_enabled", "Enabled##seasons"), &cfg.seasons.active));
+            const float max_label = ImGui::CalcTextSize(overlay_.tr("gui.seasons_spoof_ptr", "Spoof PTR flag")).x;
+            FormLayout  layout    = begin_form_layout("cfg_seasons_form", max_label);
+            mark_dirty(checkbox_row(layout, overlay_.tr("gui.seasons_enabled", "Enabled"), "##seasons_enabled", &cfg.seasons.active, false));
             ImGui::BeginDisabled(!cfg.seasons.active);
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.seasons_allow_online", "Allow online play"), &cfg.seasons.allow_online));
+            mark_dirty(checkbox_row(layout, overlay_.tr("gui.seasons_allow_online", "Allow online play"), "##seasons_allow_online", &cfg.seasons.allow_online, false));
             int season = static_cast<int>(cfg.seasons.current_season);
-            if (ImGui::SliderInt(overlay_.tr("gui.seasons_current", "Current season"), &season, 1, 200)) {
+            if (slider_int_row(layout, overlay_.tr("gui.seasons_current", "Current season"), "##seasons_current", &season, 1, 200, "%d", 0, false)) {
                 cfg.seasons.current_season = static_cast<u32>(season);
                 overlay_.set_ui_dirty(true);
             }
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.seasons_spoof_ptr", "Spoof PTR flag"), &cfg.seasons.spoof_ptr));
+            mark_dirty(checkbox_row(layout, overlay_.tr("gui.seasons_spoof_ptr", "Spoof PTR flag"), "##seasons_spoof_ptr", &cfg.seasons.spoof_ptr, false));
             ImGui::EndDisabled();
+            end_form_layout(layout);
         };
 
         auto render_events = [&]() -> void {
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_enabled", "Enabled##events"), &cfg.events.active));
+            ImGui::TextUnformatted(overlay_.tr("gui.events_group_core", "Core controls"));
+            const float core_max_label = ImGui::CalcTextSize(overlay_.tr("gui.events_season_map_mode", "Season map mode")).x;
+            FormLayout  core_layout    = begin_form_layout("cfg_events_core_form", core_max_label);
+            mark_dirty(checkbox_row(core_layout, overlay_.tr("gui.events_enabled", "Enabled"), "##events_enabled", &cfg.events.active, false));
 
             auto season_map_mode_label = [&](PatchConfig::SeasonEventMapMode mode) -> const char * {
                 switch (mode) {
@@ -567,122 +743,259 @@ namespace d3::gui2::ui::windows {
                 }
             };
 
-            const char *mode_label = season_map_mode_label(cfg.events.SeasonMapMode);
-            if (ImGui::BeginCombo(overlay_.tr("gui.events_season_map_mode", "Season map mode"), mode_label)) {
-                auto selectable_mode = [&](PatchConfig::SeasonEventMapMode mode) -> void {
-                    const char *label       = season_map_mode_label(mode);
-                    const bool  is_selected = (cfg.events.SeasonMapMode == mode);
-                    if (ImGui::Selectable(label, is_selected)) {
-                        cfg.events.SeasonMapMode = mode;
-                        overlay_.set_ui_dirty(true);
+            mark_dirty(combo_row(
+                core_layout,
+                overlay_.tr("gui.events_season_map_mode", "Season map mode"),
+                "##events_season_map_mode",
+                false,
+                [&](const char *id) -> bool {
+                    bool        changed    = false;
+                    const char *mode_label = season_map_mode_label(cfg.events.SeasonMapMode);
+                    if (ImGui::BeginCombo(id, mode_label)) {
+                        auto selectable_mode = [&](PatchConfig::SeasonEventMapMode mode) -> void {
+                            const char *label       = season_map_mode_label(mode);
+                            const bool  is_selected = (cfg.events.SeasonMapMode == mode);
+                            if (ImGui::Selectable(label, is_selected)) {
+                                cfg.events.SeasonMapMode = mode;
+                                changed                  = true;
+                            }
+                            if (is_selected) {
+                                ImGui::SetItemDefaultFocus();
+                            }
+                        };
+                        selectable_mode(PatchConfig::SeasonEventMapMode::MapOnly);
+                        selectable_mode(PatchConfig::SeasonEventMapMode::OverlayConfig);
+                        selectable_mode(PatchConfig::SeasonEventMapMode::Disabled);
+                        ImGui::EndCombo();
                     }
-                    if (is_selected) {
-                        ImGui::SetItemDefaultFocus();
-                    }
-                };
-                selectable_mode(PatchConfig::SeasonEventMapMode::MapOnly);
-                selectable_mode(PatchConfig::SeasonEventMapMode::OverlayConfig);
-                selectable_mode(PatchConfig::SeasonEventMapMode::Disabled);
-                ImGui::EndCombo();
-            }
+                    return changed;
+                }
+            ));
+            end_form_layout(core_layout);
+
+            ImGui::Spacing();
+            ImGui::TextUnformatted(overlay_.tr("gui.events_group_toggles", "Event toggles"));
+            const std::array<BoolRowSpec, 21> rows = {{
+                {"gui.events_igr", "IGR enabled", "##events_igr", &cfg.events.IgrEnabled, &global_config.events.IgrEnabled, false},
+                {"gui.events_anniversary", "Anniversary enabled", "##events_anniversary", &cfg.events.AnniversaryEnabled, &global_config.events.AnniversaryEnabled, false},
+                {"gui.events_easter_egg_world", "Easter egg world enabled", "##events_easter_egg_world", &cfg.events.EasterEggWorldEnabled, &global_config.events.EasterEggWorldEnabled, false},
+                {"gui.events_double_keystones", "Double rift keystones", "##events_double_keystones", &cfg.events.DoubleRiftKeystones, &global_config.events.DoubleRiftKeystones, false},
+                {"gui.events_double_blood_shards", "Double blood shards", "##events_double_blood_shards", &cfg.events.DoubleBloodShards, &global_config.events.DoubleBloodShards, false},
+                {"gui.events_double_goblins", "Double treasure goblins", "##events_double_goblins", &cfg.events.DoubleTreasureGoblins, &global_config.events.DoubleTreasureGoblins, false},
+                {"gui.events_double_bounty_bags", "Double bounty bags", "##events_double_bounty_bags", &cfg.events.DoubleBountyBags, &global_config.events.DoubleBountyBags, false},
+                {"gui.events_royal_grandeur", "Royal Grandeur", "##events_royal_grandeur", &cfg.events.RoyalGrandeur, &global_config.events.RoyalGrandeur, false},
+                {"gui.events_legacy_of_nightmares", "Legacy of Nightmares", "##events_legacy_of_nightmares", &cfg.events.LegacyOfNightmares, &global_config.events.LegacyOfNightmares, false},
+                {"gui.events_triunes_will", "Triune's Will", "##events_triunes_will", &cfg.events.TriunesWill, &global_config.events.TriunesWill, false},
+                {"gui.events_pandemonium", "Pandemonium", "##events_pandemonium", &cfg.events.Pandemonium, &global_config.events.Pandemonium, false},
+                {"gui.events_kanai_powers", "Kanai powers", "##events_kanai_powers", &cfg.events.KanaiPowers, &global_config.events.KanaiPowers, false},
+                {"gui.events_trials_of_tempests", "Trials of Tempests", "##events_trials_of_tempests", &cfg.events.TrialsOfTempests, &global_config.events.TrialsOfTempests, false},
+                {"gui.events_shadow_clones", "Shadow clones", "##events_shadow_clones", &cfg.events.ShadowClones, &global_config.events.ShadowClones, false},
+                {"gui.events_fourth_kanais", "Fourth Kanai's Cube slot", "##events_fourth_kanais", &cfg.events.FourthKanaisCubeSlot, &global_config.events.FourthKanaisCubeSlot, false},
+                {"gui.events_ethereal_items", "Ethereal items", "##events_ethereal_items", &cfg.events.EtherealItems, &global_config.events.EtherealItems, false},
+                {"gui.events_soul_shards", "Soul shards", "##events_soul_shards", &cfg.events.SoulShards, &global_config.events.SoulShards, false},
+                {"gui.events_swarm_rifts", "Swarm rifts", "##events_swarm_rifts", &cfg.events.SwarmRifts, &global_config.events.SwarmRifts, false},
+                {"gui.events_sanctified_items", "Sanctified items", "##events_sanctified_items", &cfg.events.SanctifiedItems, &global_config.events.SanctifiedItems, false},
+                {"gui.events_dark_alchemy", "Dark Alchemy", "##events_dark_alchemy", &cfg.events.DarkAlchemy, &global_config.events.DarkAlchemy, false},
+                {"gui.events_nesting_portals", "Nesting portals", "##events_nesting_portals", &cfg.events.NestingPortals, &global_config.events.NestingPortals, false},
+            }};
 
             ImGui::BeginDisabled(!cfg.events.active);
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_igr", "IGR enabled"), &cfg.events.IgrEnabled));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_anniversary", "Anniversary enabled"), &cfg.events.AnniversaryEnabled));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_easter_egg_world", "Easter egg world enabled"), &cfg.events.EasterEggWorldEnabled));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_double_keystones", "Double rift keystones"), &cfg.events.DoubleRiftKeystones));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_double_blood_shards", "Double blood shards"), &cfg.events.DoubleBloodShards));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_double_goblins", "Double treasure goblins"), &cfg.events.DoubleTreasureGoblins));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_double_bounty_bags", "Double bounty bags"), &cfg.events.DoubleBountyBags));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_royal_grandeur", "Royal Grandeur"), &cfg.events.RoyalGrandeur));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_legacy_of_nightmares", "Legacy of Nightmares"), &cfg.events.LegacyOfNightmares));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_triunes_will", "Triune's Will"), &cfg.events.TriunesWill));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_pandemonium", "Pandemonium"), &cfg.events.Pandemonium));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_kanai_powers", "Kanai powers"), &cfg.events.KanaiPowers));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_trials_of_tempests", "Trials of Tempests"), &cfg.events.TrialsOfTempests));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_shadow_clones", "Shadow clones"), &cfg.events.ShadowClones));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_fourth_kanais", "Fourth Kanai's Cube slot"), &cfg.events.FourthKanaisCubeSlot));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_ethereal_items", "Ethereal items"), &cfg.events.EtherealItems));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_soul_shards", "Soul shards"), &cfg.events.SoulShards));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_swarm_rifts", "Swarm rifts"), &cfg.events.SwarmRifts));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_sanctified_items", "Sanctified items"), &cfg.events.SanctifiedItems));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_dark_alchemy", "Dark Alchemy"), &cfg.events.DarkAlchemy));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.events_nesting_portals", "Nesting portals"), &cfg.events.NestingPortals));
+            mark_dirty(render_filter_and_bulk(overlay_.tr("gui.filter_events", "Filter"), "##events_filter", events_filter, rows, false));
+            float max_label = 0.0f;
+            for (const BoolRowSpec &row : rows) {
+                const char *label = overlay_.tr(row.tr_key, row.fallback);
+                if (!label_passes_filter(events_filter, label)) {
+                    continue;
+                }
+                max_label = std::max(max_label, ImGui::CalcTextSize(label).x);
+            }
+            if (max_label <= 0.0f) {
+                ImGui::TextDisabled("%s", overlay_.tr("gui.filter_empty", "No rows match current filter."));
+            } else {
+                FormLayout toggles_layout = begin_form_layout("cfg_events_toggles_form", max_label);
+                for (const BoolRowSpec &row : rows) {
+                    const char *label = overlay_.tr(row.tr_key, row.fallback);
+                    if (!label_passes_filter(events_filter, label)) {
+                        continue;
+                    }
+                    mark_dirty(checkbox_row(toggles_layout, label, row.id, row.value, row.restart_required));
+                }
+                end_form_layout(toggles_layout);
+            }
             ImGui::EndDisabled();
         };
 
         auto render_cheats = [&]() -> void {
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_enabled", "Enabled##rare_cheats"), &cfg.rare_cheats.active));
+            ImGui::TextUnformatted(overlay_.tr("gui.cheats_group_core", "Core controls"));
+            const float core_max_label = ImGui::CalcTextSize(overlay_.tr("gui.rare_cheats_attack_speed", "Attack speed multiplier")).x;
+            FormLayout  core_layout    = begin_form_layout("cfg_cheats_core_form", core_max_label);
+            mark_dirty(checkbox_row(core_layout, overlay_.tr("gui.rare_cheats_enabled", "Enabled"), "##rare_cheats_enabled", &cfg.rare_cheats.active, false));
             ImGui::BeginDisabled(!cfg.rare_cheats.active);
-
-            auto move_speed =
-                static_cast<float>(cfg.rare_cheats.move_speed);
-            if (ImGui::SliderFloat(overlay_.tr("gui.rare_cheats_move_speed", "Move speed multiplier"), &move_speed, 0.1f, 10.0f, "%.2fx")) {
+            float move_speed = static_cast<float>(cfg.rare_cheats.move_speed);
+            if (slider_float_row(core_layout, overlay_.tr("gui.rare_cheats_move_speed", "Move speed multiplier"), "##rare_cheats_move_speed", &move_speed, 0.1f, 10.0f, "%.2fx", 0, false)) {
                 cfg.rare_cheats.move_speed = static_cast<double>(move_speed);
                 overlay_.set_ui_dirty(true);
             }
-            auto attack_speed =
-                static_cast<float>(cfg.rare_cheats.attack_speed);
-            if (ImGui::SliderFloat(overlay_.tr("gui.rare_cheats_attack_speed", "Attack speed multiplier"), &attack_speed, 0.1f, 10.0f, "%.2fx")) {
+            float attack_speed = static_cast<float>(cfg.rare_cheats.attack_speed);
+            if (slider_float_row(core_layout, overlay_.tr("gui.rare_cheats_attack_speed", "Attack speed multiplier"), "##rare_cheats_attack_speed", &attack_speed, 0.1f, 10.0f, "%.2fx", 0, false)) {
                 cfg.rare_cheats.attack_speed = static_cast<double>(attack_speed);
                 overlay_.set_ui_dirty(true);
             }
+            end_form_layout(core_layout);
 
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_super_god_mode", "Super god mode"), &cfg.rare_cheats.super_god_mode));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_extra_gr_orbs_elites", "Extra GR orbs on elite kill"), &cfg.rare_cheats.extra_gr_orbs_elites));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_floating_damage", "Floating damage color"), &cfg.rare_cheats.floating_damage_color));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_guaranteed_legendaries", "Guaranteed legendaries"), &cfg.rare_cheats.guaranteed_legendaries));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_drop_anything", "Drop anything"), &cfg.rare_cheats.drop_anything));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_instant_portal", "Instant portal"), &cfg.rare_cheats.instant_portal));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_no_cooldowns", "No cooldowns"), &cfg.rare_cheats.no_cooldowns));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_instant_craft", "Instant craft actions"), &cfg.rare_cheats.instant_craft_actions));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_any_gem_any_slot", "Any gem any slot"), &cfg.rare_cheats.any_gem_any_slot));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_auto_pickup", "Auto pickup"), &cfg.rare_cheats.auto_pickup));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_equip_any_slot", "Equip any slot"), &cfg.rare_cheats.equip_any_slot));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_unlock_all_difficulties", "Unlock all difficulties"), &cfg.rare_cheats.unlock_all_difficulties));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_easy_kill", "Easy kill damage"), &cfg.rare_cheats.easy_kill_damage));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_cube_no_consume", "Cube no consume"), &cfg.rare_cheats.cube_no_consume));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_gem_upgrade_always", "Gem upgrade always"), &cfg.rare_cheats.gem_upgrade_always));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_gem_upgrade_speed", "Gem upgrade speed"), &cfg.rare_cheats.gem_upgrade_speed));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_gem_upgrade_lvl150", "Gem upgrade lvl150"), &cfg.rare_cheats.gem_upgrade_lvl150));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.rare_cheats_equip_multi_legendary", "Equip multi legendary"), &cfg.rare_cheats.equip_multi_legendary));
+            ImGui::Spacing();
+            ImGui::TextUnformatted(overlay_.tr("gui.cheats_group_toggles", "Cheat toggles"));
+            const std::array<BoolRowSpec, 18> rows = {{
+                {"gui.rare_cheats_super_god_mode", "Super god mode", "##rare_cheats_super_god_mode", &cfg.rare_cheats.super_god_mode, &global_config.rare_cheats.super_god_mode, false},
+                {"gui.rare_cheats_extra_gr_orbs_elites", "Extra GR orbs on elite kill", "##rare_cheats_extra_gr_orbs_elites", &cfg.rare_cheats.extra_gr_orbs_elites, &global_config.rare_cheats.extra_gr_orbs_elites, false},
+                {"gui.rare_cheats_floating_damage", "Floating damage color", "##rare_cheats_floating_damage", &cfg.rare_cheats.floating_damage_color, &global_config.rare_cheats.floating_damage_color, false},
+                {"gui.rare_cheats_guaranteed_legendaries", "Guaranteed legendaries", "##rare_cheats_guaranteed_legendaries", &cfg.rare_cheats.guaranteed_legendaries, &global_config.rare_cheats.guaranteed_legendaries, false},
+                {"gui.rare_cheats_drop_anything", "Drop anything", "##rare_cheats_drop_anything", &cfg.rare_cheats.drop_anything, &global_config.rare_cheats.drop_anything, false},
+                {"gui.rare_cheats_instant_portal", "Instant portal", "##rare_cheats_instant_portal", &cfg.rare_cheats.instant_portal, &global_config.rare_cheats.instant_portal, false},
+                {"gui.rare_cheats_no_cooldowns", "No cooldowns", "##rare_cheats_no_cooldowns", &cfg.rare_cheats.no_cooldowns, &global_config.rare_cheats.no_cooldowns, false},
+                {"gui.rare_cheats_instant_craft", "Instant craft actions", "##rare_cheats_instant_craft", &cfg.rare_cheats.instant_craft_actions, &global_config.rare_cheats.instant_craft_actions, false},
+                {"gui.rare_cheats_any_gem_any_slot", "Any gem any slot", "##rare_cheats_any_gem_any_slot", &cfg.rare_cheats.any_gem_any_slot, &global_config.rare_cheats.any_gem_any_slot, false},
+                {"gui.rare_cheats_auto_pickup", "Auto pickup", "##rare_cheats_auto_pickup", &cfg.rare_cheats.auto_pickup, &global_config.rare_cheats.auto_pickup, false},
+                {"gui.rare_cheats_equip_any_slot", "Equip any slot", "##rare_cheats_equip_any_slot", &cfg.rare_cheats.equip_any_slot, &global_config.rare_cheats.equip_any_slot, false},
+                {"gui.rare_cheats_unlock_all_difficulties", "Unlock all difficulties", "##rare_cheats_unlock_all_difficulties", &cfg.rare_cheats.unlock_all_difficulties, &global_config.rare_cheats.unlock_all_difficulties, false},
+                {"gui.rare_cheats_easy_kill", "Easy kill damage", "##rare_cheats_easy_kill", &cfg.rare_cheats.easy_kill_damage, &global_config.rare_cheats.easy_kill_damage, false},
+                {"gui.rare_cheats_cube_no_consume", "Cube no consume", "##rare_cheats_cube_no_consume", &cfg.rare_cheats.cube_no_consume, &global_config.rare_cheats.cube_no_consume, false},
+                {"gui.rare_cheats_gem_upgrade_always", "Gem upgrade always", "##rare_cheats_gem_upgrade_always", &cfg.rare_cheats.gem_upgrade_always, &global_config.rare_cheats.gem_upgrade_always, false},
+                {"gui.rare_cheats_gem_upgrade_speed", "Gem upgrade speed", "##rare_cheats_gem_upgrade_speed", &cfg.rare_cheats.gem_upgrade_speed, &global_config.rare_cheats.gem_upgrade_speed, false},
+                {"gui.rare_cheats_gem_upgrade_lvl150", "Gem upgrade lvl150", "##rare_cheats_gem_upgrade_lvl150", &cfg.rare_cheats.gem_upgrade_lvl150, &global_config.rare_cheats.gem_upgrade_lvl150, false},
+                {"gui.rare_cheats_equip_multi_legendary", "Equip multi legendary", "##rare_cheats_equip_multi_legendary", &cfg.rare_cheats.equip_multi_legendary, &global_config.rare_cheats.equip_multi_legendary, false},
+            }};
 
+            mark_dirty(render_filter_and_bulk(overlay_.tr("gui.filter_cheats", "Filter"), "##cheats_filter", cheats_filter, rows, false));
+            float max_label     = 0.0f;
+            int   visible_count = 0;
+            for (const BoolRowSpec &row : rows) {
+                const char *label = overlay_.tr(row.tr_key, row.fallback);
+                if (!label_passes_filter(cheats_filter, label)) {
+                    continue;
+                }
+                ++visible_count;
+                max_label = std::max(max_label, ImGui::CalcTextSize(label).x);
+            }
+            if (visible_count == 0) {
+                ImGui::TextDisabled("%s", overlay_.tr("gui.filter_empty", "No rows match current filter."));
+            } else {
+                const float avail_w           = ImGui::GetContentRegionAvail().x;
+                const bool  use_checkbox_grid = (avail_w >= 760.0f);
+                if (use_checkbox_grid && ImGui::BeginTable("cfg_cheats_grid", 2, ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_NoSavedSettings)) {
+                    std::array<const BoolRowSpec *, rows.size()> visible_rows {};
+                    int                                          visible_len = 0;
+                    for (const BoolRowSpec &row : rows) {
+                        const char *label = overlay_.tr(row.tr_key, row.fallback);
+                        if (!label_passes_filter(cheats_filter, label)) {
+                            continue;
+                        }
+                        visible_rows[static_cast<size_t>(visible_len++)] = &row;
+                    }
+
+                    for (int i = 0; i < visible_count; i += 2) {
+                        ImGui::TableNextRow();
+                        for (int col = 0; col < 2; ++col) {
+                            ImGui::TableSetColumnIndex(col);
+                            if (i + col >= visible_count) {
+                                continue;
+                            }
+                            EXL_ASSERT(i + col < visible_len, "visible index out of range in cheats grid");
+                            const BoolRowSpec *row = visible_rows[static_cast<size_t>(i + col)];
+                            EXL_ASSERT(row != nullptr, "null visible row in cheats grid");
+                            bool row_changed = ImGui::Checkbox(row->id, row->value);
+                            ImGui::SameLine(0.0f, 6.0f);
+                            ImGui::TextUnformatted(overlay_.tr(row->tr_key, row->fallback));
+                            mark_dirty(row_changed);
+                        }
+                    }
+                    ImGui::EndTable();
+                } else {
+                    FormLayout toggles_layout = begin_form_layout("cfg_cheats_toggles_form", max_label);
+                    for (const BoolRowSpec &row : rows) {
+                        const char *label = overlay_.tr(row.tr_key, row.fallback);
+                        if (!label_passes_filter(cheats_filter, label)) {
+                            continue;
+                        }
+                        mark_dirty(checkbox_row(toggles_layout, label, row.id, row.value, row.restart_required));
+                    }
+                    end_form_layout(toggles_layout);
+                }
+            }
             ImGui::EndDisabled();
         };
 
         auto render_rifts = [&]() -> void {
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.challenge_rifts_enabled", "Enabled##cr"), &cfg.challenge_rifts.active));
+            const float max_label = ImGui::CalcTextSize(overlay_.tr("gui.challenge_rifts_range_end", "Range end")).x;
+            FormLayout  layout    = begin_form_layout("cfg_rifts_form", max_label);
+            mark_dirty(checkbox_row(layout, overlay_.tr("gui.challenge_rifts_enabled", "Enabled"), "##challenge_rifts_enabled", &cfg.challenge_rifts.active, false));
             ImGui::BeginDisabled(!cfg.challenge_rifts.active);
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.challenge_rifts_random", "Randomize within range"), &cfg.challenge_rifts.random));
+            mark_dirty(checkbox_row(layout, overlay_.tr("gui.challenge_rifts_random", "Randomize within range"), "##challenge_rifts_random", &cfg.challenge_rifts.random, false));
             int start = static_cast<int>(cfg.challenge_rifts.range_start);
             int end   = static_cast<int>(cfg.challenge_rifts.range_end);
-            if (ImGui::InputInt(overlay_.tr("gui.challenge_rifts_range_start", "Range start"), &start)) {
+            if (input_int_row(layout, overlay_.tr("gui.challenge_rifts_range_start", "Range start"), "##challenge_rifts_range_start", &start, 1, 10, 0, false)) {
                 cfg.challenge_rifts.range_start = static_cast<u32>(std::max(0, start));
                 overlay_.set_ui_dirty(true);
             }
-            if (ImGui::InputInt(overlay_.tr("gui.challenge_rifts_range_end", "Range end"), &end)) {
+            if (input_int_row(layout, overlay_.tr("gui.challenge_rifts_range_end", "Range end"), "##challenge_rifts_range_end", &end, 1, 10, 0, false)) {
                 cfg.challenge_rifts.range_end = static_cast<u32>(std::max(0, end));
                 overlay_.set_ui_dirty(true);
             }
             ImGui::EndDisabled();
+            end_form_layout(layout);
         };
 
         auto render_loot = [&]() -> void {
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.loot_enabled", "Enabled##loot"), &cfg.loot_modifiers.active));
-            ImGui::BeginDisabled(!cfg.loot_modifiers.active);
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.loot_disable_ancient", "Disable ancient drops"), &cfg.loot_modifiers.DisableAncientDrops));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.loot_disable_primal", "Disable primal ancient drops"), &cfg.loot_modifiers.DisablePrimalAncientDrops));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.loot_disable_torment", "Disable torment drops"), &cfg.loot_modifiers.DisableTormentDrops));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.loot_disable_torment_check", "Disable torment check"), &cfg.loot_modifiers.DisableTormentCheck));
-            mark_dirty(ImGui::Checkbox(overlay_.tr("gui.loot_suppress_gift", "Suppress gift generation"), &cfg.loot_modifiers.SuppressGiftGeneration));
+            ImGui::TextUnformatted(overlay_.tr("gui.loot_group_core", "Core controls"));
+            const float core_max_label = ImGui::CalcTextSize(overlay_.tr("gui.loot_ancient_rank", "Ancient rank")).x;
+            FormLayout  core_layout    = begin_form_layout("cfg_loot_core_form", core_max_label);
+            mark_dirty(checkbox_row(core_layout, overlay_.tr("gui.loot_enabled", "Enabled"), "##loot_enabled", &cfg.loot_modifiers.active, false));
+            end_form_layout(core_layout);
 
-            int forced_ilevel = cfg.loot_modifiers.ForcedILevel;
-            if (ImGui::SliderInt(overlay_.tr("gui.loot_forced_ilevel", "Forced iLevel"), &forced_ilevel, 0, 70)) {
+            ImGui::BeginDisabled(!cfg.loot_modifiers.active);
+            ImGui::Spacing();
+            ImGui::TextUnformatted(overlay_.tr("gui.loot_group_toggles", "Drop toggles"));
+            const std::array<BoolRowSpec, 5> rows = {{
+                {"gui.loot_disable_ancient", "Disable ancient drops", "##loot_disable_ancient", &cfg.loot_modifiers.DisableAncientDrops, &global_config.loot_modifiers.DisableAncientDrops, false},
+                {"gui.loot_disable_primal", "Disable primal ancient drops", "##loot_disable_primal", &cfg.loot_modifiers.DisablePrimalAncientDrops, &global_config.loot_modifiers.DisablePrimalAncientDrops, false},
+                {"gui.loot_disable_torment", "Disable torment drops", "##loot_disable_torment", &cfg.loot_modifiers.DisableTormentDrops, &global_config.loot_modifiers.DisableTormentDrops, false},
+                {"gui.loot_disable_torment_check", "Disable torment check", "##loot_disable_torment_check", &cfg.loot_modifiers.DisableTormentCheck, &global_config.loot_modifiers.DisableTormentCheck, false},
+                {"gui.loot_suppress_gift", "Suppress gift generation", "##loot_suppress_gift", &cfg.loot_modifiers.SuppressGiftGeneration, &global_config.loot_modifiers.SuppressGiftGeneration, false},
+            }};
+
+            mark_dirty(render_filter_and_bulk(overlay_.tr("gui.filter_loot", "Filter"), "##loot_filter", loot_filter, rows, false));
+            float max_label = 0.0f;
+            for (const BoolRowSpec &row : rows) {
+                const char *label = overlay_.tr(row.tr_key, row.fallback);
+                if (!label_passes_filter(loot_filter, label)) {
+                    continue;
+                }
+                max_label = std::max(max_label, ImGui::CalcTextSize(label).x);
+            }
+            if (max_label <= 0.0f) {
+                ImGui::TextDisabled("%s", overlay_.tr("gui.filter_empty", "No rows match current filter."));
+            } else {
+                FormLayout toggles_layout = begin_form_layout("cfg_loot_toggles_form", max_label);
+                for (const BoolRowSpec &row : rows) {
+                    const char *label = overlay_.tr(row.tr_key, row.fallback);
+                    if (!label_passes_filter(loot_filter, label)) {
+                        continue;
+                    }
+                    mark_dirty(checkbox_row(toggles_layout, label, row.id, row.value, false));
+                }
+                end_form_layout(toggles_layout);
+            }
+
+            ImGui::Spacing();
+            ImGui::TextUnformatted(overlay_.tr("gui.loot_group_overrides", "Overrides"));
+            FormLayout overrides_layout = begin_form_layout("cfg_loot_overrides_form", core_max_label);
+            int        forced_ilevel    = cfg.loot_modifiers.ForcedILevel;
+            if (slider_int_row(overrides_layout, overlay_.tr("gui.loot_forced_ilevel", "Forced iLevel"), "##loot_forced_ilevel", &forced_ilevel, 0, 70, "%d", 0, false)) {
                 cfg.loot_modifiers.ForcedILevel = forced_ilevel;
                 overlay_.set_ui_dirty(true);
             }
             int tiered_level = cfg.loot_modifiers.TieredLootRunLevel;
-            if (ImGui::SliderInt(overlay_.tr("gui.loot_tiered_run_level", "Tiered loot run level"), &tiered_level, 0, 150)) {
+            if (slider_int_row(overrides_layout, overlay_.tr("gui.loot_tiered_run_level", "Tiered loot run level"), "##loot_tiered_run_level", &tiered_level, 0, 150, "%d", 0, false)) {
                 cfg.loot_modifiers.TieredLootRunLevel = tiered_level;
                 overlay_.set_ui_dirty(true);
             }
@@ -693,28 +1006,43 @@ namespace d3::gui2::ui::windows {
                 overlay_.tr("gui.loot_rank_primal", "Primal"),
             };
             int rank_value = cfg.loot_modifiers.AncientRankValue;
-            if (ImGui::Combo(overlay_.tr("gui.loot_ancient_rank", "Ancient rank"), &rank_value, ranks.data(), static_cast<int>(ranks.size()))) {
+            if (combo_row(
+                    overrides_layout,
+                    overlay_.tr("gui.loot_ancient_rank", "Ancient rank"),
+                    "##loot_ancient_rank",
+                    false,
+                    [&](const char *id) -> bool {
+                        return ImGui::Combo(id, &rank_value, ranks.data(), static_cast<int>(ranks.size()));
+                    }
+                )) {
                 cfg.loot_modifiers.AncientRankValue = rank_value;
                 overlay_.set_ui_dirty(true);
             }
-
+            end_form_layout(overrides_layout);
             ImGui::EndDisabled();
         };
 
         auto render_debug = [&]() -> void {
+            float max_label = ImGui::CalcTextSize(overlay_.tr("gui.debug_show_metrics", "Show ImGui metrics")).x;
+            for (const auto &e : d3::config_schema::EntriesForSection("debug")) {
+                if (e.tr_label != nullptr && e.label_fallback != nullptr) {
+                    max_label = std::max(max_label, ImGui::CalcTextSize(overlay_.tr(e.tr_label, e.label_fallback)).x);
+                }
+            }
+            FormLayout  layout        = begin_form_layout("cfg_debug_form", max_label);
             const auto *enabled_entry = d3::config_schema::FindEntry("debug", "SectionEnabled");
             if (enabled_entry == nullptr || enabled_entry->get_bool == nullptr || enabled_entry->set_bool == nullptr) {
-                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.debug_enabled", "Enabled##debug"), &cfg.debug.active));
+                mark_dirty(checkbox_row(layout, overlay_.tr("gui.debug_enabled", "Enabled"), "##debug_enabled", &cfg.debug.active, false));
                 ImGui::BeginDisabled(!cfg.debug.active);
-                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.debug_enable_crashes", "Enable crashes (danger)"), &cfg.debug.enable_crashes));
-                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.debug_pubfile_dump", "Enable pubfile dump"), &cfg.debug.enable_pubfile_dump));
-                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.debug_error_traces", "Enable error traces"), &cfg.debug.enable_error_traces));
-                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.debug_debug_flags", "Enable debug flags"), &cfg.debug.enable_debug_flags));
-                mark_dirty(ImGui::Checkbox(overlay_.tr("gui.debug_spoof_network", "Spoof Network Functions"), &cfg.debug.tagnx));
+                mark_dirty(checkbox_row(layout, overlay_.tr("gui.debug_enable_crashes", "Enable crashes (danger)"), "##debug_enable_crashes", &cfg.debug.enable_crashes, true));
+                mark_dirty(checkbox_row(layout, overlay_.tr("gui.debug_pubfile_dump", "Enable pubfile dump"), "##debug_pubfile_dump", &cfg.debug.enable_pubfile_dump, true));
+                mark_dirty(checkbox_row(layout, overlay_.tr("gui.debug_error_traces", "Enable error traces"), "##debug_error_traces", &cfg.debug.enable_error_traces, true));
+                mark_dirty(checkbox_row(layout, overlay_.tr("gui.debug_debug_flags", "Enable debug flags"), "##debug_debug_flags", &cfg.debug.enable_debug_flags, true));
+                mark_dirty(checkbox_row(layout, overlay_.tr("gui.debug_spoof_network", "Spoof Network Functions"), "##debug_spoof_network", &cfg.debug.tagnx, true));
                 ImGui::EndDisabled();
             } else {
                 bool enabled = enabled_entry->get_bool(cfg);
-                if (ImGui::Checkbox(overlay_.tr(enabled_entry->tr_label, enabled_entry->label_fallback), &enabled)) {
+                if (checkbox_row(layout, overlay_.tr(enabled_entry->tr_label, enabled_entry->label_fallback), "##debug_enabled", &enabled, enabled_entry->restart == d3::config_schema::RestartPolicy::RestartRequired)) {
                     enabled_entry->set_bool(cfg, enabled);
                     overlay_.set_ui_dirty(true);
                 }
@@ -727,18 +1055,20 @@ namespace d3::gui2::ui::windows {
                     if (e.kind != d3::config_schema::ValueKind::Bool || e.get_bool == nullptr || e.set_bool == nullptr) {
                         continue;
                     }
-                    bool v = e.get_bool(cfg);
-                    if (ImGui::Checkbox(overlay_.tr(e.tr_label, e.label_fallback), &v)) {
+                    bool        v  = e.get_bool(cfg);
+                    std::string id = "##debug_";
+                    id += e.key;
+                    if (checkbox_row(layout, overlay_.tr(e.tr_label, e.label_fallback), id.c_str(), &v, e.restart == d3::config_schema::RestartPolicy::RestartRequired)) {
                         e.set_bool(cfg, v);
                         overlay_.set_ui_dirty(true);
                     }
                 }
                 ImGui::EndDisabled();
             }
+            end_form_layout(layout);
+            render_restart_legend();
 
             ImGui::Separator();
-
-            // Note: we don't link imgui_demo.cpp, so ShowDemoWindow() would be an unresolved symbol at runtime.
             bool show_demo = false;
             ImGui::BeginDisabled();
             ImGui::Checkbox(overlay_.tr("gui.debug_show_demo", "Show ImGui demo window (not linked)"), &show_demo);
@@ -768,7 +1098,21 @@ namespace d3::gui2::ui::windows {
         const float nav_max   = std::max(kNavMinWidth, std::min(kNavMaxWidth, avail_w * 0.45f));
         nav_width             = std::clamp(nav_width, kNavMinWidth, nav_max);
 
-        const float action_bar_height = ImGui::GetFrameHeightWithSpacing() + style.WindowPadding.y * 2.0f;
+        const char *label_reload = overlay_.tr("gui.reload", "Reload");
+        const char *label_reset  = overlay_.tr("gui.reset_ui", "Revert Changes");
+        const char *label_apply  = overlay_.tr("gui.apply", "Apply");
+        const char *label_save   = overlay_.tr("gui.save", "Save");
+
+        auto button_width = [&](const char *label) -> float {
+            return ImGui::CalcTextSize(label).x + style.FramePadding.x * 2.0f;
+        };
+        const float buttons_width =
+            button_width(label_reset) + button_width(label_reload) + button_width(label_save) +
+            button_width(label_apply) + style.ItemSpacing.x * 3.0f;
+        const bool  action_buttons_wrap = buttons_width > (avail_w * 0.72f);
+        const float action_bar_height   = action_buttons_wrap
+                                              ? ImGui::GetFrameHeightWithSpacing() * 3.0f + style.WindowPadding.y * 2.0f
+                                              : ImGui::GetFrameHeightWithSpacing() + style.WindowPadding.y * 2.0f;
 
         ImGui::BeginChild("cfg_body", ImVec2(0.0f, -action_bar_height), false);
         ImGui::BeginChild(
@@ -883,58 +1227,87 @@ namespace d3::gui2::ui::windows {
         );
         ImGui::AlignTextToFramePadding();
 
-        const char *label_reload = overlay_.tr("gui.reload", "Reload");
-        const char *label_reset  = overlay_.tr("gui.reset_ui", "Revert Changes");
-        const char *label_apply  = overlay_.tr("gui.apply", "Apply");
-        const char *label_save   = overlay_.tr("gui.save", "Save");
+        const float start_x     = ImGui::GetCursorPosX();
+        const float avail_x     = ImGui::GetContentRegionAvail().x;
+        const float right_x     = start_x + avail_x - buttons_width;
+        const bool  action_wrap = action_buttons_wrap || avail_x < 560.0f;
 
-        auto button_width = [&](const char *label) -> float {
-            return ImGui::CalcTextSize(label).x + style.FramePadding.x * 2.0f;
+        auto render_state_banners = [&](bool inline_mode) -> bool {
+            bool has_state = false;
+            if (overlay_.ui_dirty()) {
+                ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.2f, 1.0f), "%s", overlay_.tr("gui.ui_state_dirty", "UI state: UNSAVED changes"));
+                has_state = true;
+            }
+            if (restart_required_) {
+                if (inline_mode && has_state) {
+                    ImGui::SameLine();
+                }
+                if (restart_note_[0] != '\0') {
+                    ImGui::TextColored(
+                        ImVec4(1.0f, 0.75f, 0.2f, 1.0f),
+                        overlay_.tr("gui.restart_required_banner_note", "Restart required: %s"),
+                        restart_note_
+                    );
+                } else {
+                    ImGui::TextColored(
+                        ImVec4(1.0f, 0.75f, 0.2f, 1.0f),
+                        "%s",
+                        overlay_.tr("gui.restart_required_banner", "Restart required for some changes.")
+                    );
+                }
+                has_state = true;
+            }
+            if (lang_restart_pending_) {
+                if (inline_mode && has_state) {
+                    ImGui::SameLine();
+                }
+                ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.2f, 1.0f), "%s", overlay_.tr("gui.lang_restart_banner", "Language updated. Restart to fully apply new glyphs."));
+                has_state = true;
+            }
+            return has_state;
         };
 
-        const float buttons_width =
-            button_width(label_reset) + button_width(label_reload) + button_width(label_save) +
-            button_width(label_apply) + style.ItemSpacing.x * 3.0f;
+        bool clicked_reload = false;
+        bool clicked_reset  = false;
+        bool clicked_apply  = false;
+        bool clicked_save   = false;
 
-        const float start_x   = ImGui::GetCursorPosX();
-        const float avail_x   = ImGui::GetContentRegionAvail().x;
-        const float right_x   = start_x + avail_x - buttons_width;
-        bool        has_state = false;
-        if (overlay_.ui_dirty()) {
-            ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.2f, 1.0f), "%s", overlay_.tr("gui.ui_state_dirty", "UI state: UNSAVED changes"));
-            has_state = true;
-        }
-        if (restart_required_) {
+        if (!action_wrap) {
+            bool has_state = render_state_banners(true);
             if (has_state) {
                 ImGui::SameLine();
             }
-            if (restart_note_[0] != '\0') {
-                ImGui::TextColored(
-                    ImVec4(1.0f, 0.75f, 0.2f, 1.0f),
-                    overlay_.tr("gui.restart_required_banner_note", "Restart required: %s"),
-                    restart_note_
-                );
-            } else {
-                ImGui::TextColored(
-                    ImVec4(1.0f, 0.75f, 0.2f, 1.0f),
-                    "%s",
-                    overlay_.tr("gui.restart_required_banner", "Restart required for some changes.")
-                );
+            if (right_x > ImGui::GetCursorPosX()) {
+                ImGui::SetCursorPosX(right_x);
             }
-            has_state = true;
-        }
-        if (lang_restart_pending_) {
-            if (has_state) {
-                ImGui::SameLine();
-            }
-            ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.2f, 1.0f), "%s", overlay_.tr("gui.lang_restart_banner", "Language updated. Restart to fully apply new glyphs."));
-            has_state = true;
-        }
-        if (has_state) {
+            clicked_reload = ImGui::Button(label_reload);
             ImGui::SameLine();
-        }
-        if (right_x > ImGui::GetCursorPosX()) {
-            ImGui::SetCursorPosX(right_x);
+            clicked_reset = ImGui::Button(label_reset);
+            ImGui::SameLine();
+            clicked_apply = ImGui::Button(label_apply);
+            ImGui::SameLine();
+            clicked_save = ImGui::Button(label_save);
+        } else {
+            const bool has_state = render_state_banners(false);
+            if (has_state) {
+                ImGui::Separator();
+            }
+            const float line_start_x         = ImGui::GetCursorPosX();
+            const float max_x                = line_start_x + ImGui::GetContentRegionAvail().x;
+            auto        place_wrapped_button = [&](const char *label) -> bool {
+                const float w      = button_width(label);
+                const float cursor = ImGui::GetCursorPosX();
+                if (cursor > line_start_x && (cursor + w) > max_x) {
+                    ImGui::NewLine();
+                } else if (cursor > line_start_x) {
+                    ImGui::SameLine();
+                }
+                return ImGui::Button(label);
+            };
+            clicked_reload = place_wrapped_button(label_reload);
+            clicked_reset  = place_wrapped_button(label_reset);
+            clicked_apply  = place_wrapped_button(label_apply);
+            clicked_save   = place_wrapped_button(label_save);
         }
 
         auto build_runtime_apply = [&](const PatchConfig &requested, bool *gui_pending_out) -> PatchConfig {
@@ -970,7 +1343,7 @@ namespace d3::gui2::ui::windows {
             }
         };
 
-        if (ImGui::Button(label_reload)) {
+        if (clicked_reload) {
             PatchConfig loaded {};
             std::string error;
             if (LoadPatchConfigFromPath("sd:/config/d3hack-nx/config.toml", loaded, error)) {
@@ -995,8 +1368,7 @@ namespace d3::gui2::ui::windows {
             }
         }
 
-        ImGui::SameLine();
-        if (ImGui::Button(label_reset)) {
+        if (clicked_reset) {
             cfg = global_config;
             overlay_.set_ui_dirty(false);
             restart_required_     = false;
@@ -1004,8 +1376,7 @@ namespace d3::gui2::ui::windows {
             lang_restart_pending_ = false;
         }
 
-        ImGui::SameLine();
-        if (ImGui::Button(label_apply)) {
+        if (clicked_apply) {
             const PatchConfig      normalized    = NormalizePatchConfig(cfg);
             bool                   gui_pending   = false;
             const PatchConfig      runtime_apply = build_runtime_apply(normalized, &gui_pending);
@@ -1035,8 +1406,7 @@ namespace d3::gui2::ui::windows {
             }
         }
 
-        ImGui::SameLine();
-        if (ImGui::Button(label_save)) {
+        if (clicked_save) {
             std::string error;
             if (SavePatchConfigToPath("sd:/config/d3hack-nx/config.toml", cfg, error)) {
                 lang_restart_pending_ = cfg.gui.language_override != global_config.gui.language_override;
