@@ -37,7 +37,10 @@ See: [Resolution Hack (ResHack) overview](#resolution-hack-reshack).
 - **Challenge Rifts offline fix**: SD card protobufs now parse at full size (previous blz::string ctor issue resolved).
 - **Safer offline UX**: hides "Connect to Diablo Servers" and network hints when AllowOnlinePlay = false.
 - **Resolution Hack (ResHack)**: output targets with dynamic resolution scaling and extra heap headroom (texture clamp hook currently disabled).
+- **Boot report + hook registry**: boot stages and enabled hooks/patches are recorded and printed after ShellInitialized.
+- **Schema-driven config**: config schema powers TOML IO + GUI labels/help and restart-required rules; runtime apply reports restart-required changes.
 - **GUI overlay stability**: NVN-backed ImGui textures, triple-buffered draw buffers, and safer texture lifetime to reduce tab/docking artifacts.
+- **GUI theming + OSK**: built-in themes with optional overrides from `sd:/config/d3hack-nx/themes/` and an on-screen keyboard for text entry.
 - **GUI language hot-swap**: translations update immediately; restart recommended for full glyph coverage.
 - **Crash diagnostics**: user exception and ErrorManager dumps are written to SD for post-crash triage.
 - **CMake presets**: CMakePresets.json mirrors the Makefile pipeline for devkitA64.
@@ -108,7 +111,7 @@ d3hack-nx is an exlaunch-based module that hooks D3 at runtime. It modifies game
 | **Loot Research** | Control Ancient/Primal drops, GR tier logic, and item level forcing for drop-table experiments. |
 | **QoL Cheats** | Instant portal/crafts, movement speed multiplier, no cooldowns, equip-any-slot, super god mode, extra GR orbs on elite kills, and more. |
 | **Visuals & Performance** | FPS/DDM overlays and resolution targets for 1080p or specific dynamic-res bounds. |
-| **GUI Overlay** | Dockable ImGui windows with menu tools (show/hide/reset layout, notifications), touch swipe open/close, layout saved to `sd:/config/d3hack-nx/gui_layout.ini`, optional left-stick passthrough while the overlay is open, overlay labels drawn by the GUI, boot-latched GUI config toggles (Visible = auto-open), and language override hot-swaps translations (restart recommended for new glyphs). |
+| **GUI Overlay** | Dockable ImGui windows with menu tools (show/hide/reset layout, notifications), touch swipe open/close, layout saved to `sd:/config/d3hack-nx/gui_layout.ini`, optional left-stick passthrough while the overlay is open, overlay labels drawn by the GUI, boot-latched GUI config toggles (Visible = auto-open), on-screen keyboard for text entry, optional theme overrides from `sd:/config/d3hack-nx/themes/`, and language override hot-swaps translations (restart recommended for new glyphs). |
 | **Safety & Core** | Patches are gated by a lightweight signature guard for game build 2.7.6.90885. |
 
 ---
@@ -193,7 +196,6 @@ Files to layer (2.7.6):
 
 ```
 exefs/main
-exefs/main.npdm
 romfs/CPKs/CoreCommon.cpk
 romfs/CPKs/ServerCommon.cpk
 ```
@@ -202,7 +204,6 @@ Known 2.7.6 file sizes + MD5 (Dec 26 2023):
 
 ```
 9.7M  Dec 26 2023  c3d386af84779a9b6b74b3a3988193d2  exefs/main
-1.5K  Dec 26 2023  b02fdd816addff5bb72fcdc2c4f719ef  exefs/main.npdm
 76M   Dec 26 2023  618b6dffc4cf7c4da98ca47529a906c8  romfs/CPKs/CoreCommon.cpk
 5.4M  Dec 26 2023  de80fce3642d9cde15147af544877983  romfs/CPKs/ServerCommon.cpk
 ```
@@ -308,7 +309,8 @@ cmake --build --preset switch-iwyu
 
 ## Project Structure
 
-- `source/` - gameplay/engine hooks and helpers (modules live here)
+- `source/` - runtime modules (boot pipeline, config schema, hooks, GUI2, type database)
+- `source/program/gui2/` - ImGui overlay split into backend, input, memory, fonts, and UI layers
 - `include/` - public headers (`include/tomlplusplus/` submodule)
 - `source/third_party/imgui/` - Dear ImGui submodule
 - `cmake/` - CMake toolchain and build helpers
@@ -329,8 +331,13 @@ cmake --build --preset switch-iwyu
 
 ## Feature Map (Code Pointers)
 
+- **Config schema + TOML IO**: `source/program/config_schema.*` (settings metadata, TOML read/write helpers, GUI labels/help).
 - **Config load + defaults**: `source/program/config.cpp` (LoadPatchConfig, ApplySeasonEventMapIfNeeded).
-- **Config schema + defaults**: `source/program/config.hpp` (PatchConfig, defaults).
+- **Config struct + defaults**: `source/program/config.hpp` (PatchConfig).
+- **Runtime config apply + restart reasons**: `source/program/runtime_apply.*`.
+- **Hook registry + boot report**: `source/program/hook_registry.*`, `source/program/boot_report.*`.
+- **Boot flow + stage logging**: `source/program/main.cpp` (BootStage pipeline, hook install, boot report print).
+- **FS helpers**: `source/program/fs_util.*` (EnsureDir, ReadAll, WriteAllAtomic).
 - **Season/event XVar toggles**: `source/program/d3/patches.hpp` (PatchDynamicSeasonal, PatchDynamicEvents).
 - **Season/event publisher overrides**: `source/program/d3/hooks/season_events.hpp` (ConfigFileRetrieved, SeasonsFileRetrieved, BlacklistFileRetrieved).
 - **Season theme map**: `source/program/config.cpp` (BuildSeasonEventMap).
@@ -338,8 +345,8 @@ cmake --build --preset switch-iwyu
 - **Resolution Hack (ResHack)**: `source/program/d3/hooks/resolution.hpp` + `source/program/d3/patches.hpp`.
 - **Overlay labels (FPS/VarRes/DDM)**: `source/program/gui2/ui/overlay.cpp` (RenderOverlayLabels) and overlay toggles in `source/program/config.hpp`.
 - **Crash diagnostics**: `source/program/exception_handler.cpp` (user exception dumps) and `source/program/d3/hooks/debug.hpp` (ErrorManager dump).
-- **Hook gating + boot flow**: `source/program/main.cpp` (MainInit, SetupSeasonEventHooks).
 - **GUI overlay (dockspace/menu/layout)**: `source/program/gui2/ui/overlay.*`, `source/program/gui2/ui/window.*`, `source/program/gui2/ui/windows/*` (layout persisted at `sd:/config/d3hack-nx/gui_layout.ini`).
+- **GUI backend/input/memory/fonts**: `source/program/gui2/backend/nvn_hooks.*`, `source/program/gui2/input/hid_block.*`, `source/program/gui2/memory/imgui_alloc.*`, `source/program/gui2/fonts/font_loader.*`, `source/program/gui2/ui/virtual_keyboard.*`.
 - **ImGui romfs assets**: `data/` packaged to `deploy/romfs/d3gui/` by `misc/scripts/post-build.sh`.
 
 ---
@@ -350,7 +357,8 @@ cmake --build --preset switch-iwyu
 - **Hooking**: Uses `exl::hook::Trampoline` and `exl::hook::MakeInline` for clean detours.
 - **ImGui NVN backend**: RendererHasTextures path with NVN texture handles and descriptor pools in `source/third_party/imgui_backend/`.
 - **Offsets**: Centralized in a versioned lookup table (DEFAULT pinned to 2.7.6.90885); signature guard + version checks abort on mismatch.
-- **Config**: Runtime TOML parsing via tomlplusplus, mapped directly to the global PatchConfig struct.
+- **Config**: Schema-driven settings table powers TOML IO + GUI metadata; runtime apply tracks restart-required changes.
+- **Boot report**: Structured boot stages and hook registry emit a one-shot report after ShellInitialized.
 
 ---
 

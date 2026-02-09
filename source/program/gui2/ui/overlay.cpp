@@ -13,6 +13,7 @@
 #include "program/d3/setting.hpp"
 #include "program/d3/types/common.hpp"
 #include "program/d3/types/enums.hpp"
+#include "program/build_stamp.hpp"
 #include "program/fs_util.hpp"
 #include "program/system_allocator.hpp"
 #include "nn/fs.hpp"  // IWYU pragma: keep
@@ -130,7 +131,7 @@ namespace d3::gui2::ui {
             char        var_line[96] {};
 
             if (show_ddm) {
-                build_line = D3HACK_VER D3HACK_BUILD;
+                build_line = d3::build_stamp::kVersionLine;
             }
 
             if (show_fps) {

@@ -3,6 +3,7 @@
 #include "program/config.hpp"
 #include "program/hook_registry.hpp"
 #include "program/d3/setting.hpp"
+#include "program/build_stamp.hpp"
 
 #include <cstddef>
 
@@ -29,7 +30,7 @@ namespace d3::boot_report {
 
         static void PrintConfigSummary() {
             PRINT("d3hack: ver=%s client=%s", D3HACK_VER, D3CLIENT_VER)
-            PRINT("build: git=%s compiled=%s %s", D3HACK_GIT_DESCRIBE, __DATE__, __TIME__)
+            PRINT("build: %s built=%s", d3::build_stamp::kBuildId, d3::build_stamp::kBuildTimestamp)
             PRINT(
                 "config: path=%s initialized=%u defaults_only=%u",
                 kConfigPath,

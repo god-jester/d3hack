@@ -206,7 +206,7 @@ namespace d3::gui2::fonts::font_loader {
             g_font_build_attempted = false;
             return result;
         } else {
-            s_logged_shared_defer = false;
+            s_logged_shared_defer    = false;
             const void  *shared_font = nn::pl::GetSharedFontAddress(shared_base);
             const size_t shared_size = nn::pl::GetSharedFontSize(shared_base);
             if (shared_font == nullptr || shared_size == 0) {

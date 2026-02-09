@@ -5,6 +5,7 @@
 #include "lib/armv8/instructions.hpp"
 #include "lib/armv8/register.hpp"
 #include "lib/patch/random_access_patcher.hpp"
+#include "program/build_stamp.hpp"
 #include "program/config.hpp"
 
 #include <array>
@@ -12,9 +13,9 @@
 
 namespace d3 {
 
-    constinit const char g_szHackVerWatermark[] = D3HACK_VER D3HACK_BUILD;
-    constinit const char g_szHackVerAutosave[]  = CRLF D3HACK_FULLWWW CRLF CRLF CRLF;
-    constinit const char g_szHackVerStart[]     = CRLF D3HACK_FULLVER CRLF CRLF CRLF;
+    const char *const g_szHackVerWatermark = d3::build_stamp::kVersionLine;
+    const char *const g_szHackVerAutosave  = d3::build_stamp::kAutosaveString;
+    constinit const char g_szHackVerStart[] = CRLF D3HACK_FULLVER CRLF CRLF CRLF;
 
     constinit const char      g_szTraceStat[]         = "sd:/config/d3hack-nx/debug.txt";
     constinit const char      g_szVariableResString[] = "%4dp Output (Variable: %4dp)";
@@ -50,7 +51,7 @@ namespace d3 {
         jest.Patch<ins::Movz>(PatchTable("patch_buildlocker_02_movz"), reg::W20, (8 + GLOBALSNO_FONT_SCRIPT));
         MakeAdrlPatch(PatchTable("patch_buildlocker_03_adrl"), reinterpret_cast<uintptr_t>(&g_tSignature), reg::X2);
         MakeAdrlPatch(PatchTable("patch_buildlocker_04_adrl"), reinterpret_cast<uintptr_t>(&crgbaTan), reg::X19);
-        MakeAdrlPatch(PatchTable("patch_buildlocker_05_adrl"), reinterpret_cast<uintptr_t>(&g_szHackVerWatermark), reg::X1);
+        MakeAdrlPatch(PatchTable("patch_buildlocker_05_adrl"), reinterpret_cast<uintptr_t>(g_szHackVerWatermark), reg::X1);
         auto *szBuildLockerFormat = reinterpret_cast<std::array<char, 21> *>(jest.RwFromAddr(PatchTable("data_build_locker_format_rw")));
         *szBuildLockerFormat      = std::to_array("%s%s%d.%d.%d\0\0\0\0\0\0\0\0");
         jest.Patch<ins::Movz>(PatchTable("patch_buildlocker_06_movz"), reg::W21, 0x13);  // RENDERLAYER_UI_OVERLAY
@@ -144,14 +145,14 @@ namespace d3 {
         auto jest = patch::RandomAccessPatcher();
         /* String swap and formatting for DDM_FPS_QA */
         jest.Patch<ins::Movz>(PatchTable("patch_ddm_labels_01_movz"), reg::W0, (8 + GLOBALSNO_FONT_SCRIPT));
-        MakeAdrlPatch(PatchTable("patch_ddm_labels_02_adrl"), reinterpret_cast<uintptr_t>(&g_szHackVerWatermark), reg::X1);
+        MakeAdrlPatch(PatchTable("patch_ddm_labels_02_adrl"), reinterpret_cast<uintptr_t>(g_szHackVerWatermark), reg::X1);
         MakeAdrlPatch(PatchTable("patch_ddm_labels_03_adrl"), reinterpret_cast<uintptr_t>(&g_rgbaText), reg::X3);
         MakeAdrlPatch(PatchTable("patch_ddm_labels_04_adrl"), reinterpret_cast<uintptr_t>(&g_rgbaDropShadow), reg::X4);
         jest.Patch<ins::Movz>(PatchTable("patch_ddm_labels_05_movz"), reg::W7, 0x13);  // RENDERLAYER_UI_OVERLAY
 
         /* String swap and formatting for DDM_FPS_SIMPLE */
         jest.Patch<ins::Movz>(PatchTable("patch_ddm_labels_06_movz"), reg::W0, (8 + GLOBALSNO_FONT_SCRIPT));
-        MakeAdrlPatch(PatchTable("patch_ddm_labels_07_adrl"), reinterpret_cast<uintptr_t>(&g_szHackVerWatermark), reg::X23);
+        MakeAdrlPatch(PatchTable("patch_ddm_labels_07_adrl"), reinterpret_cast<uintptr_t>(g_szHackVerWatermark), reg::X23);
         MakeAdrlPatch(PatchTable("patch_ddm_labels_08_adrl"), reinterpret_cast<uintptr_t>(&g_rgbaText), reg::X3);
         MakeAdrlPatch(PatchTable("patch_ddm_labels_09_adrl"), reinterpret_cast<uintptr_t>(&g_rgbaDropShadow), reg::X4);
         jest.Patch<ins::Movz>(PatchTable("patch_ddm_labels_10_movz"), reg::W7, 0x13);  // RENDERLAYER_UI_OVERLAY
@@ -480,7 +481,7 @@ namespace d3 {
         jest.Patch<ins::Ret>(PatchTable("patch_signin_02_ret"));                // ^ ret
 
         /* String swap for autosave screen */
-        MakeAdrlPatch(PatchTable("patch_autosave_string_01_adrl"), reinterpret_cast<uintptr_t>(&g_szHackVerAutosave), reg::X0);
+        MakeAdrlPatch(PatchTable("patch_autosave_string_01_adrl"), reinterpret_cast<uintptr_t>(g_szHackVerAutosave), reg::X0);
 
         /* String swap for start screen */
         MakeAdrlPatch(PatchTable("patch_start_string_01_adrl"), reinterpret_cast<uintptr_t>(&g_szHackVerStart), reg::X0);

@@ -28,6 +28,7 @@ namespace d3 {
     [[maybe_unused]] inline bool g_testRanOnce = false;
     [[maybe_unused]] inline int  g_refCount    = 0;
     [[maybe_unused]] inline int  g_drawCount   = 0;
+
     inline bool g_pending_perf_notify = false;
     inline bool g_pending_dock_notify = false;
 

@@ -90,12 +90,10 @@ if [ "$VARIANT" = "atmosphere" ]; then
 D3Hack targets game build 2.7.6.90885. If you are on a newer update, you can
 layer the following 2.7.6 files via LayeredFS:
 - exefs/main
-- exefs/main.npdm
 - romfs/CPKs/CoreCommon.cpk
 - romfs/CPKs/ServerCommon.cpk
 Known 2.7.6 file sizes + MD5 (Dec 26 2023):
   9.7M  Dec 26 2023  c3d386af84779a9b6b74b3a3988193d2  exefs/main
-  1.5K  Dec 26 2023  b02fdd816addff5bb72fcdc2c4f719ef  exefs/main.npdm
   76M   Dec 26 2023  618b6dffc4cf7c4da98ca47529a906c8  romfs/CPKs/CoreCommon.cpk
   5.4M  Dec 26 2023  de80fce3642d9cde15147af544877983  romfs/CPKs/ServerCommon.cpk
 README
@@ -136,12 +134,10 @@ else
 D3Hack targets game build 2.7.6.90885. If you are on a newer update, you can
 layer the following 2.7.6 files via LayeredFS:
 - exefs/main
-- exefs/main.npdm
 - romfs/CPKs/CoreCommon.cpk
 - romfs/CPKs/ServerCommon.cpk
 Known 2.7.6 file sizes + MD5 (Dec 26 2023):
   9.7M  Dec 26 2023  c3d386af84779a9b6b74b3a3988193d2  exefs/main
-  1.5K  Dec 26 2023  b02fdd816addff5bb72fcdc2c4f719ef  exefs/main.npdm
   76M   Dec 26 2023  618b6dffc4cf7c4da98ca47529a906c8  romfs/CPKs/CoreCommon.cpk
   5.4M  Dec 26 2023  de80fce3642d9cde15147af544877983  romfs/CPKs/ServerCommon.cpk
 README

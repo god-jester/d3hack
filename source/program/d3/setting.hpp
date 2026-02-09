@@ -3,7 +3,6 @@
 #include "symbols/common.hpp"
 #include "nn/util/util_snprintf.hpp"
 #include "program/build_info.hpp"
-#include "program/build_git.hpp"
 #include "program/logging.hpp"
 #include <cstdio>
 
@@ -12,10 +11,7 @@
 #define D3HACK_WEB     "https://jester.dev"
 #define CRLF           "\n"
 #define D3HACK_DESC    "Realtime hack for Diablo III: Eternal Collection" CRLF D3HACK_WEB
-#define D3HACK_BUILD   " (" D3HACK_GIT_DESCRIBE " @ " __DATE__ " " __TIME__ ")"
 #define D3HACK_FULLVER D3HACK_VER " by " D3HACK_AUTHOR " - Diablo III: Eternal Collection [v" D3CLIENT_VER "]"
-#define D3HACK_FULLFPS D3HACK_VER D3HACK_BUILD
-#define D3HACK_FULLWWW D3HACK_VER D3HACK_BUILD CRLF CRLF D3HACK_DESC
 
 // #ifdef EXL_DEBUG
 // Compile-time debug logging gates.

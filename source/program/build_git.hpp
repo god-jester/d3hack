@@ -20,3 +20,7 @@
 #ifndef D3HACK_GIT_DIRTY
 #define D3HACK_GIT_DIRTY 0
 #endif
+
+#ifndef D3HACK_BUILD_TIMESTAMP
+#define D3HACK_BUILD_TIMESTAMP "unknown"
+#endif

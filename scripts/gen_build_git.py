@@ -3,6 +3,7 @@
 import os
 import subprocess
 import sys
+from datetime import datetime
 
 
 def _run(cmd):
@@ -34,6 +35,7 @@ def main():
     git_describe = _run(["git", "describe", "--tags", "--always", "--dirty"])
     git_commit = _run(["git", "rev-parse", "--short", "HEAD"])
     dirty = 1 if git_describe.endswith("-dirty") else 0
+    build_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
 
     if not git_describe:
         git_describe = "unknown"
@@ -47,6 +49,7 @@ def main():
             '#define D3HACK_GIT_DESCRIBE "%s"' % _c_escape(git_describe),
             '#define D3HACK_GIT_COMMIT "%s"' % _c_escape(git_commit),
             "#define D3HACK_GIT_DIRTY %d" % int(dirty),
+            '#define D3HACK_BUILD_TIMESTAMP "%s"' % _c_escape(build_timestamp),
             "",
         ]
     )
@@ -60,4 +63,3 @@ def main():
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
