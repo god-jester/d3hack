@@ -8,7 +8,7 @@
 
 Seasons offline. Challenge Rifts without servers. Community events on demand. Loot table tweaks, instant crafting, and quality-of-life tools. All running inside the game process via native C++ hooks.
 
-**Current version: D3Hack v3.0**
+**Current version: D3Hack v3.1**
 
 Want the full toggle list? Start with the example config: `examples/config/d3hack-nx/config.toml`.
 See: [Resolution Hack (ResHack) overview](#resolution-hack-reshack).

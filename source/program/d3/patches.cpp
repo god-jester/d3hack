@@ -13,9 +13,9 @@
 
 namespace d3 {
 
-    const char *const g_szHackVerWatermark = d3::build_stamp::kVersionLine;
-    const char *const g_szHackVerAutosave  = d3::build_stamp::kAutosaveString;
-    constinit const char g_szHackVerStart[] = CRLF D3HACK_FULLVER CRLF CRLF CRLF;
+    const char *const    g_szHackVerWatermark = d3::build_stamp::kVersionLine;
+    const char *const    g_szHackVerAutosave  = d3::build_stamp::kAutosaveString;
+    constinit const char g_szHackVerStart[]   = CRLF D3HACK_FULLVER CRLF CRLF CRLF;
 
     constinit const char      g_szTraceStat[]         = "sd:/config/d3hack-nx/debug.txt";
     constinit const char      g_szVariableResString[] = "%4dp Output (Variable: %4dp)";

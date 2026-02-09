@@ -84,7 +84,7 @@ namespace d3 {
 
     inline void FlagsAreFun() {
         g_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_ALL_HITS_CRIT_BIT);
-        g_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_FLYTHROUGH_BIT);
+        // g_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_FLYTHROUGH_BIT);
         // g_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_FORCE_SPAWN_ALL_GIZMO_LOCATIONS);
         g_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_DISPLAY_ALL_SKILLS);
         g_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_DISPLAY_ITEM_AFFIXES);
@@ -236,8 +236,8 @@ namespace d3 {
 
                     /* Iterate through every item GBID in the game for cosmetics/transmogs/powers */
                     // EnumGBIDUnlocks(GB_INVALID, ptSPlayer);
-                    // EnumGBIDUnlocks(GB_RECIPES, ptSPlayer);
-                    // EnumGBIDUnlocks(GB_TRANSMUTE_RECIPES, ptSPlayer);
+                    EnumGBIDUnlocks(GB_RECIPES, ptSPlayer);
+                    EnumGBIDUnlocks(GB_TRANSMUTE_RECIPES, ptSPlayer);
                     EnumGBIDUnlocks(GB_ITEMS, ptSPlayer);
 
                     // if (const Item *eItemPtr = GetItemPtr(eItem); eItemPtr->nSeasonRequiredToDrop > 21) {
@@ -252,7 +252,7 @@ namespace d3 {
                     //     // PRINT_EXPR("0x%x", *eItemPtr->ptItemType->pdwLabelMask)
                     //     // PRINT_EXPR("0x%x", *eItemPtr->ptItemType->ptParentType->pdwLabelMask)
 
-                    PRINT("%d", 0)
+                    // PRINT("%d", 0)
                     // break;
                     /* Teach all crafting recipes */
                     std::vector<GBID> eRecipes;

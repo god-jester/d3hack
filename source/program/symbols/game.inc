@@ -58,6 +58,7 @@ FUNC_PTR(ChallengeData_ctor,                      void (*)(D3::ChallengeRifts::C
 // FUNC_PTR(CData_ctor, void (*)(uintptr_t *_this));  // 0x564C00
 FUNC_PTR(WeeklyChallengeData_ctor,                void (*)(D3::Leaderboard::WeeklyChallengeData *));
 FUNC_PTR(GameRandRangeInt,                       int32 (*)(const int32 nMin, const int32 nMax));
+FUNC_PTR(MailCheckLobbyConnection,                bool (*)(void *));
 
 //
 FUNC_PTR(sigma_memory_init,                      void (*)(void));

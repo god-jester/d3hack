@@ -14,6 +14,22 @@ namespace d3 {
             return global_config.initialized;
         }
 
+        // Mailbox UI is used by the season swap flow to deliver unequipped items
+        // back to the player via save-backed mail. The stock UI gates the inbox
+        // behind a lobby connectivity check and pops a "mail unavailable" error
+        // when offline; for season swapping we want retrieval to work offline.
+        //
+        // Keep this scoped: only bypass the check when seasons are actively
+        // overridden by d3hack.
+        HOOK_DEFINE_TRAMPOLINE(MailboxCheckLobbyConnection) {
+            static bool Callback(void *self) {
+                if (global_config.initialized && global_config.seasons.active) {
+                    return true;
+                }
+                return Orig(self);
+            }
+        };
+
         void ClearConfigRequestFlag() {
             auto *flag_ptr = reinterpret_cast<u32 **>(GameOffsetFromTable("season_config_request_flag_ptr"));
             if ((flag_ptr != nullptr) && (*flag_ptr != nullptr))
@@ -347,5 +363,7 @@ namespace d3 {
             InstallAtFuncPtr(OnSeasonsFileRetrieved);
         BlacklistFileRetrieved::
             InstallAtFuncPtr(OnBlacklistFileRetrieved);
+        MailboxCheckLobbyConnection::
+            InstallAtFuncPtr(MailCheckLobbyConnection);
     }
 }  // namespace d3

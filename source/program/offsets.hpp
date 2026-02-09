@@ -54,6 +54,7 @@ namespace exl::reloc {
             { util::ModuleIndex::Main, 0x0641F0, "sym_OnConfigFileRetrieved" },
             { util::ModuleIndex::Main, 0x065270, "sym_OnSeasonsFileRetrieved" },
             { util::ModuleIndex::Main, 0x0657F0, "sym_OnBlacklistFileRetrieved" },
+            { util::ModuleIndex::Main, 0x1B0600, "sym_MailCheckLobbyConnection" },
 
             /* Lobby hooks (main module). */
             { util::ModuleIndex::Main, 0x060810, "sym_lobby_service_idle_internal" },

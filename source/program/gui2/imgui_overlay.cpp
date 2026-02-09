@@ -185,6 +185,7 @@ namespace d3::imgui_overlay {
                 scale         = kS2 + t * (kS3 - kS2);
             } else {
                 constexpr float kGrowthPerPx = 0.00016f;
+
                 scale = kS3 + (h - kH3) * kGrowthPerPx;
             }
 
@@ -552,9 +553,10 @@ namespace d3::imgui_overlay {
             constexpr float kFallbackBaseFontPx  = 13.0f;
             constexpr float kMinFrameHeightAt720 = 34.0f;
             const float     min_frame_height_px  = kMinFrameHeightAt720 * gui_scale;
-            const float     font_px = std::max(ImGui::GetFontSize(), kFallbackBaseFontPx * gui_scale);
-            const float     min_padding_y = std::max((min_frame_height_px - font_px) * 0.5f, 0.0f);
-            style.FramePadding.y          = std::max(style.FramePadding.y, min_padding_y);
+
+            const float font_px       = std::max(ImGui::GetFontSize(), kFallbackBaseFontPx * gui_scale);
+            const float min_padding_y = std::max((min_frame_height_px - font_px) * 0.5f, 0.0f);
+            style.FramePadding.y      = std::max(style.FramePadding.y, min_padding_y);
 
             if (style.WindowBorderHoverPadding < 1.0f) {
                 style.WindowBorderHoverPadding = 1.0f;

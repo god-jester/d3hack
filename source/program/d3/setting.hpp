@@ -6,7 +6,7 @@
 #include "program/logging.hpp"
 #include <cstdio>
 
-#define D3HACK_VER     "D3Hack v3.0"
+#define D3HACK_VER     "D3Hack v3.1"
 #define D3HACK_AUTHOR  "jester"
 #define D3HACK_WEB     "https://jester.dev"
 #define CRLF           "\n"

@@ -116,6 +116,8 @@ SETUP_FUNC_PTR(blz_string_ctor);
 SETUP_FUNC_PTR(blz_make_stringfb);
 SETUP_FUNC_PTR(blz_make_stringf);
 SETUP_FUNC_PTR(XLocaleToString);
+SETUP_FUNC_PTR(MailCheckLobbyConnection);
+
 // items.hpp
 #include "symbols/items.inc"
 SETUP_FUNC_PTR(sGetItemTypeString);                     // void  sGetItemTypeString(GBID a1@<W0>, CRefString *a2@<X8>)
