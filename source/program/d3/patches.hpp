@@ -9,6 +9,8 @@
 #define D3HACK_ENABLE_UTILITY_SCRATCH 0
 #endif
 
+struct GameParams;
+
 namespace d3 {
 
     void PatchBuildlocker();
@@ -18,7 +20,9 @@ namespace d3 {
     void PatchDDMLabels();
     void PatchResolutionTargets();
     void PatchDynamicSeasonal();
+    void UpdateDynamicSeasonalForSpawn(const GameParams *tParams);
     void PatchDynamicEvents();
+    void PatchInfiniteMp(bool enabled);
     void PatchBase();
 
 }  // namespace d3

@@ -96,9 +96,18 @@ namespace d3 {
             append_note(note);
         };
 
+        auto infinite_mp_effective = [](const PatchConfig &cfg) -> bool {
+            return cfg.rare_cheats.active && (cfg.rare_cheats.super_god_mode || cfg.rare_cheats.infinite_mp);
+        };
+
         // XVars that can be updated at runtime.
         XVarBool_Set(&g_varOnlineServicePTR, global_config.seasons.spoof_ptr, 3u);
         XVarBool_Set(&g_varExperimentalScheduling, global_config.resolution_hack.exp_scheduler, 3u);
+
+        if (infinite_mp_effective(prev) != infinite_mp_effective(global_config)) {
+            PatchInfiniteMp(infinite_mp_effective(global_config));
+            append_note("Infinite MP");
+        }
 
         // Enable-only patches.
         if (global_config.overlays.active && global_config.overlays.buildlocker_watermark &&
@@ -121,6 +130,7 @@ namespace d3 {
         if (global_config.seasons.active) {
             PatchDynamicSeasonal();
         } else if (prev.seasons.active) {
+            UpdateDynamicSeasonalForSpawn(nullptr);
             require_restart_if(true, "Seasons");
         }
 

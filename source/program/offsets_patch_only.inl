@@ -115,6 +115,7 @@
     {util::ModuleIndex::Main, 0x35C0C4, "patch_dynamic_seasonal_07_movz"},  // unused | MOVZ | W0
     {util::ModuleIndex::Main, 0x1BF5F0, "patch_dynamic_seasonal_08_movz"},  // MOVZ | W0 | error_none for UIOnlineActions::ValidateHeroForPartyMember
     {util::ModuleIndex::Main, 0x1BF5F4, "patch_dynamic_seasonal_09_ret"},   // RET | skip UIOnlineActions::ValidateHeroForPartyMember body
+    {util::ModuleIndex::Main, 0x4CACB8, "patch_dynamic_seasonal_10_nop"},   // NOP | GameCommonData::Initialize | runtime seasonal gate toggle (TBZ W8,#0x12)
     /* Patch_dynamic_events */
     {util::ModuleIndex::Main, 0x4A7BD8, "patch_dynamic_events_01_movz"},  // unused | MOVZ | W3
     {util::ModuleIndex::Main, 0x4A7C04, "patch_dynamic_events_02_movz"},  // unused | MOVZ | W3
@@ -194,6 +195,7 @@
     /* Patch_base */
     {util::ModuleIndex::Main, 0x56B10, "patch_signin_01_movz"},               // MOVZ | W0 | always Console::GamerProfile::IsSignedInOnline
     {util::ModuleIndex::Main, 0x56B14, "patch_signin_02_ret"},                // RET | ^ ret
+    {util::ModuleIndex::Main, 0x47AD0C, "patch_infinite_mp_01_resource_bl"},  // BL ActorCommonData::ResourceAttributeSetFloat(int,float,int)
 
     {util::ModuleIndex::Main, 0x335B68, "patch_autosave_string_01_adrl"},     // ADRP/ADD | &c_szHackVerAutosave | X0
     {util::ModuleIndex::Main, 0x3656B8, "patch_start_string_01_adrl"},        // ADRP/ADD | &c_szHackVerStart | X0

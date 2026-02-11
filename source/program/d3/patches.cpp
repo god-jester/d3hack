@@ -10,6 +10,7 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 
 namespace d3 {
 
@@ -27,7 +28,38 @@ namespace d3 {
     namespace reg   = exl::armv8::reg;
     namespace ins   = exl::armv8::inst;
 
-    using dword = std::array<std::byte, 0x4>;
+    using dword                                       = std::array<std::byte, 0x4>;
+    static const dword k_infinite_mp_restore_call     = make_bytes(0x41, 0xFF, 0xFF, 0x97);  // BL ActorCommonData::ResourceAttributeSetFloat(int,float,int)
+    static const dword k_dynamic_seasonal_restore_tbz = make_bytes(0xA8, 0x00, 0x90, 0x36);  // TBZ W8,#0x12,loc_4CACCC (2.7.6 @ 0x4CACB8)
+
+    static bool     g_dynamic_seasonal_patch_applied = false;
+    static uint64_t g_dynamic_seasonal_generation    = 0;
+    static auto     PatchTable(const char *name) -> uintptr_t;
+
+    static void SetDynamicSeasonalPatchArmed(bool armed, const char *reason) {
+        if (!global_config.seasons.active) {
+            armed = false;
+        }
+        if (g_dynamic_seasonal_patch_applied == armed) {
+            return;
+        }
+
+        auto jest = patch::RandomAccessPatcher();
+        if (armed) {
+            jest.Patch<ins::Nop>(PatchTable("patch_dynamic_seasonal_10_nop"));
+        } else {
+            jest.Patch<dword>(PatchTable("patch_dynamic_seasonal_10_nop"), k_dynamic_seasonal_restore_tbz);
+        }
+
+        g_dynamic_seasonal_patch_applied = armed;
+        ++g_dynamic_seasonal_generation;
+        PRINT(
+            "[seasonal_gate] apply=%d gen=%llu reason=%s",
+            armed ? 1 : 0,
+            static_cast<unsigned long long>(g_dynamic_seasonal_generation),
+            reason ? reason : "<none>"
+        )
+    }
 
     static auto PatchTable(const char *name) -> uintptr_t {
         return GameOffsetFromTable(name) - exl::util::modules::GetTargetStart();
@@ -235,28 +267,57 @@ namespace d3 {
     }
 
     void PatchDynamicSeasonal() {
-        if (global_config.seasons.active) {
-            PRINT("Setting active Season to %d", global_config.seasons.current_season)
-            XVarUint32_Set(&g_varSeasonNum, global_config.seasons.current_season, 3u);
-            XVarUint32_Set(&g_varSeasonState, 1, 3u);
-
-            auto jest = patch::RandomAccessPatcher();
-            jest.Patch<ins::Movz>(PatchTable("patch_dynamic_seasonal_03_movz"), reg::W1, 1);  // always true for UIHeroCreate::Console::bSeasonConfirmedAvailable() (skip B.ne and always confirm)
-            jest.Patch<ins::Movz>(PatchTable("patch_dynamic_seasonal_04_movz"), reg::W0, 1);  // always true for Console::Online::IsSeasonsInitialized()
-
-            // Update season_created uses at runtime (UIOnlineActions::SetGameParamsForHero).
-            jest.Patch<ins::Movz>(PatchTable("patch_dynamic_seasonal_05_movz"), reg::W21, global_config.seasons.current_season);  // season_created = ...
-            // Ignore mismatched hero season in UIHeroSelect (skip Rebirth/season prompt for old seasons).
-            // jest.Patch<ins::Nop>(PatchTable("patch_dynamic_seasonal_06_nop"));  // B.ne loc_358C74
-            // Hide "Create Seasonal Hero" main menu option (item 9) when forcing season current_season.
-            // ItemShouldBeVisible(case 9) calls IsSeasonsInitialized; forcing reg::W0=0 makes it return false.
-            // jest.Patch<ins::Movz>(PatchTable("patch_dynamic_seasonal_07_movz"), reg::W0, 0);
-            /* Always return error_none for Console::UIOnlineActions::ValidateHeroForPartyMember (skip function body). */
-            // 0x1BF5F0: SUB SP, SP, #0x100
-            jest.Patch<ins::Movz>(PatchTable("patch_dynamic_seasonal_08_movz"), reg::W0, 0);  // error_none
-            // 0x1BF5F4: STR X23, [SP,#0xF0+var_30]
-            jest.Patch<ins::Ret>(PatchTable("patch_dynamic_seasonal_09_ret"));
+        if (!global_config.seasons.active) {
+            SetDynamicSeasonalPatchArmed(false, "config_inactive");
+            return;
         }
+
+        PRINT("Setting active Season to %d", global_config.seasons.current_season)
+        XVarUint32_Set(&g_varSeasonNum, global_config.seasons.current_season, 3u);
+        XVarUint32_Set(&g_varSeasonState, 1, 3u);
+
+        auto jest = patch::RandomAccessPatcher();
+        jest.Patch<ins::Movz>(PatchTable("patch_dynamic_seasonal_03_movz"), reg::W1, 1);  // always true for UIHeroCreate::Console::bSeasonConfirmedAvailable() (skip B.ne and always confirm)
+        jest.Patch<ins::Movz>(PatchTable("patch_dynamic_seasonal_04_movz"), reg::W0, 1);  // always true for Console::Online::IsSeasonsInitialized()
+
+        // Update season_created uses at runtime (UIOnlineActions::SetGameParamsForHero).
+        jest.Patch<ins::Movz>(PatchTable("patch_dynamic_seasonal_05_movz"), reg::W21, global_config.seasons.current_season);  // season_created = ...
+        // Ignore mismatched hero season in UIHeroSelect (skip Rebirth/season prompt for old seasons).
+        // jest.Patch<ins::Nop>(PatchTable("patch_dynamic_seasonal_06_nop"));  // B.ne loc_358C74
+        // Hide "Create Seasonal Hero" main menu option (item 9) when forcing season current_season.
+        // ItemShouldBeVisible(case 9) calls IsSeasonsInitialized; forcing reg::W0=0 makes it return false.
+        // jest.Patch<ins::Movz>(PatchTable("patch_dynamic_seasonal_07_movz"), reg::W0, 0);
+        /* Always return error_none for Console::UIOnlineActions::ValidateHeroForPartyMember (skip function body). */
+        // 0x1BF5F0: SUB SP, SP, #0x100
+        jest.Patch<ins::Movz>(PatchTable("patch_dynamic_seasonal_08_movz"), reg::W0, 0);  // error_none
+        // 0x1BF5F4: STR X23, [SP,#0xF0+var_30]
+        jest.Patch<ins::Ret>(PatchTable("patch_dynamic_seasonal_09_ret"));
+
+        // Runtime-spawn gate defaults to OFF until the next GameCommonData::Initialize call.
+        SetDynamicSeasonalPatchArmed(false, "season_bootstrap");
+    }
+
+    void UpdateDynamicSeasonalForSpawn(const GameParams *tParams) {
+        if (!global_config.seasons.active) {
+            SetDynamicSeasonalPatchArmed(false, "seasons_inactive");
+            return;
+        }
+
+        constexpr uint32 kSeasonalCreationFlag = (1u << 18);
+
+        const bool params_valid    = (tParams != nullptr);
+        const bool params_seasonal = params_valid && ((tParams->dwCreationFlags & kSeasonalCreationFlag) != 0u);
+        const bool spawn_seasonal  = params_valid && params_seasonal;
+
+        PRINT(
+            "[seasonal_gate] eval conn=%x flags=0x%x params_valid=%d params=%d",
+            params_valid ? tParams->idGameConnection : static_cast<uint32>(0xFFFFFFFFu),
+            params_valid ? tParams->dwCreationFlags : 0u,
+            params_valid ? 1 : 0,
+            params_seasonal ? 1 : 0
+        )
+
+        SetDynamicSeasonalPatchArmed(spawn_seasonal, spawn_seasonal ? "spawn_seasonal" : "spawn_nonseasonal");
     }
 
     void PatchDynamicEvents() {
@@ -313,7 +374,7 @@ namespace d3 {
         set_bool(&g_varParagonCap, false);  // ParagonCap off by default
     }
 
-    inline void PortCheatCodes() {
+    static inline void PortCheatCodes() {
         if (!global_config.rare_cheats.active)
             return;
         auto jest = patch::RandomAccessPatcher();
@@ -467,6 +528,15 @@ namespace d3 {
         // 04000000 004F98DC D503201F
     }
 
+    void PatchInfiniteMp(const bool enabled) {
+        auto jest = patch::RandomAccessPatcher();
+        if (enabled) {
+            jest.Patch<ins::Nop>(PatchTable("patch_infinite_mp_01_resource_bl"));
+            return;
+        }
+        jest.Patch<dword>(PatchTable("patch_infinite_mp_01_resource_bl"), k_infinite_mp_restore_call);
+    }
+
     void PatchBase() {
         auto jest = patch::RandomAccessPatcher();
 
@@ -479,6 +549,9 @@ namespace d3 {
         XVarBool_Set(&g_varExperimentalScheduling, global_config.resolution_hack.exp_scheduler, 3u);
         jest.Patch<ins::Movz>(PatchTable("patch_signin_01_movz"), reg::W0, 1);  // always Console::GamerProfile::IsSignedInOnline
         jest.Patch<ins::Ret>(PatchTable("patch_signin_02_ret"));                // ^ ret
+        const bool infinite_mp = global_config.rare_cheats.active &&
+                                 (global_config.rare_cheats.super_god_mode || global_config.rare_cheats.infinite_mp);
+        PatchInfiniteMp(infinite_mp);
 
         /* String swap for autosave screen */
         MakeAdrlPatch(PatchTable("patch_autosave_string_01_adrl"), reinterpret_cast<uintptr_t>(g_szHackVerAutosave), reg::X0);

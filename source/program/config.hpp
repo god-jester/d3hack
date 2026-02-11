@@ -87,9 +87,9 @@ struct PatchConfig {
         constexpr void SetTargetRes(u32 height) { target_resolution = height; }
 
         static constexpr u32 AlignEven(u32 value) { return value & ~1u; }
-        static constexpr u32 AlignDownPow2(u32 value, u32 alignment) { return value & ~(alignment - 1u); }
+        // static constexpr u32 AlignDownPow2(u32 value, u32 alignment) { return value & ~(alignment - 1u); }
 
-        constexpr u32 OutputWidthPx() const { return AlignDownPow2(WidthForHeight(OutputHeightPx()), 32u); }
+        constexpr u32 OutputWidthPx() const { return AlignEven(WidthForHeight(OutputHeightPx())); }
         constexpr u32 OutputHeightPx() const { return AlignEven(target_resolution); }
 
         static float NormalizeHandheldScale(float value) {
@@ -163,6 +163,7 @@ struct PatchConfig {
         bool   equip_any_slot          = false;
         bool   unlock_all_difficulties = true;
         bool   easy_kill_damage        = false;
+        bool   infinite_mp             = true;
         bool   cube_no_consume         = false;
         bool   gem_upgrade_always      = false;
         bool   gem_upgrade_speed       = true;

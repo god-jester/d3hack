@@ -428,6 +428,7 @@ namespace {
             t.insert("EquipAnySlot", config.rare_cheats.equip_any_slot);
             t.insert("UnlockAllDifficulties", config.rare_cheats.unlock_all_difficulties);
             t.insert("EasyKillDamage", config.rare_cheats.easy_kill_damage);
+            t.insert("InfiniteMP", config.rare_cheats.infinite_mp);
             t.insert("CubeNoConsumeMaterials", config.rare_cheats.cube_no_consume);
             t.insert("LegendaryGemUpgradeAlways", config.rare_cheats.gem_upgrade_always);
             t.insert("LegendaryGemUpgradeSpeed", config.rare_cheats.gem_upgrade_speed);
@@ -546,6 +547,7 @@ void PatchConfig::ApplyTable(const toml::table &table) {
         rare_cheats.equip_any_slot          = ReadBool(*section, {"EquipAnySlot", "EquipAnyItem"}, rare_cheats.equip_any_slot);
         rare_cheats.unlock_all_difficulties = ReadBool(*section, {"UnlockAllDifficulties", "UnlockDifficulties"}, rare_cheats.unlock_all_difficulties);
         rare_cheats.easy_kill_damage        = ReadBool(*section, {"EasyKillDamage", "EasyKillBoost"}, rare_cheats.easy_kill_damage);
+        rare_cheats.infinite_mp             = ReadBool(*section, {"InfiniteMP", "InfiniteMana", "InfiniteResource"}, rare_cheats.infinite_mp);
         rare_cheats.cube_no_consume         = ReadBool(*section, {"CubeNoConsumeMaterials", "CubeNoConsume", "KanaiCubeNoConsume"}, rare_cheats.cube_no_consume);
         rare_cheats.gem_upgrade_always      = ReadBool(*section, {"LegendaryGemUpgradeAlways", "GemUpgradeAlways", "LegendaryGemUpgradeChance"}, rare_cheats.gem_upgrade_always);
         rare_cheats.gem_upgrade_speed       = ReadBool(*section, {"LegendaryGemUpgradeSpeed", "GemUpgradeSpeed", "GemUpgradeFast"}, rare_cheats.gem_upgrade_speed);

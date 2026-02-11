@@ -926,8 +926,9 @@ namespace d3::gui2::ui::windows {
 
             ImGui::Spacing();
             ImGui::TextUnformatted(overlay_.tr("gui.cheats_group_toggles", "Cheat toggles"));
-            const std::array<BoolRowSpec, 18> rows = {{
+            const std::array<BoolRowSpec, 19> rows = {{
                 {"gui.rare_cheats_super_god_mode", "Super god mode", "##rare_cheats_super_god_mode", &cfg.rare_cheats.super_god_mode, &global_config.rare_cheats.super_god_mode, false},
+                {"gui.rare_cheats_infinite_mp", "Infinite MP", "##rare_cheats_infinite_mp", &cfg.rare_cheats.infinite_mp, &global_config.rare_cheats.infinite_mp, false},
                 {"gui.rare_cheats_extra_gr_orbs_elites", "Extra GR orbs on elite kill", "##rare_cheats_extra_gr_orbs_elites", &cfg.rare_cheats.extra_gr_orbs_elites, &global_config.rare_cheats.extra_gr_orbs_elites, false},
                 {"gui.rare_cheats_floating_damage", "Floating damage color", "##rare_cheats_floating_damage", &cfg.rare_cheats.floating_damage_color, &global_config.rare_cheats.floating_damage_color, false},
                 {"gui.rare_cheats_guaranteed_legendaries", "Guaranteed legendaries", "##rare_cheats_guaranteed_legendaries", &cfg.rare_cheats.guaranteed_legendaries, &global_config.rare_cheats.guaranteed_legendaries, false},

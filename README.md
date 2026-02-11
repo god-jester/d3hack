@@ -165,7 +165,7 @@ Key sections:
 - `[seasons]`: SeasonNumber, AllowOnlinePlay, SpoofPtr.
 - `[events]`: seasonal flags + SeasonMapMode (MapOnly, OverlayConfig, Disabled).
 - `[challenge_rifts]`: enable/disable, randomize, or define a range.
-- `[rare_cheats]` (includes SuperGodMode and ExtraGreaterRiftOrbsOnEliteKill), `[overlays]`, `[debug]` (EnableErrorTraces, SpoofNetworkFunctions).
+- `[rare_cheats]` (includes SuperGodMode, InfiniteMP, and ExtraGreaterRiftOrbsOnEliteKill), `[overlays]`, `[debug]` (EnableErrorTraces, SpoofNetworkFunctions).
 - `[gui]`: Enabled/Visible/AllowLeftStickPassthrough (boot-latched; Visible = auto-open on boot), Language (override; hot-swap, restart for full glyphs).
 
 ### 4) (Optional) Challenge Rift data
