@@ -57,7 +57,8 @@ namespace d3 {
             return std::memcmp(p, kBuildVersionFullExpected, sizeof(kBuildVersionFullExpected) - 1) == 0;
         }
 
-        bool g_configHooksInstalled = false;
+        bool g_configHooksInstalled     = false;
+        u32  g_last_hero_season_created = 0u;
 
         enum class BootStage : u8 {
             ExlMainStart,
@@ -129,8 +130,18 @@ namespace d3 {
     };
     HOOK_DEFINE_TRAMPOLINE(GameCommonDataInit) {
         static void Callback(GameCommonData *_this, const GameParams *tParams) {
+            UpdateDynamicSeasonalForSpawn(tParams);
             Orig(_this, tParams);
-            g_ptGCData = _this;
+            g_ptGCData                      = _this;
+            const bool has_game_is_seasonal = (GameIsSeasonal != nullptr);
+            const bool game_is_seasonal     = has_game_is_seasonal ? GameIsSeasonal() : false;
+            PRINT(
+                "[seasonal_gate] post_init conn=%x flags=0x%x game_is_seasonal=%d fn=%d",
+                (tParams != nullptr) ? tParams->idGameConnection : static_cast<uint32>(0xFFFFFFFFu),
+                (tParams != nullptr) ? tParams->dwCreationFlags : 0u,
+                game_is_seasonal ? 1 : 0,
+                has_game_is_seasonal ? 1 : 0
+            )
             // PRINT_EXPR("%x", self->nNumPlayers)
             // PRINT_EXPR("%x", self->eDifficultyLevel)
             // PRINT_EXPR("%x", tParams->idGameConnection)
@@ -180,13 +191,39 @@ namespace d3 {
             return ret;
         }
     };
+    HOOK_DEFINE_TRAMPOLINE(SetGameParamsForHero) {
+        static void Callback(const void *tAccount, const void *tHero, void *tOnlineParams) {
+            Orig(tAccount, tHero, tOnlineParams);
+            if (tOnlineParams != nullptr) {
+                const uintptr_t     params_addr          = reinterpret_cast<uintptr_t>(tOnlineParams);
+                constexpr uintptr_t kSeasonCreatedOffset = 0x1C;  // 2.7.6 SetGameParamsForHero: STR W8,[X19,#0x1C]
+                const u32           season_created       = *reinterpret_cast<const u32 *>(params_addr + kSeasonCreatedOffset);
+                g_last_hero_season_created               = season_created;
+                PRINT(
+                    "[seasonal_debug] set_game_params_for_hero season_created=%u params=0x%lx",
+                    season_created,
+                    params_addr
+                );
+            } else {
+                g_last_hero_season_created = 0u;
+                PRINT_LINE("[seasonal_debug] set_game_params_for_hero params=null");
+            }
+        }
+    };
     HOOK_DEFINE_TRAMPOLINE(sInitializeWorld){
         static void Callback(SNO snoWorld, uintptr_t *ptSWorld) {
             Orig(snoWorld, ptSWorld);
-            auto *ptSGameGlobals = SGameGlobalsGet();
-            auto  sGameCurID     = AppServerGetOnlyGame();
-            g_idGameConnection   = ServerGetOnlyGameConnection();
-            PRINT("NEW sInitializeWorld! (SGame: %x | Connection: %x | Primary for connection: %p) %s %s", sGameCurID, g_idGameConnection, GetPrimaryPlayerForGameConnection(g_idGameConnection), ptSGameGlobals->uszCreatorAccountName, ptSGameGlobals->uszCreatorHeroName);
+            auto *ptSGameGlobals         = SGameGlobalsGet();
+            auto  sGameCurID             = AppServerGetOnlyGame();
+            g_idGameConnection           = ServerGetOnlyGameConnection();
+            auto *ptPrimaryForConnection = GetPrimaryPlayerForGameConnection(g_idGameConnection);
+            PRINT("NEW sInitializeWorld! (SGame: %x | Connection: %x | Primary for connection: %p) %s %s", sGameCurID, g_idGameConnection, ptPrimaryForConnection, ptSGameGlobals->uszCreatorAccountName, ptSGameGlobals->uszCreatorHeroName);
+            PRINT(
+                "[seasonal_debug] current_hero_season_created=%u primary=%p conn=%x",
+                g_last_hero_season_created,
+                ptPrimaryForConnection,
+                g_idGameConnection
+            );
             if (global_config.rare_cheats.active && global_config.rare_cheats.super_god_mode)
                 EnableGod();
             // GfxWindowChangeDisplayModeHook::Callback(&g_ptGfxData->tCurrentMode);
@@ -311,6 +348,8 @@ namespace d3 {
         d3::boot_report::RecordHook("boot:ShellInitialize");
         GameCommonDataInit::InstallAtFuncPtr(game_common_data_init);
         d3::boot_report::RecordHook("boot:GameCommonDataInit");
+        SetGameParamsForHero::InstallAtFuncPtr(set_game_params_for_hero);
+        d3::boot_report::RecordHook("boot:SetGameParamsForHero");
         sInitializeWorld::InstallAtFuncPtr(sinitialize_world);
         d3::boot_report::RecordHook("boot:sInitializeWorld");
     }

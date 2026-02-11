@@ -27,6 +27,7 @@ FUNC_PTR(font_string_draw_03e5b0,       void (*)() /* Inline hook site */);
 /* Lobby hooks (main module). */
 FUNC_PTR(lobby_service_create,          void (*)(uint32));
 FUNC_PTR(lobby_service_idle_internal,   void (*)(Console::Online::LobbyServiceInternal *));
+FUNC_PTR(set_game_params_for_hero,      void (*)(const void *, const void *, void *));
 FUNC_PTR(specifiers_from_modifier,      void (*)() /* Inline hook site */);
 FUNC_PTR(eval_mod,                      void (*)() /* Inline hook site */);
 FUNC_PTR(dupe_dropped_item,             BOOL (*)(const ACDID, const ACDID, const BOOL));

@@ -58,6 +58,14 @@ FUNC_PTR(ChallengeData_ctor,                      void (*)(D3::ChallengeRifts::C
 // FUNC_PTR(CData_ctor, void (*)(uintptr_t *_this));  // 0x564C00
 FUNC_PTR(WeeklyChallengeData_ctor,                void (*)(D3::Leaderboard::WeeklyChallengeData *));
 FUNC_PTR(GameRandRangeInt,                       int32 (*)(const int32 nMin, const int32 nMax));
+FUNC_PTR(GameIsSeasonal,                        bool (*)());
+FUNC_PTR(OnlineServiceGetSeasonNum,              uint32 (*)());
+FUNC_PTR(OnlineServiceGetSeasonState,            int32 (*)());
+FUNC_PTR(ConsoleGamerProfileGetAccount,         D3::Account::SavedDefinition *(*)(int32 nUserIndex));
+FUNC_PTR(OpenChallengeRift,                      void (*)());
+FUNC_PTR(ChallengeRiftGrantRewardToPlayerIfEligible, void (*)(Player *ptPlayer));
+FUNC_PTR(ChallengeRiftHandleChallengeRewards,    void (*)(Player *ptPlayer, int32 arg1, void *reward_screen_info));
+FUNC_PTR(ChallengeRiftRewardEarned_SaveToProfile, void (*)(int32 nUserIndex, void *tReward));
 FUNC_PTR(MailCheckLobbyConnection,                bool (*)(void *));
 
 //

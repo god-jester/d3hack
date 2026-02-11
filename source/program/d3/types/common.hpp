@@ -1600,7 +1600,35 @@ struct MatchmakingData {
 using ExternalGameSignals = std::array<_BYTE, 0xC0>;
 using DungeonFinderData   = std::array<_BYTE, 0x50>;
 using UpdateData          = std::array<_BYTE, 0x20>;
+using TPacketBufferList   = std::array<_BYTE, 0x28>;
 using SGamePrivateGlobals = uintptr_t;
+
+struct ALIGNED(4) DungeonFinderOverrides {
+    SNO                     snoDungeonFinderEngine;
+    int32                   nSeed;
+    SNO                     snoMasterTileset;
+    std::array<SNO, 10>     arSnoTilesets;
+    uint32                  dwMasterPopulationHash;
+    std::array<uint32, 10>  arPopulationHashes;
+    SNO                     snoDungeonFinderBossOverride;
+    int32                   nMaxFloorSize;
+    int32                   nWeeklyChallengeRiftLevel;
+    int32                   nWeeklyChallengeCompletionMilliseconds;
+    int32                   nWeeklyChallengeTargetMilliseconds;
+    float                   flOrbValueMultiplier;
+    BOOL                    bUsePylonOverrides;
+    std::array<_BYTE, 0x50> arPylonOverrides;
+};
+
+struct ALIGNED(4) ChallengeRiftData {
+    uint32                 nChallengeNumber;
+    uint8                  bChallengeOverriden;
+    std::array<_BYTE, 0x3> _pad0;
+    DungeonFinderOverrides tDungeonFinderOverrides;
+    int32                  nCompletionMilliseconds;
+    uint32                 nEndTime;
+    int32                  nInstigatorIndex;
+};
 
 struct ALIGNED(8) SGameGlobals {
     uintptr_t                *ptAchievementsInterface;  // OnlineService::AchievementsInterface
@@ -1644,6 +1672,7 @@ struct ALIGNED(8) SGameGlobals {
     CHAR                      uszCreatorHeroName[49];
     CHAR                      uszCreatorAccountName[128];
     uint32                    dwActivatedWaypoints;
+    std::array<_BYTE, 0xD78>  _unk13A0;
     // SNOPooledList                         listCompletedBossEncounters;
     // uintptr_t                             uDatabaseSerializeToken;
     // uint32                                dwNextBNetGameUpdate;
@@ -1670,16 +1699,18 @@ struct ALIGNED(8) SGameGlobals {
     // ConversationRandomLineMap             tConversationRandomLineMap;
     // uint8                                 dwKeyWardenKilledFlags;
     // mapPendingCCMessages                  tMapPendingCCMessages;
-    // OnlineService::Timestamp              tAchievementTime;
-    // ACDID                                 idGreedPortal;
-    // float                                 flBlizzconRiftTier1RewardDropChance;
-    // float                                 flBlizzconRiftTier2RewardDropChance;
-    // UpdateData                            tCommunityBuffsUpdateData;
-    // uint32                                dwLastTimeVerboseSlowFrameLog;
-    // uint32                                dwTimeBetweenVerboseSlowFrameLogs;
-    // uint32                                dwVerboseSlowFrameLogMaxPowersPerLog;
-    // TPacketBufferList                     tOrphanedPacketBufferList;
-    // ChallengeRiftData                     tChallengeRift;
+    Blizzard::Time::Timestamp tAchievementTime;
+    ACDID                     idGreedPortal;
+    float                     flBlizzconRiftTier1RewardDropChance;
+    float                     flBlizzconRiftTier2RewardDropChance;
+    uint32                    _unk212C;
+    UpdateData                tCommunityBuffsUpdateData;
+    uint32                    dwLastTimeVerboseSlowFrameLog;
+    uint32                    dwTimeBetweenVerboseSlowFrameLogs;
+    uint32                    dwVerboseSlowFrameLogMaxPowersPerLog;
+    uint32                    _unk215C;
+    TPacketBufferList         tOrphanedPacketBufferList;
+    ChallengeRiftData         tChallengeRift;
     // float                                 flMonsterHPMult;
     // float                                 flMonsterATKMult;
     // float                                 flMonsterDEFMult;

@@ -4,11 +4,13 @@
 #include "program/tagnx.hpp"
 #include "program/d3/_util.hpp"
 #include "program/d3/types/attributes.hpp"
+#include "program/d3/types/d3_account.hpp"
 #include "program/d3/types/common.hpp"
 #include "program/d3/types/namespaces.hpp"
 #include "lib/hook/inline.hpp"
 #include "lib/hook/replace.hpp"
 #include "lib/hook/trampoline.hpp"
+#include "lib/patch/random_access_patcher.hpp"
 #include "lib/util/modules.hpp"
 #include "lib/util/sys/mem_layout.hpp"
 #include "nvn.hpp"
@@ -455,7 +457,7 @@ namespace d3 {
     }
 
     inline bool CacheChallengeRiftRaw(const char *filename, const blz::string *data, const char *log_line) {
-        if (data == nullptr) {
+        if (data == nullptr || global_config.debug.enable_pubfile_dump == false) {
             return false;
         }
         const char  *bytes = data->m_elements ? data->m_elements : data->m_storage;
@@ -475,6 +477,56 @@ namespace d3 {
         return false;
     }
 
+    namespace cr_debug {
+        constexpr uintptr_t kChallengeSaveGatePrimaryOff  = 0x4EE18;
+        constexpr uintptr_t kChallengeSaveGateFallbackOff = 0x4EF28;
+        constexpr uint32    kPrimaryRestoreInsn           = 0x54000EE9u;  // B.ls loc_4EFF4
+        constexpr uint32    kFallbackRestoreInsn          = 0x54FFF7A8u;  // B.hi loc_4EE1C
+        constexpr uint32    kPrimaryBypassInsn            = 0x14000001u;  // B loc_4EE1C
+        constexpr uint32    kFallbackBypassInsn           = 0x17FFFFBDu;  // B loc_4EE1C
+        inline bool         g_reward_save_gate_patched    = false;
+        inline uint32       g_last_challenge_number       = 0u;
+
+        inline void SetLastChallengeNumber(uint32 challenge_num) {
+            if (challenge_num != 0u) {
+                g_last_challenge_number = challenge_num;
+            }
+        }
+
+        inline auto GetCurrentChallengeNumber() -> uint32 {
+            if (g_last_challenge_number != 0u) {
+                return g_last_challenge_number;
+            }
+            SGameGlobals *ptGlobals = SGameGlobalsGet();
+            if (ptGlobals == nullptr) {
+                return 1u;
+            }
+            constexpr uintptr_t kChallengeNumberOff = 0x2198;  // 2.7.6 OpenChallengeRift LDR W9, [X0,#0x2198]
+            const uintptr_t     challenge_addr      = reinterpret_cast<uintptr_t>(ptGlobals) + kChallengeNumberOff;
+            const uint32        challenge_num =
+                IsProbablyReadablePtr(challenge_addr) ? *reinterpret_cast<uint32 const *>(challenge_addr) : 0u;
+            return challenge_num != 0u ? challenge_num : 1u;
+        }
+
+        inline void SetRewardSaveGateBypass(bool enabled) {
+            if (g_reward_save_gate_patched == enabled) {
+                return;
+            }
+
+            auto jest = exl::patch::RandomAccessPatcher();
+            if (enabled) {
+                jest.Patch<uint32>(kChallengeSaveGatePrimaryOff, kPrimaryBypassInsn);
+                jest.Patch<uint32>(kChallengeSaveGateFallbackOff, kFallbackBypassInsn);
+            } else {
+                jest.Patch<uint32>(kChallengeSaveGatePrimaryOff, kPrimaryRestoreInsn);
+                jest.Patch<uint32>(kChallengeSaveGateFallbackOff, kFallbackRestoreInsn);
+            }
+
+            g_reward_save_gate_patched = enabled;
+            PRINT("[cr_reward_save_gate] patched=%d", enabled ? 1 : 0)
+        }
+    }  // namespace cr_debug
+
     HOOK_DEFINE_TRAMPOLINE(ParsePartialFromStringHook) {
         static auto Callback(google::protobuf::MessageLite *msg, const blz::string *data) -> bool {
             const u32           size                 = data ? static_cast<u32>(data->m_size) : 0u;
@@ -484,6 +536,7 @@ namespace d3 {
             if (ok && data && msg_vptr == GetChallengeDataVptr()) {
                 const auto *chal     = reinterpret_cast<const ChallengeData *>(msg);
                 s_last_challenge_num = static_cast<unsigned int>(chal->challenge_number_);
+                cr_debug::SetLastChallengeNumber(static_cast<uint32>(s_last_challenge_num));
                 CacheChallengeRiftRaw("challengerift_config.dat", data, "[pubfiles] cached challenge rift config");
             } else if (ok && data && msg_vptr == GetWeeklyChallengeDataVptr()) {
                 char data_name[64] {};
@@ -828,16 +881,299 @@ namespace d3 {
         }
     };
 
+    // Challenge Rift reward chest not spawning (seasonal, offline):
+    //
+    // When a weekly challenge reward is earned, the game persists a ConsoleChallengeRiftReward entry to the
+    // profile. In stock, it only tags the reward with `season_earned` when the lobby is connected.
+    //
+    // For offline seasonal play, that connected gate is false, so rewards can be saved as season_earned == 0.
+    // Later seasonal logic filters rewards by current season, so the reward chest never appears in town.
+    //
+    // Fix: if we have a nonzero season number, tag the reward before running the stock save path.
+    HOOK_DEFINE_TRAMPOLINE(ChallengeRiftRewardEarned_SaveToProfileHook) {
+        static void Callback(int32 nUserIndex, void *tReward) {
+            PRINT(
+                "[cr_reward_save] ENTER user=%d reward=0x%lx active=%d",
+                nUserIndex,
+                reinterpret_cast<uintptr_t>(tReward),
+                global_config.challenge_rifts.active ? 1 : 0
+            )
+
+            if (!global_config.challenge_rifts.active || tReward == nullptr) {
+                Orig(nUserIndex, tReward);
+                return;
+            }
+
+            const uintptr_t reward_addr   = reinterpret_cast<uintptr_t>(tReward);
+            const bool      reward_ptr_ok = IsProbablyReadablePtr(reward_addr);
+            PRINT(
+                "[cr_reward_save] step ptr_check ok=%d season_num_fn=0x%lx season_state_fn=0x%lx seasonal_fn=0x%lx",
+                reward_ptr_ok ? 1 : 0,
+                reinterpret_cast<uintptr_t>(OnlineServiceGetSeasonNum),
+                reinterpret_cast<uintptr_t>(OnlineServiceGetSeasonState),
+                reinterpret_cast<uintptr_t>(GameIsSeasonal)
+            )
+
+            uint32 cur_season       = 0u;
+            int32  season_state     = -1;
+            bool   is_game_seasonal = false;
+
+            PRINT_LINE("[cr_reward_save] step season_num_call");
+            if (OnlineServiceGetSeasonNum) {
+                cur_season = OnlineServiceGetSeasonNum();
+            }
+            PRINT("[cr_reward_save] step season_num_done=%u", cur_season)
+
+            PRINT_LINE("[cr_reward_save] step season_state_call");
+            if (OnlineServiceGetSeasonState) {
+                season_state = OnlineServiceGetSeasonState();
+            }
+            PRINT("[cr_reward_save] step season_state_done=%d", season_state)
+
+            PRINT_LINE("[cr_reward_save] step game_seasonal_call");
+            if (GameIsSeasonal) {
+                is_game_seasonal = GameIsSeasonal();
+            }
+            PRINT("[cr_reward_save] step game_seasonal_done=%d", is_game_seasonal ? 1 : 0)
+
+            auto *ptReward = reinterpret_cast<D3::Account::ConsoleChallengeRiftReward *>(tReward);
+            PRINT_LINE("[cr_reward_save] step reward_read_begin");
+            if (reward_ptr_ok) {
+                PRINT(
+                    "[cr_reward_save] pre user=%d challenge=%u season_earned=%u cur_season=%u seasonal=%d season_state=%d has_bits=0x%x",
+                    nUserIndex,
+                    ptReward->challenge_rift_,
+                    ptReward->season_earned_,
+                    cur_season,
+                    is_game_seasonal ? 1 : 0,
+                    season_state,
+                    ptReward->_has_bits_[0]
+                )
+            } else {
+                PRINT("[cr_reward_save] pre user=%d reward_ptr_not_readable", nUserIndex)
+            }
+
+            if (reward_ptr_ok && cur_season != 0u) {
+                PRINT_LINE("[cr_reward_save] step season_tamper_begin");
+                ptReward->_has_bits_[0] |= 8u;
+                ptReward->season_earned_ = cur_season;
+                PRINT(
+                    "[cr_reward_save] step season_tamper_done challenge=%u season_earned=%u has_bits=0x%x",
+                    ptReward->challenge_rift_,
+                    ptReward->season_earned_,
+                    ptReward->_has_bits_[0]
+                )
+            }
+
+            PRINT_LINE("[cr_reward_save] step orig_call_begin");
+            Orig(nUserIndex, tReward);
+            PRINT_LINE("[cr_reward_save] step orig_call_done");
+
+            if (reward_ptr_ok) {
+                PRINT(
+                    "[cr_reward_save] post user=%d challenge=%u season_earned=%u has_bits=0x%x",
+                    nUserIndex,
+                    ptReward->challenge_rift_,
+                    ptReward->season_earned_,
+                    ptReward->_has_bits_[0]
+                )
+            }
+        }
+    };
+
+    // Challenge Rift reward claim bug (seasonal):
+    //
+    // The game stores challenge rift rewards with a `season_earned` tag and, when the game is seasonal,
+    // it only grants rewards whose season matches OnlineService::GetSeasonNum().
+    //
+    // In some local/offline challenge rift flows the reward entry can end up with season_earned == 0,
+    // which makes non-seasonal heroes able to claim (season check skipped) but seasonal heroes unable
+    // to claim.
+    //
+    // Fix: if no reward matches the current season but there is an "untagged" entry (season 0),
+    // rewrite its season_earned to the current season right before running the stock grant logic.
+    HOOK_DEFINE_TRAMPOLINE(ChallengeRiftGrantRewardToPlayerIfEligibleHook) {
+        static void Callback(Player *ptPlayer) {
+            if (global_config.challenge_rifts.active && ptPlayer != nullptr) {
+                constexpr uintptr_t kRewardsListSentinelOff = 0xDD88;
+                constexpr uintptr_t kRewardsListHeadOff     = 0xDD90;
+                constexpr uintptr_t kNodeNextOff            = 0x8;
+                constexpr uintptr_t kNodeSeasonEarnedOff    = 0x48;
+
+                const uint32 cur_season       = OnlineServiceGetSeasonNum ? OnlineServiceGetSeasonNum() : 0u;
+                const int32  season_state     = OnlineServiceGetSeasonState ? OnlineServiceGetSeasonState() : -1;
+                const bool   is_game_seasonal = GameIsSeasonal ? GameIsSeasonal() : false;
+                PRINT(
+                    "[cr_reward_claim] pre player=0x%lx user=%d last_reward_challenge=%u cur_season=%u seasonal=%d season_state=%d",
+                    reinterpret_cast<uintptr_t>(ptPlayer),
+                    ptPlayer->nControllerIndex,
+                    ptPlayer->nLastRewardChallengeNumber,
+                    cur_season,
+                    is_game_seasonal ? 1 : 0,
+                    season_state
+                )
+                if (cur_season != 0u) {
+                    const uintptr_t player_addr = reinterpret_cast<uintptr_t>(ptPlayer);
+                    const uintptr_t sentinel    = player_addr + kRewardsListSentinelOff;
+                    uintptr_t       node        = *reinterpret_cast<uintptr_t const *>(player_addr + kRewardsListHeadOff);
+
+                    bool      has_current       = false;
+                    uintptr_t first_zero        = 0;
+                    uint32    first_zero_before = 0;
+                    size_t    visited           = 0;
+
+                    while (node != 0 && node != sentinel) {
+                        ++visited;
+                        const uint32 season_earned = *reinterpret_cast<uint32 const *>(node + kNodeSeasonEarnedOff);
+                        PRINT(
+                            "[cr_reward_claim] node=0x%lx season_earned=%u idx=%zu",
+                            node,
+                            season_earned,
+                            visited
+                        )
+                        if (season_earned == cur_season) {
+                            has_current = true;
+                            break;
+                        }
+                        if (season_earned == 0u && first_zero == 0) {
+                            first_zero        = node;
+                            first_zero_before = season_earned;
+                        }
+                        node = *reinterpret_cast<uintptr_t const *>(node + kNodeNextOff);
+                    }
+                    PRINT(
+                        "[cr_reward_claim] scan_done visited=%zu has_current=%d first_zero=0x%lx",
+                        visited,
+                        has_current ? 1 : 0,
+                        first_zero
+                    )
+
+                    if (!has_current && first_zero != 0) {
+                        *reinterpret_cast<uint32 *>(first_zero + kNodeSeasonEarnedOff) = cur_season;
+                        const uint32 after                                             = *reinterpret_cast<uint32 const *>(first_zero + kNodeSeasonEarnedOff);
+                        PRINT(
+                            "[cr_reward_claim] tamper node=0x%lx season_earned %u -> %u",
+                            first_zero,
+                            first_zero_before,
+                            after
+                        )
+                    }
+                }
+            }
+
+            Orig(ptPlayer);
+        }
+    };
+
+    // Challenge Rift reward eligibility bypass:
+    //
+    // Stock behavior gates rewards to 1x per weekly challenge number by tracking the last reward's
+    // challenge number on the player. This is good for real gameplay, but it blocks rapid testing
+    // (and any "farmable" reward behavior).
+    //
+    // For repeat testing, run the stock handler with a rewound remembered challenge number.
+    // This preserves stock branch decisions/UI status for the current completion while re-arming
+    // the same challenge for the next run.
+    HOOK_DEFINE_TRAMPOLINE(ChallengeRiftHandleChallengeRewardsHook) {
+        static void Callback(Player *ptPlayer, int32 arg1, void *reward_screen_info) {
+            if (global_config.challenge_rifts.active && ptPlayer != nullptr) {
+                const uint32 cur_season              = OnlineServiceGetSeasonNum ? OnlineServiceGetSeasonNum() : 0u;
+                const int32  season_state            = OnlineServiceGetSeasonState ? OnlineServiceGetSeasonState() : -1;
+                const bool   is_game_seasonal        = GameIsSeasonal ? GameIsSeasonal() : false;
+                const uint32 challenge_num           = cr_debug::GetCurrentChallengeNumber();
+                const uint32 pre_clear               = ptPlayer->nLastRewardChallengeNumber;
+                const uint32 rearm_value             = (challenge_num > 1u) ? (challenge_num - 1u) : 1u;
+                ptPlayer->nLastRewardChallengeNumber = rearm_value;
+                PRINT(
+                    "[cr_reward_handle] pre player=0x%lx challenge=%u total_time_ms=%d last_reward_challenge=%u -> %u cur_season=%u seasonal=%d season_state=%d",
+                    reinterpret_cast<uintptr_t>(ptPlayer),
+                    challenge_num,
+                    arg1,
+                    pre_clear,
+                    ptPlayer->nLastRewardChallengeNumber,
+                    cur_season,
+                    is_game_seasonal ? 1 : 0,
+                    season_state
+                )
+            }
+
+            Orig(ptPlayer, arg1, reward_screen_info);
+
+            if (global_config.challenge_rifts.active && ptPlayer != nullptr) {
+                const uint32 before_clear = ptPlayer->nLastRewardChallengeNumber;
+                // const uint32 challenge_num = cr_debug::GetCurrentChallengeNumber();
+                // const uint32 rearm_value = (challenge_num > 1u) ? (challenge_num - 1u) : 1u;
+                ptPlayer->nLastRewardChallengeNumber = 1u;
+                const uint32 after_clear             = ptPlayer->nLastRewardChallengeNumber;
+                if (reward_screen_info != nullptr) {
+                    const auto *screen = reinterpret_cast<uint32 const *>(reward_screen_info);
+                    PRINT(
+                        "[cr_reward_handle] post reward_screen challenge=%u reward_gbid=%u pylon=%u status=%u",
+                        screen[0],
+                        screen[1],
+                        screen[2],
+                        screen[3]
+                    )
+                }
+                PRINT(
+                    "[cr_reward_handle] post last_reward_challenge %u -> %u",
+                    before_clear,
+                    after_clear
+                )
+            }
+        }
+    };
+
+    // Weekly reward eligibility is precomputed when opening a challenge rift from
+    // Player::nLastRewardChallengeNumber. Force-rearm that field before stock open logic so
+    // test runs always begin in an eligible state.
+    HOOK_DEFINE_TRAMPOLINE(OpenChallengeRiftHook) {
+        static void Callback() {
+            if (global_config.challenge_rifts.active) {
+                const uint32 weekly_num = cr_debug::GetCurrentChallengeNumber();
+                int          patched    = 0;
+                for (Player *pt = PlayerGetFirstAll(); pt != nullptr; pt = PlayerGetNextAll(pt)) {
+                    const uint32 before      = pt->nLastRewardChallengeNumber;
+                    const uint32 rearm_value = (weekly_num > 1u) ? (weekly_num - 1u) : 1u;
+                    if (before != rearm_value) {
+                        pt->nLastRewardChallengeNumber = rearm_value;
+                        ++patched;
+                        PRINT(
+                            "[cr_reward_open] prerearm player=0x%lx weekly=%u last_reward_challenge=%u -> %u",
+                            reinterpret_cast<uintptr_t>(pt),
+                            weekly_num,
+                            before,
+                            pt->nLastRewardChallengeNumber
+                        )
+                    }
+                }
+                PRINT("[cr_reward_open] prerearm_done weekly=%u patched=%d", weekly_num, patched)
+            }
+            Orig();
+        }
+    };
+
     inline void SetupDebuggingHooks() {
         if (global_config.challenge_rifts.active) {
+            cr_debug::SetRewardSaveGateBypass(true);
             // StorageGetPubFile::
             //     InstallAtFuncPtr(StorageGetPublisherFile);
             Print_ChallengeRiftFailed::
                 InstallAtSymbol("sym_print_challenge_rift_failed");
             ChallengeRiftCallback::
                 InstallAtFuncPtr(challenge_rift_callback);
+            OpenChallengeRiftHook::
+                InstallAtFuncPtr(OpenChallengeRift);
+            ChallengeRiftRewardEarned_SaveToProfileHook::
+                InstallAtFuncPtr(ChallengeRiftRewardEarned_SaveToProfile);
+            ChallengeRiftHandleChallengeRewardsHook::
+                InstallAtFuncPtr(ChallengeRiftHandleChallengeRewards);
+            ChallengeRiftGrantRewardToPlayerIfEligibleHook::
+                InstallAtFuncPtr(ChallengeRiftGrantRewardToPlayerIfEligible);
             ParsePartialFromStringHook::
                 InstallAtFuncPtr(ParsePartialFromString);
+        } else {
+            cr_debug::SetRewardSaveGateBypass(false);
         }
 
         if (!global_config.defaults_only && global_config.debug.active && global_config.debug.enable_pubfile_dump) {
