@@ -9,7 +9,7 @@ namespace d3 {
     inline RareItemName g_tRareItemName = {.fItemNameIsPrefix = 0, .snoAffixStringList = _rarenamestrings_prefix_dex, .nAffixStringListIndex = 16, .nItemStringListIndex = 33};  //33 for goat, 22 for Leo
 
     inline void AppGlobalFlagDisable(int8 idx, uint32 flag) {
-        return;
+        // return;
         switch (idx) {
         case -1:
             g_tAppGlobals.dwDebugFlags  = 0xFFFFFFFF;
@@ -91,7 +91,7 @@ namespace d3 {
         g_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_DISPLAY_ITEM_ATTRIBUTES);
         g_tAppGlobals.dwDebugFlags |= (1 << APP_GLOBAL_ALWAYS_PLAY_GETHIT_BIT);
         g_tAppGlobals.dwDebugFlags2 |= (1 << APP_GLOBAL2_DONT_IDENTIFY_RARES_BIT);
-        g_tAppGlobals.dwDebugFlags2 |= (1 << APP_GLOBAL2_ALWAYS_PLAY_KNOCKBACK_BIT);
+        // g_tAppGlobals.dwDebugFlags2 |= (1 << APP_GLOBAL2_ALWAYS_PLAY_KNOCKBACK_BIT);
         g_tAppGlobals.dwDebugFlags2 |= (1 << APP_GLOBAL2_ALL_HITS_OVERKILL_BIT);
         g_tAppGlobals.dwDebugFlags2 |= (1 << APP_GLOBAL2_ALL_HITS_CRUSHING_BLOW_BIT);
         g_tAppGlobals.dwDebugFlags2 |= (1 << APP_GLOBAL2_DONT_THROTTLE_FLOATING_NUMBERS);

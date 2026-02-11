@@ -110,7 +110,7 @@ namespace d3 {
             AppDrawFlagSet(APP_DRAW_NO_ACTOR_SHADOWS_BIT, 1);
             AppDrawFlagSet(APP_DRAW_SHOW_BUFFS_BIT, 0);
             AppDrawFlagSet(APP_DRAW_BONES_BIT, 1);
-            AppDrawFlagSet(APP_DRAW_FULL_BRIGHT_BIT, 1);
+            // AppDrawFlagSet(APP_DRAW_FULL_BRIGHT_BIT, 1);
             AppDrawFlagSet(APP_DRAW_TEXTURE_MEMORY_BIT, 1);
             AppDrawFlagSet(APP_DRAW_HWCLASS_UI_OUTLINES_BIT, 1);
             AppDrawFlagSet(APP_DRAW_HWCLASS_DISTORTIONS_BIT, 1);

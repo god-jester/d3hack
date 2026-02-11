@@ -102,6 +102,8 @@ namespace d3 {
             case TARGETED_MAGIC_CHANCE:
             case TARGETED_RARE_CHANCE:
                 return 0.0f;
+            default:
+                break;
             }
             // if (ret >= 1736.000001f && ret <= 1738.000001f)
             //     PRINT("FastAttribGetFloatValue 1737: (tKey.nValue: 0x%x), Value: %f", tKey.nValue, ret)
@@ -130,7 +132,7 @@ namespace d3 {
                 // }
                 // CheckStringList(tKey.nValue, AttribToStr(tKey));
                 // CheckStringList(tKey.nValue, ParamToStr(KeyGetFullAttrib(tKey), KeyGetParam(tKey)));
-                return FastAttribGetValueInt(*(reinterpret_cast<FastAttribGroup **>(tACD) + 45), tKey);
+                // return FastAttribGetValueInt(*(reinterpret_cast<FastAttribGroup **>(tACD) + 45), tKey);
             default:
                 return FastAttribGetValueInt(*(reinterpret_cast<FastAttribGroup **>(tACD) + 45), tKey);
             }
@@ -140,14 +142,14 @@ namespace d3 {
 
     HOOK_DEFINE_REPLACE(AttributesGetFloat) {
         static auto Callback(ActorCommonData *tACD, FastAttribKey tKey) -> float {
-            float const ret = FastAttribGetValueFloat(*(reinterpret_cast<FastAttribGroup **>(tACD) + 45), tKey);  // Orig(tACD, tKey);
+            float const ret = FastAttribGetValueFloat(*(reinterpret_cast<FastAttribGroup **>(tACD) + 45), tKey);
 
             switch (KeyGetAttrib(tKey)) {
             // case TARGETED_LEGENDARY_CHANCE:
             // case SEASONAL_LEGENDARY_CHANCE:
-            case BLOCK_CHANCE_CAPPED_TOTAL:
-            case DODGE_CHANCE_BONUS:
-                return 1.0f;
+            // case BLOCK_CHANCE_CAPPED_TOTAL:
+            // case DODGE_CHANCE_BONUS: // this applied to *monster* dodge chance too, unable to hit
+            // return 1.0f;
             // case GOLD_FIND_TOTAL:
             // case MAGIC_FIND_TOTAL:
             //     return 100000000.0f;
@@ -155,9 +157,8 @@ namespace d3 {
             case GOLD_PICKUP_RADIUS:
                 return 10000000000.0f;
             default:
-                return ret;
-            }  // if (ret >= 1736.000001f && ret <= 1738.000001f)
-            //     PRINT("AttributesGetFloat 1737: (tKey.nValue: 0x%x), Value: %f", tKey.nValue, ret)
+                break;
+            }
             return ret;
         }
     };

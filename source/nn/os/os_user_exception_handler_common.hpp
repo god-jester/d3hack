@@ -11,8 +11,8 @@ namespace nn::os {
 
     inline constexpr size_t HandlerStackAlignment = 16;
 
-    inline constexpr void *HandlerStackUsesThreadStack =
-        reinterpret_cast<void *>(HandlerStackUsesThreadStackValue);
+    inline const void* HandlerStackUsesThreadStack =
+        reinterpret_cast<void*>(HandlerStackUsesThreadStackValue);
     inline UserExceptionInfo *const UserExceptionInfoUsesHandlerStack =
         reinterpret_cast<UserExceptionInfo *>(static_cast<intptr_t>(UserExceptionInfoUsesHandlerStackValue));
     inline UserExceptionInfo *const UserExceptionInfoUsesThreadStack =
