@@ -67,6 +67,7 @@ FUNC_PTR(ChallengeRiftGrantRewardToPlayerIfEligible, void (*)(Player *ptPlayer))
 FUNC_PTR(ChallengeRiftHandleChallengeRewards,    void (*)(Player *ptPlayer, int32 arg1, void *reward_screen_info));
 FUNC_PTR(ChallengeRiftRewardEarned_SaveToProfile, void (*)(int32 nUserIndex, void *tReward));
 FUNC_PTR(MailCheckLobbyConnection,                bool (*)(void *));
+FUNC_PTR(VendorIsBloodShard,                      int32 (*)(void *actor_record));
 
 //
 FUNC_PTR(sigma_memory_init,                      void (*)(void));

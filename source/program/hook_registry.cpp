@@ -9,6 +9,7 @@ namespace d3 {
     void SetupDebuggingHooks();
     void SetupSeasonEventHooks();
     void SetupLobbyHooks();
+    void SetupPtrVendorHooks();
 }  // namespace d3
 
 namespace d3::hook_registry {
@@ -38,6 +39,10 @@ namespace d3::hook_registry {
 
         static auto EnabledLobbyHooks(const PatchConfig &config) -> bool {
             return config.debug.enable_crashes;
+        }
+
+        static auto EnabledPtrVendorHooks(const PatchConfig &config) -> bool {
+            return config.seasons.spoof_ptr;
         }
 
         static constexpr HookEntry k_entries[] = {
@@ -80,6 +85,14 @@ namespace d3::hook_registry {
                 .feature       = "debug.enable_crashes",
                 .install       = &SetupLobbyHooks,
                 .enabled       = &EnabledLobbyHooks,
+                .toggle_safety = ToggleSafety::RestartRequired,
+            },
+            {
+                .name          = "PtrVendorHooks",
+                .owner         = "d3/hooks/ptr_vendor",
+                .feature       = "seasons.spoof_ptr",
+                .install       = &SetupPtrVendorHooks,
+                .enabled       = &EnabledPtrVendorHooks,
                 .toggle_safety = ToggleSafety::RestartRequired,
             },
         };

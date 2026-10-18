@@ -126,6 +126,7 @@ SETUP_FUNC_PTR(blz_make_stringfb);
 SETUP_FUNC_PTR(blz_make_stringf);
 SETUP_FUNC_PTR(XLocaleToString);
 SETUP_FUNC_PTR(MailCheckLobbyConnection);
+SETUP_FUNC_PTR(VendorIsBloodShard);
 
 // items.hpp
 #include "symbols/items.inc"
