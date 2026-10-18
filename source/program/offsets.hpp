@@ -56,6 +56,9 @@ namespace exl::reloc {
             { util::ModuleIndex::Main, 0x0657F0, "sym_OnBlacklistFileRetrieved" },
             { util::ModuleIndex::Main, 0x1B0600, "sym_MailCheckLobbyConnection" },
 
+            /* PTR vendor hooks (main module). */
+            { util::ModuleIndex::Main, 0x484240, "sym_VendorIsBloodShard" },
+
             /* Lobby hooks (main module). */
             { util::ModuleIndex::Main, 0x060810, "sym_lobby_service_idle_internal" },
             { util::ModuleIndex::Main, 0x06065C, "sym_lobby_service_create" },

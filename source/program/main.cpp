@@ -17,6 +17,7 @@
 #include "d3/hooks/debug.hpp"
 #include "d3/hooks/season_events.hpp"
 #include "d3/hooks/lobby.hpp"
+#include "d3/hooks/ptr_vendor.hpp"
 #include "d3/types/gfx.hpp"
 #include "program/gui2/imgui_overlay.hpp"
 #include "program/runtime_apply.hpp"
@@ -50,6 +51,7 @@ namespace d3 {
         [[gnu::used]] static void (*const k_emit_setup_debugging)()     = &SetupDebuggingHooks;
         [[gnu::used]] static void (*const k_emit_setup_season_events)() = &SetupSeasonEventHooks;
         [[gnu::used]] static void (*const k_emit_setup_lobby)()         = &SetupLobbyHooks;
+        [[gnu::used]] static void (*const k_emit_setup_ptr_vendor)()    = &SetupPtrVendorHooks;
 
         static auto VerifyBuildVersionFull() -> bool {
             const auto  base = exl::util::GetMainModuleInfo().m_Total.m_Start;
